@@ -1,0 +1,55 @@
+name: 🐛 バグ修正
+description: バグ報告および修正Issue
+title: "[fix] "
+labels: ["fix"]
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: 発生しているバグの内容や現象を記載してください。
+      placeholder: 例：チャット送信時にエラーが発生する
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 再現手順
+      description: バグの再現手順をできるだけ詳しく記載してください。
+      placeholder: |
+        1. ○○ページを開く
+        2. メッセージを入力して送信
+        3. エラーが表示される
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待される挙動
+      description: 本来どう動くべきかを記載してください。
+      placeholder: 例：正常にメッセージが送信される
+    validations:
+      required: false
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 修正タスク
+      description: 修正に必要な作業を箇条書きで記載してください。
+      placeholder: |
+        - [ ] バグの原因調査
+        - [ ] コード修正
+        - [ ] 動作確認
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 備考
+      description: その他の注意事項や参考リンクがあれば記載してください。
+      placeholder: 任意
+    validations:
+      required: false

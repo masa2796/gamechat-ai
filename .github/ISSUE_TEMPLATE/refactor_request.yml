@@ -1,0 +1,34 @@
+name: ♻️ リファクタリング
+description: コードの整理や最適化に関するIssue
+title: "[refactor] "
+labels: ["refactor"]
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: リファクタリングの目的や対象範囲を記載してください。
+      placeholder: 例：チャットAPIの処理を関数分割する
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 実装タスク
+      description: 実装に必要な作業を箇条書きで記載してください。
+      placeholder: |
+        - [ ] コード分割
+        - [ ] コメント追加
+        - [ ] 動作確認
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 備考
+      description: その他の注意事項や参考リンクがあれば記載してください。
+      placeholder: 任意
+    validations:
+      required: false

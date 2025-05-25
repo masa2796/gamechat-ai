@@ -1,0 +1,33 @@
+name: 🛠️ Chore（設定・ドキュメント等）
+description: 設定ファイルやドキュメント、CI/CDなどの運用改善Issue
+title: "[chore] "
+labels: ["chore"]
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: このIssueで対応する運用・設定・ドキュメント等の内容を記載してください。
+      placeholder: 例：READMEの更新、CI設定の追加
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 実装タスク
+      description: 実装に必要な作業を箇条書きで記載してください。
+      placeholder: |
+        - [ ] ドキュメントの修正
+        - [ ] 設定ファイルの更新
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 備考
+      description: その他の注意事項や参考リンクがあれば記載してください。
+      placeholder: 任意
+    validations:
+      required: false
