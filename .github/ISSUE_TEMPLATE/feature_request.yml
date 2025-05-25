@@ -1,0 +1,33 @@
+name: 🚀 Feature Request
+description: 新機能や改善要望の報告
+title: "[feature] "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: このIssueが解決すべき課題や提案内容の概要を記載してください。
+      placeholder: 例：ユーザーが〇〇できるようにする
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 実装タスク
+      description: 実装に必要な作業を箇条書きで記載してください。
+      placeholder: |
+        - [ ] APIの作成
+        - [ ] UIの更新
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 備考
+      description: その他の注意事項や参考リンクがあれば記載してください。
+      placeholder: 任意
+    validations:
+      required: false

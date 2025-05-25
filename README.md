@@ -50,7 +50,7 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 ### バージョン管理ファイル（プロジェクトに同梱）
 
 - `.nvmrc`: Node.js のバージョン指定
-- `.python-version`: Python のバージョン指定（`pyenv`用）
+- `.venv/`: Python 仮想環境ディレクトリ（`python -m venv .venv` で作成）
 - `package-lock.json`: Node.js パッケージの固定
 - `requirements.txt`: Python の依存パッケージ一覧
 - `.env.example`: 環境変数のテンプレート
@@ -63,6 +63,13 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
    nvm use 18
    ```
 
+2. Python 仮想環境の作成・有効化
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate  # Mac/Linux
+   # .venv\Scripts\activate   # Windows
+   pip install -r requirements.txt
+   ```
 ## ディレクトリ構成
 
 ```
