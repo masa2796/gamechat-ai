@@ -34,10 +34,11 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 - `.env.example` を `.env` にコピーして環境変数を設定
 - `package-lock.json` により依存パッケージのバージョンを固定
 
-| ツール / 言語       | バージョン例    | 備考                                      |
+| ツール / 言語          | バージョン例    | 備考                                      |
 |----------------------|------------------|-------------------------------------------|
 | Node.js              | 18.x 以上        | `nvm` でバージョン管理                   |
 | npm                  | 9.x 以上         | パッケージ管理                            |
+| React                | 19.x            |フロントエンドUIライブラリ                 |
 | Python               | 3.9〜3.11        | 埋め込み処理やRAG部分で使用               |
 | VS Code              | 最新             | 開発用IDE                                  |
 | Git                  | 最新             | バージョン管理ツール                      |
@@ -99,7 +100,7 @@ npm install
 
 ---
 
-## ディレクトリ構成（最新版）
+## ディレクトリ構成
 
 ```
 gamechat-ai/
@@ -133,6 +134,71 @@ gamechat-ai/
 ├── README.md
 └── .gitignore
 ```
+
+---
+
+## テスト環境・実行方法
+
+本プロジェクトのフロントエンド（Next.js）は、**Jest + React Testing Library** を用いてテストを実行します。
+
+### 主なテスト関連パッケージ
+
+- **Jest**: v29系
+- **React Testing Library**: v16系（`@testing-library/react@16`）
+- **jest-environment-jsdom**: v29系（`jest-environment-jsdom@29`）
+- **ts-jest**: TypeScript用Jestトランスパイラ
+- **@testing-library/jest-dom**: DOM用カスタムマッチャ
+
+### インストール
+
+```bash
+npm install
+cd frontend
+npm install
+```
+
+### テストの実行
+
+```
+npm test
+# または
+npx jest
+```
+
+### 注意事項
+
+- ESM依存の多いパッケージ（@assistant-ui系など）は jest.config.js の transformIgnorePatterns で対応しています。
+- 型定義がないパッケージは @types/hast や @types/json-schema などを追加してください。
+- Jestの設定は frontend/jest.config.js を参照してください。
+- テストでは frontend/tsconfig.test.json を参照しています。
+
+---
+
+## CI/CD（CircleCI）
+
+本プロジェクトは [CircleCI](https://circleci.com/) によるCI/CDパイプラインを導入しています。
+
+- 依存パッケージのインストール
+- ビルド
+- テスト
+- サーバー起動確認
+
+これらのジョブが自動で実行され、mainブランチへのマージやPull Request作成時に品質チェックが行われます。
+
+CircleCIの設定は `.circleci/config.yml` を参照してください。
+
+---
+
+## Gitブランチ命名ルール
+
+<タイプ>/<変更内容>-<issue番号（任意）>
+
+### タイプの種類：
+- `feature`：新機能の追加
+- `fix`：バグ修正
+- `refactor`：リファクタリング（挙動を変えない改善）
+- `chore`：設定ファイルやREADMEの更新など
+- `test`：テストの追加・修正
 
 ---
 

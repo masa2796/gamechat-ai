@@ -1,0 +1,62 @@
+version: 2.1
+
+executors:
+  node-executor:
+    docker:
+      - image: cimg/node:18.20
+    working_directory: ~/repo/frontend
+
+jobs:
+  install:
+    executor: node-executor
+    steps:
+      - checkout:
+          path: ~/repo
+      - run:
+          name: Install dependencies
+          command: |
+            cd ~/repo/frontend
+            npm ci
+
+  build:
+    executor: node-executor
+    steps:
+      - checkout:
+          path: ~/repo
+      - run:
+          name: Build
+          command: |
+            cd ~/repo/frontend
+            npm run build
+
+  start-server:
+    executor: node-executor
+    steps:
+      - checkout:
+          path: ~/repo
+      - run:
+          name: Build
+          command: |
+            cd ~/repo/frontend
+            npm run build
+      - run:
+          name: Start server and check health
+          command: |
+            cd ~/repo/frontend
+            nohup npm start & sleep 10
+            curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
+
+workflows:
+  version: 2
+  frontend-ci:
+    jobs:
+      - install
+      - lint:
+          requires:
+            - install
+      - build:
+          requires:
+            - lint
+      - start-server:
+          requires:
+            - build
