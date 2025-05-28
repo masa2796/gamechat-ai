@@ -8,9 +8,9 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 ## 技術スタック
 
 ### フロントエンド
-- React + TypeScript
-- Vite
+- Next.js (React + TypeScript)
 - Tailwind CSS
+- assistant-ui（shadcn/uiベース）
 
 ### バックエンド
 - Node.js + Express
@@ -26,17 +26,13 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 - Firebase Firestore / Pinecone（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
 
+---
+
 ## 開発環境
-
-本プロジェクトでは、以下の開発環境を推奨します。複数人で開発する場合でも環境の差異を最小限に抑えるため、バージョン管理ツールを併用することを推奨します。
-
-### 開発環境のバージョン統一
 
 - `.nvmrc` により Node.js バージョンを統一（例: `18`）
 - `.env.example` を `.env` にコピーして環境変数を設定
 - `package-lock.json` により依存パッケージのバージョンを固定
-
-### 使用技術・ツール
 
 | ツール / 言語       | バージョン例    | 備考                                      |
 |----------------------|------------------|-------------------------------------------|
@@ -47,7 +43,7 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 | Git                  | 最新             | バージョン管理ツール                      |
 | OpenAI API           | 利用予定         | `.env` にキーを設定                       |
 
-### バージョン管理ファイル（プロジェクトに同梱）
+### バージョン管理ファイル
 
 - `.nvmrc`: Node.js のバージョン指定
 - `.venv/`: Python 仮想環境ディレクトリ（`python -m venv .venv` で作成）
@@ -55,36 +51,69 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 - `requirements.txt`: Python の依存パッケージ一覧
 - `.env.example`: 環境変数のテンプレート
 
-### 開発環境のセットアップ手順（初回）
+---
 
-1. Node.js のインストール（nvm推奨）
-   ```bash
-   nvm install 18
-   nvm use 18
-   ```
+## セットアップ手順
 
-2. Python 仮想環境の作成・有効化
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate  # Mac/Linux
-   # .venv\Scripts\activate   # Windows
-   pip install -r requirements.txt
-   ```
-## ディレクトリ構成
+### 1. リポジトリをクローン
+
+```bash
+git clone https://github.com/yourname/gamechat-ai.git
+cd gamechat-ai
+```
+
+### 2. 依存パッケージのインストール
+
+```bash
+npm install
+cd frontend
+npm install
+cd ../backend
+npm install
+```
+
+### 3. 環境変数ファイルの作成
+
+- `backend/.env` に OpenAI APIキー等を設定してください。
+  ```
+  OPENAI_API_KEY=your_openai_api_key
+  PINECONE_API_KEY=your_pinecone_api_key
+  ```
+- `frontend/.env` は通常不要ですが、APIエンドポイント等を設定したい場合に利用します。
+
+### 4. 開発サーバーの起動
+
+- フロントエンド（Next.js）:  
+  ```bash
+  cd frontend
+  npm run dev
+  ```
+  → http://localhost:3000
+
+- バックエンド（Express）:  
+  ```bash
+  cd backend
+  npm run dev
+  ```
+  → http://localhost:4000
+
+---
+
+## ディレクトリ構成（最新版）
 
 ```
 gamechat-ai/
-├── frontend/                     # React + TypeScript
+├── frontend/                     # Next.js + TypeScript
 │   ├── public/
 │   ├── src/
+│   │   ├── app/                  # Next.js App Router
 │   │   ├── components/
-│   │   ├── pages/
 │   │   ├── hooks/
-│   │   ├── api/
-│   │   ├── utils/
-│   │   └── main.tsx
-│   ├── vite.config.ts
+│   │   ├── lib/
+│   │   └── utils/
 │   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
 │   └── .env
 │
 ├── backend/                      # Node.js + Express
@@ -105,59 +134,31 @@ gamechat-ai/
 └── .gitignore
 ```
 
-## セットアップ手順
-
-### 1. リポジトリをクローン
-
-```bash
-git clone https://github.com/yourname/gamechat-ai.git
-cd gamechat-ai
-```
-
-### 2. 依存パッケージのインストール（ルートでOK）
-
-```bash
-npm install
-```
-
-> ※初回のみ、`frontend` および `backend` ディレクトリでも `npm install` を実行してください。
-
-### 3. 環境変数ファイルの作成
-
-- `backend/.env` に OpenAI APIキー等を設定してください。
-  ```
-  OPENAI_API_KEY=your_openai_api_key
-  PINECONE_API_KEY=your_pinecone_api_key
-  ```
-- `frontend/.env` は通常不要ですが、APIエンドポイント等を設定したい場合に利用します。
-
-### 4. 開発サーバーの同時起動
-
-```bash
-npm run dev
-```
-
-- これでフロントエンド（http://localhost:5173）とバックエンド（http://localhost:4000）が同時に起動します。
-
 ---
 
-## Gitブランチ命名ルール
+## .gitignore（推奨）
 
-`<タイプ>/<変更内容>-<issue番号（任意）>`
-
-### タイプの種類：
-- `feature`：新機能の追加
-- `fix`：バグ修正
-- `refactor`：リファクタリング（挙動を変えない改善）
-- `chore`：設定ファイルやREADMEの更新など
-- `test`：テストの追加・修正
-
----
-
-## その他
-
-- フロントエンドやバックエンドを個別に起動したい場合は、それぞれのディレクトリで `npm run dev` を実行してください。
-- `.env.example` も用意しておくと、他の開発者が環境変数の設定内容を把握しやすくなります。
+```
+# Next.js build output
+.next/
+# Node modules
+node_modules/
+# OS files
+.DS_Store
+Thumbs.db
+# Env files
+.env
+.env.local
+.env.*.local
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Editor settings
+.vscode/
+# Test coverage
+coverage/
+```
 
 ---
 
@@ -167,6 +168,7 @@ npm run dev
 - `.env` ファイルは `.gitignore` で管理されています。
 
 ---
+
 ## 作者
 
 MASAKI
