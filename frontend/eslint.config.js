@@ -1,14 +1,17 @@
 const { FlatCompat } = require("@eslint/eslintrc");
-const { dirname } = require("path");
-const { fileURLToPath } = require("url");
-
-const _filename = fileURLToPath(__filename);
-const _dirname = dirname(_filename);
+const path = require("path");
 
 const compat = new FlatCompat({
-  baseDirectory: _dirname,
+  baseDirectory: __dirname,
 });
 
 module.exports = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-empty-object-type": "off",
+    },
+  },
 ];
