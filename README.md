@@ -34,12 +34,13 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 - `.env.example` を `.env` にコピーして環境変数を設定
 - `package-lock.json` により依存パッケージのバージョンを固定
 
-| ツール / 言語       | バージョン例    | 備考                                      |
+| ツール / 言語          | バージョン例    | 備考                                      |
 |----------------------|------------------|-------------------------------------------|
 | Node.js              | 18.x 以上        | `nvm` でバージョン管理                   |
 | npm                  | 9.x 以上         | パッケージ管理                            |
+| React                | 19.x             | フロントエンドUIライブラリ                |
 | Python               | 3.9〜3.11        | 埋め込み処理やRAG部分で使用               |
-| VS Code              | 最新             | 開発用IDE                                  |
+| VS Code              | 最新             | 開発用IDE                                 |
 | Git                  | 最新             | バージョン管理ツール                      |
 | OpenAI API           | 利用予定         | `.env` にキーを設定                       |
 
@@ -99,28 +100,31 @@ npm install
 
 ---
 
-## ディレクトリ構成（最新版）
+## ディレクトリ構成
 
 ```
 gamechat-ai/
-├── frontend/                     # Next.js + TypeScript
+├── frontend/                     # Next.js + TypeScript（フロントエンド）
 │   ├── public/
 │   ├── src/
 │   │   ├── app/                  # Next.js App Router
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── lib/
-│   │   └── utils/
+│   │   ├── components/           # UIコンポーネント
+│   │   ├── hooks/                # Reactカスタムフック
+│   │   ├── lib/                  # ライブラリ・ユーティリティ
+│   │   └── utils/                # 汎用ユーティリティ
 │   ├── package.json
 │   ├── postcss.config.js
 │   ├── tailwind.config.js
+│   ├── vitest.config.ts          # テスト設定
+│   ├── vitest.setup.ts           # テストセットアップ
+│   ├── tsconfig.json             # TypeScript設定
 │   └── .env
 │
-├── backend/                      # Node.js + Express
+├── backend/                      # Node.js + Express（バックエンドAPI）
 │   ├── src/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── index.ts
+│   │   ├── routes/               # APIルート
+│   │   ├── services/             # サービス層
+│   │   └── index.ts              # エントリーポイント
 │   ├── package.json
 │   └── .env
 │
@@ -130,9 +134,54 @@ gamechat-ai/
 ├── scripts/                      # Pythonスクリプト
 │   └── embed_and_upload.py
 │
+├── .nvmrc                        # Node.jsバージョン指定
+├── requirements.txt              # Python依存パッケージ
+├── .env.example                  # 環境変数テンプレート
 ├── README.md
 └── .gitignore
 ```
+
+---
+
+## テスト環境・実行方法
+
+### テストフレームワーク
+このプロジェクトでは、テストフレームワークとして [Vitest](https://vitest.dev/) を使用しています。Vitest は Vite をベースとした高速なテストランナーです。
+
+### 主なテスト関連パッケージ
+- **vitest**: 高速なテストランナー。
+- **@testing-library/react**: React コンポーネントのテストを容易にするためのユーティリティ。
+- **@testing-library/jest-dom**: DOM の状態をアサートするためのカスタム Jest マッチャを提供 (Vitest でも利用可能)。
+- **@testing-library/user-event**: より現実に近いユーザーインタラクションをシミュレート。
+- **jsdom**: テスト環境でブラウザの DOM API をシミュレート。
+- **@vitejs/plugin-react**: Vitest で React プロジェクトをサポートするための Vite プラグイン。
+- **@types/jest**: Jest のグローバルな型定義（`describe`, `it` など）。Vitest は Jest と互換性のある API を多く提供しており、`globals: true` 設定と合わせてこれらの型定義が利用されることがあります。
+
+### 設定ファイル
+- **`frontend/vitest.config.ts`**: Vitest の設定ファイル。テストファイルの場所、セットアップスクリプト、カバレッジ設定などが定義されています。
+- **`frontend/vitest.setup.ts`**: グローバルなテストセットアップファイル。`@testing-library/jest-dom` のインポートなど、各テストファイルの前に実行したい処理を記述します。
+- **`frontend/tsconfig.json`**: TypeScript の設定ファイル。Vitest はこの設定（特に `paths` エイリアスなど）を参照します。
+
+### テストの実行
+`frontend` ディレクトリで以下のコマンドを実行します。
+
+- **すべてのテストを実行:**
+  ```bash
+  npm test
+  ```
+
+  ---
+
+## Gitブランチ命名ルール
+
+`<タイプ>/<変更内容>-<issue番号（任意）>`
+
+### タイプの種類：
+- `feature`：新機能の追加
+- `fix`：バグ修正
+- `refactor`：リファクタリング（挙動を変えない改善）
+- `chore`：設定ファイルやREADMEの更新など
+- `test`：テストの追加・修正
 
 ---
 
