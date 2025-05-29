@@ -139,102 +139,27 @@ gamechat-ai/
 
 ## テスト環境・実行方法
 
-本プロジェクトのフロントエンド（Next.js）は、**Jest + React Testing Library** を用いてテストを実行します。
+### テストフレームワーク
+このプロジェクトでは、テストフレームワークとして [Vitest](https://vitest.dev/) を使用しています。Vitest は Vite をベースとした高速なテストランナーです。
 
 ### 主なテスト関連パッケージ
+- **vitest**: 高速なテストランナー。
+- **@testing-library/react**: React コンポーネントのテストを容易にするためのユーティリティ。
+- **@testing-library/jest-dom**: DOM の状態をアサートするためのカスタム Jest マッチャを提供 (Vitest でも利用可能)。
+- **@testing-library/user-event**: より現実に近いユーザーインタラクションをシミュレート。
+- **jsdom**: テスト環境でブラウザの DOM API をシミュレート。
+- **@vitejs/plugin-react**: Vitest で React プロジェクトをサポートするための Vite プラグイン。
+- **@types/jest**: Jest のグローバルな型定義（`describe`, `it` など）。Vitest は Jest と互換性のある API を多く提供しており、`globals: true` 設定と合わせてこれらの型定義が利用されることがあります。
 
-- **Jest**: v29系
-- **React Testing Library**: v16系（`@testing-library/react@16`）
-- **jest-environment-jsdom**: v29系（`jest-environment-jsdom@29`）
-- **ts-jest**: TypeScript用Jestトランスパイラ
-- **@testing-library/jest-dom**: DOM用カスタムマッチャ
-
-### インストール
-
-```bash
-npm install
-cd frontend
-npm install
-```
+### 設定ファイル
+- **`frontend/vitest.config.ts`**: Vitest の設定ファイル。テストファイルの場所、セットアップスクリプト、カバレッジ設定などが定義されています。
+- **`frontend/vitest.setup.ts`**: グローバルなテストセットアップファイル。`@testing-library/jest-dom` のインポートなど、各テストファイルの前に実行したい処理を記述します。
+- **`frontend/tsconfig.json`**: TypeScript の設定ファイル。Vitest はこの設定（特に `paths` エイリアスなど）を参照します。
 
 ### テストの実行
+`frontend` ディレクトリで以下のコマンドを実行します。
 
-```
-npm test
-# または
-npx jest
-```
-
-### 注意事項
-
-- ESM依存の多いパッケージ（@assistant-ui系など）は jest.config.js の transformIgnorePatterns で対応しています。
-- 型定義がないパッケージは @types/hast や @types/json-schema などを追加してください。
-- Jestの設定は frontend/jest.config.js を参照してください。
-- テストでは frontend/tsconfig.test.json を参照しています。
-
----
-
-## CI/CD（CircleCI）
-
-本プロジェクトは [CircleCI](https://circleci.com/) によるCI/CDパイプラインを導入しています。
-
-- 依存パッケージのインストール
-- ビルド
-- テスト
-- サーバー起動確認
-
-これらのジョブが自動で実行され、mainブランチへのマージやPull Request作成時に品質チェックが行われます。
-
-CircleCIの設定は `.circleci/config.yml` を参照してください。
-
----
-
-## Gitブランチ命名ルール
-
-<タイプ>/<変更内容>-<issue番号（任意）>
-
-### タイプの種類：
-- `feature`：新機能の追加
-- `fix`：バグ修正
-- `refactor`：リファクタリング（挙動を変えない改善）
-- `chore`：設定ファイルやREADMEの更新など
-- `test`：テストの追加・修正
-
----
-
-## .gitignore（推奨）
-
-```
-# Next.js build output
-.next/
-# Node modules
-node_modules/
-# OS files
-.DS_Store
-Thumbs.db
-# Env files
-.env
-.env.local
-.env.*.local
-# Log files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-# Editor settings
-.vscode/
-# Test coverage
-coverage/
-```
-
----
-
-## 注意事項
-
-- OpenAI APIキーなどの機密情報は**絶対に公開しないでください**。
-- `.env` ファイルは `.gitignore` で管理されています。
-
----
-
-## 作者
-
-MASAKI
+- **すべてのテストを実行:**
+  ```bash
+  npm test
+  ```
