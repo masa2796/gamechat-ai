@@ -1,3 +1,4 @@
+import React from "react";
 import type { FC } from "react";
 import {
   ThreadListItemPrimitive,
@@ -10,7 +11,9 @@ import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button
 
 export const ThreadList: FC = () => {
   return (
-    <ThreadListPrimitive.Root className="flex flex-col items-stretch gap-1.5">
+    <ThreadListPrimitive.Root
+      className="flex flex-col items-stretch gap-1.5"
+    >
       <ThreadListNew />
       <ThreadListItems />
     </ThreadListPrimitive.Root>
