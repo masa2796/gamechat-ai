@@ -3,7 +3,7 @@ version: 2.1
 executors:
   node-executor:
     docker:
-      - image: cimg/node:18.20
+      - image: cimg/node:20.11
     working_directory: ~/repo/frontend
 
 jobs:
@@ -46,6 +46,15 @@ jobs:
             nohup npm start & sleep 10
             curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
 
+  test:
+    docker:
+      - image: cimg/node:20.11
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
 workflows:
   version: 2
   frontend-ci:
@@ -60,3 +69,9 @@ workflows:
       - start-server:
           requires:
             - build
+  test_and_build:
+    jobs:
+      - test
+      - build:
+          requires:
+            - test
