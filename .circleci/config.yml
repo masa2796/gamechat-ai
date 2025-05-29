@@ -4,68 +4,58 @@ executors:
   node-executor:
     docker:
       - image: cimg/node:20.11
-    working_directory: ~/repo/frontend
+    working_directory: ~/project/frontend
 
 jobs:
   install:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
+      - checkout
       - run:
           name: Install dependencies
-          command: |
-            cd ~/repo/frontend
-            npm ci
+          command: npm ci
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules
 
   build:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Build
-          command: |
-            cd ~/repo/frontend
-            npm run build
+          command: npm run build
 
   start-server:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Build
-          command: |
-            cd ~/repo/frontend
-            npm run build
+          command: npm run build
       - run:
           name: Start server and check health
           command: |
-            cd ~/repo/frontend
             nohup npm start & sleep 10
             curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
 
   test:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
-      - run:
-          name: Install dependencies
-          command: |
-            cd ~/repo/frontend
-            npm ci
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Lint
-          command: |
-            cd ~/repo/frontend
-            npm run lint
+          command: npm run lint
       - run:
           name: Test
-          command: |
-            cd ~/repo/frontend
-            npm test
+          command: npm test
 
 workflows:
   version: 2
@@ -75,6 +65,9 @@ workflows:
       - build:
           requires:
             - install
+      - test:
+          requires:
+            - build
       - start-server:
           requires:
             - build
