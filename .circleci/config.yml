@@ -4,74 +4,76 @@ executors:
   node-executor:
     docker:
       - image: cimg/node:20.11
-    working_directory: ~/repo/frontend
+    working_directory: ~/project
 
 jobs:
   install:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
+      - checkout
+      - run:
+          name: Show directory structure
+          command: |
+            pwd
+            ls -l
+            ls -l frontend
       - run:
           name: Install dependencies
-          command: |
-            cd ~/repo/frontend
-            npm ci
+          command: cd frontend && npm ci
+      - persist_to_workspace:
+          root: frontend
+          paths:
+            - node_modules
 
   build:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Build
-          command: |
-            cd ~/repo/frontend
-            npm run build
+          command: cd frontend && npm run build
 
   start-server:
     executor: node-executor
     steps:
-      - checkout:
-          path: ~/repo
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Build
-          command: |
-            cd ~/repo/frontend
-            npm run build
+          command: cd frontend && npm run build
       - run:
           name: Start server and check health
           command: |
-            cd ~/repo/frontend
-            nohup npm start & sleep 10
+            cd frontend && nohup npm start & sleep 10
             curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
 
   test:
-    docker:
-      - image: cimg/node:20.11
+    executor: node-executor
     steps:
       - checkout
-      - run: npm ci
-      - run: npm run lint
-      - run: npm test
+      - attach_workspace:
+          at: .
+      - run:
+          name: Lint
+          command: cd frontend && npm run lint
+      - run:
+          name: Test
+          command: cd frontend && npm test
 
 workflows:
   version: 2
   frontend-ci:
     jobs:
       - install
-      - lint:
-          requires:
-            - install
       - build:
           requires:
-            - lint
+            - install
+      - test:
+          requires:
+            - build
       - start-server:
           requires:
             - build
-  test_and_build:
-    jobs:
-      - test
-      - build:
-          requires:
-            - test
