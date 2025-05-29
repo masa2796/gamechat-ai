@@ -12,6 +12,12 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Show directory structure
+          command: |
+            pwd
+            ls -l
+            ls -l frontend
+      - run:
           name: Install dependencies
           command: npm ci
       - persist_to_workspace:
