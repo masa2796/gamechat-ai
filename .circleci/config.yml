@@ -4,7 +4,7 @@ executors:
   node-executor:
     docker:
       - image: cimg/node:20.11
-    working_directory: ~/project/frontend
+    working_directory: ~/project
 
 jobs:
   install:
@@ -21,7 +21,7 @@ jobs:
           name: Install dependencies
           command: cd frontend && npm ci
       - persist_to_workspace:
-          root: .
+          root: frontend
           paths:
             - node_modules
 
