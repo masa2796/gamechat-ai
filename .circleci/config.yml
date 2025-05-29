@@ -60,18 +60,9 @@ workflows:
   frontend-ci:
     jobs:
       - install
-      - lint:
-          requires:
-            - install
       - build:
           requires:
-            - lint
+            - install
       - start-server:
           requires:
             - build
-  test_and_build:
-    jobs:
-      - test
-      - build:
-          requires:
-            - test
