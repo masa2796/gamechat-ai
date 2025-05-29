@@ -19,7 +19,7 @@ jobs:
             ls -l frontend
       - run:
           name: Install dependencies
-          command: npm ci
+          command: cd frontend && npm ci
       - persist_to_workspace:
           root: .
           paths:
@@ -33,7 +33,7 @@ jobs:
           at: .
       - run:
           name: Build
-          command: npm run build
+          command: cd frontend && npm run build
 
   start-server:
     executor: node-executor
@@ -43,11 +43,11 @@ jobs:
           at: .
       - run:
           name: Build
-          command: npm run build
+          command: cd frontend && npm run build
       - run:
           name: Start server and check health
           command: |
-            nohup npm start & sleep 10
+            cd frontend && nohup npm start & sleep 10
             curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
 
   test:
@@ -58,10 +58,10 @@ jobs:
           at: .
       - run:
           name: Lint
-          command: npm run lint
+          command: cd frontend && npm run lint
       - run:
           name: Test
-          command: npm test
+          command: cd frontend && npm test
 
 workflows:
   version: 2
