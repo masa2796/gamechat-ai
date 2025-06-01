@@ -18,7 +18,7 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 
 ### AI・検索関連
 - OpenAI API (ChatGPT, Embedding)
-- Upstash Vector（ベクトル検索サービス／Hybrid Index対応）
+- Upstash Vector（ベクトル検索サービス／Dense Index対応）
 - Python（データ埋め込み・アップロードスクリプト）
 
 ### インフラ・ホスティング
@@ -134,23 +134,47 @@ gamechat-ai/
 │
 │
 ├── scripts/                      # Pythonスクリプト
-│   ├── convert_to_embedding_format.py  
-│   ├── embed_and_upload.py
-│   └── test_upstash_connection.py  # Upstash Vector接続テストスクリプト
+│   ├── convert_to_format.py  
+│   ├── embedding.py
+│   └── upstash_connection.py
 │
 ├── .nvmrc
 ├── requirements.txt
-├── .env.example
 ├── README.md
+├── .env.example
 └── .gitignore
 ```
 
 ---
 
-## ベクトルDBサービスについて
+## ベクトルDB（Upstash Vector）へのインデクシング・アップロード
 
-Upstash Vector（Hybrid Index対応）を利用しています。
-ベクトルのテストやアップロードには scripts/test_upstash_connection.py などのPythonスクリプトを利用します。
+### 概要
+エンベディング済みの攻略データ（例: `embedding_list.jsonl`）を、Upstash Vectorにアップロードし、ベクトル検索可能な状態にします。
+
+### インデックス管理方針
+- Upstash Vectorのインデックスは「Dense（密）」型で作成してください（OpenAIのエンベディングは密ベクトルです）。
+- データごとに `namespace` を分けて管理することで、用途や種類ごとの検索が可能です。
+- インデックスのURLやトークンは `backend/.env` で安全に管理します。
+
+### アップロード処理
+- `scripts/upstash_connection.py` を利用して、`embedding_list.jsonl` の各行（1ベクトルずつ）をUpstash Vectorにアップロードします。
+- スクリプトは以下のように実行します。
+
+```bash
+python upstash_connection.py
+```
+
+### スクリプトの主な流れ:
+- .env からUpstashの接続情報を読み込む
+- embedding_list.jsonl を1行ずつ読み込み、各ベクトルを Vector オブジェクトとして生成
+- namespace ごとにUpstash Vectorへ upsert で登録
+- アップロードが完了したベクトルIDを標準出力に表示
+
+### 注意事項
+- インデックスの型（Dense/Sparse）がデータと一致していることを必ず確認してください。
+- APIキーやトークンなどの機密情報は .env で管理し、Gitには絶対に含めないでください。
+- 大量データをアップロードする場合は、APIレート制限やエラー処理に注意してください。
 
 ---
 
@@ -236,7 +260,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# データディレクトリ（サンプルや生成データは原則Git管理外）
+# データディレクトリ（サンプルや生成データ）
 data/
 ```
 
