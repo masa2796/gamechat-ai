@@ -18,12 +18,12 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 
 ### AI・検索関連
 - OpenAI API (ChatGPT, Embedding)
-- Pinecone（ベクトル検索サービス）
+- Upstash Vector（ベクトル検索サービス／Hybrid Index対応）
 - Python（データ埋め込み・アップロードスクリプト）
 
 ### インフラ・ホスティング
 - Firebase Hosting / Vercel（フロントエンド）
-- Firebase Firestore / Pinecone（データベース）
+- Firebase Firestore / Upstash Vector（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
 
 ---
@@ -43,6 +43,7 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 | VS Code              | 最新             | 開発用IDE                                 |
 | Git                  | 最新             | バージョン管理ツール                      |
 | OpenAI API           | 利用予定         | `.env` にキーを設定                       |
+| Upstash Vector       | 利用予定         | `.env` にURL・トークンを設定              |
 
 ### バージョン管理ファイル
 
@@ -78,7 +79,8 @@ npm install
 - `backend/.env` に OpenAI APIキー等を設定してください。
   ```
   OPENAI_API_KEY=your_openai_api_key
-  PINECONE_API_KEY=your_pinecone_api_key
+  UPSTASH_VECTOR_REST_URL=your_upstash_vector_url
+  UPSTASH_VECTOR_REST_TOKEN=your_upstash_vector_token
   ```
 - `frontend/.env` は通常不要ですが、APIエンドポイント等を設定したい場合に利用します。
 
@@ -115,31 +117,40 @@ gamechat-ai/
 │   ├── package.json
 │   ├── postcss.config.js
 │   ├── tailwind.config.js
-│   ├── vitest.config.ts          # テスト設定
-│   ├── vitest.setup.ts           # テストセットアップ
-│   ├── tsconfig.json             # TypeScript設定
+│   ├── vitest.config.ts
+│   ├── vitest.setup.ts
+│   ├── tsconfig.json
 │   └── .env
 │
 ├── backend/                      # Node.js + Express（バックエンドAPI）
 │   ├── src/
-│   │   ├── routes/               # APIルート
-│   │   ├── services/             # サービス層
-│   │   └── index.ts              # エントリーポイント
+│   │   ├── routes/
+│   │   ├── services/
+│   │   └── index.ts
 │   ├── package.json
 │   └── .env
 │
-├── data/                         # 攻略データ（RAG用）
-│   └── sample_data.json
+├── data/                         # 攻略データ（git管理外）
+│
 │
 ├── scripts/                      # Pythonスクリプト
-│   └── embed_and_upload.py
+│   ├── convert_to_embedding_format.py  
+│   ├── embed_and_upload.py
+│   └── test_upstash_connection.py  # Upstash Vector接続テストスクリプト
 │
-├── .nvmrc                        # Node.jsバージョン指定
-├── requirements.txt              # Python依存パッケージ
-├── .env.example                  # 環境変数テンプレート
+├── .nvmrc
+├── requirements.txt
+├── .env.example
 ├── README.md
 └── .gitignore
 ```
+
+---
+
+## ベクトルDBサービスについて
+
+Upstash Vector（Hybrid Index対応）を利用しています。
+ベクトルのテストやアップロードには scripts/test_upstash_connection.py などのPythonスクリプトを利用します。
 
 ---
 
@@ -177,6 +188,7 @@ gamechat-ai/
 `<タイプ>/<変更内容>-<issue番号（任意）>`
 
 ### タイプの種類：
+
 - `feature`：新機能の追加
 - `fix`：バグ修正
 - `refactor`：リファクタリング（挙動を変えない改善）
@@ -188,25 +200,44 @@ gamechat-ai/
 ## .gitignore（推奨）
 
 ```
-# Next.js build output
-.next/
-# Node modules
-node_modules/
-# OS files
-.DS_Store
-Thumbs.db
-# Env files
+# .env files (root, frontend, backend)
 .env
 .env.local
 .env.*.local
+frontend/.env
+backend/.env
+
+# Python仮想環境
+.venv
+
+# Node modules
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build output / cache
+.next/
+dist/
+frontend/dist/
+backend/dist/
+coverage/
+
 # Log files
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-# Editor settings
+
+# Editor/IDE settings
 .vscode/
-# Test coverage
-coverage/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# データディレクトリ（サンプルや生成データは原則Git管理外）
+data/
 ```
 
 ---
