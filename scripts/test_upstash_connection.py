@@ -50,7 +50,7 @@ def test_upstash_vector_connection():
             metadata={"source": "test_script_precomputed_embed"},
             sparse_vector=dummy_sparse_tuple
         )
-        index.upsert(vectors=[vector_to_upsert])
+        index.upsert(vectors=[vector_to_upsert],namespace="test")
         print(f"Upserted test data with id: {vector_id}")
 
         query_vector_data = PRECOMPUTED_QUERY_VECTOR
@@ -68,13 +68,10 @@ def test_upstash_vector_connection():
             include_metadata=True,
             include_vectors=True
         )
-        print(f"Query results: {results}")
-
         if results:
             print("Upstash Vector connection and basic query successful!")
         else:
-            print("No results found for the query.")
-        
+            print("No results found for the query.")        
     except Exception as e:
         print(f"An error occurred: {e}")
 
