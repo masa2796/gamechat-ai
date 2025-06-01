@@ -15,13 +15,12 @@ def main():
     with open(data_path, encoding='utf-8') as f:
         data_list = json.load(f)
 
-    out_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'sample_data_embedding_list.jsonl')
+    out_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'embedding_list.jsonl')
 
     for data in data_list:
         text = build_text(data)
         print(f"Embedding対象テキスト: {text}")
 
-        # 新しいopenaiパッケージ用
         response = openai.embeddings.create(
             input=text,
             model="text-embedding-3-small"
