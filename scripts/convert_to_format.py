@@ -14,22 +14,27 @@ def convert_to_embedding_format(card_data):
         })
 
     # 2. 攻撃
-    for attack in card_data.get("attacks", []):
-        cost_str = " ".join([f"{k}{v}" for k, v in attack.get("cost", {}).items()])
-        attack_text = f"技名: {attack['name']} / ダメージ: {attack['damage']} / エネルギーコスト: {cost_str}"
+    for idx, attack in enumerate(card_data.get("attacks", []), 1):
+        cost_str = "と".join([f"{k}{v}つ" for k, v in attack.get("cost", {}).items()])
+        attack_text = f"技名は{attack['name']}。ダメージは{attack['damage']}。必要なエネルギーコストは{cost_str}。"
         entries.append({
-            "id": f"{base_id}:attack:{attack['name']}",
+            "id": f"{base_id}:attack-{idx}",
             "namespace": "attacks",
             "text": attack_text
         })
 
-    # 3. 概要（種族、タイプ、弱点、HPなど）
+    # 3. 概要
+    evolves_to = card_data.get("evolvesTo", "なし")
+    if isinstance(evolves_to, list):
+        evolves_to_str = "と".join(evolves_to)
+    else:
+        evolves_to_str = evolves_to    
     summary_text = (
-        f"{card_data['name']}は{card_data['type']}タイプの{card_data['species']}。"
-        f"進化先は{card_data['evolvesTo']}。"
-        f"弱点は{card_data['weakness']}。"
-        f"HPは{card_data['hp']}。"
-        f"身長{card_data['height']}m、体重{card_data['weight']}kg。"
+        f"{card_data.get('name', '')}は{card_data.get('type', '')}タイプの{card_data.get('species', '')}。"
+        f"進化先は{evolves_to_str}。"
+        f"弱点は{card_data.get('weakness', '-')}。"
+        f"HPは{card_data.get('hp', '-')}。"
+        f"身長{card_data.get('height', '-')}m、体重{card_data.get('weight', '-')}kg。"
     )
     entries.append({
         "id": f"{base_id}:summary",
@@ -40,7 +45,7 @@ def convert_to_embedding_format(card_data):
     # 4. セット情報
     set_data = card_data.get("set")
     if set_data:
-        set_text = f"このカードは「{set_data['name']}（{set_data['subName']}）」セットに属し、{set_data['releaseDate']}に発売された。"
+        set_text = f"このカードは「{set_data.get('name', '')}（{set_data.get('subName', '')}）」セットに属し、{set_data.get('releaseDate', '')}に発売された。"
         entries.append({
             "id": f"{base_id}:set-info",
             "namespace": "set-info",
@@ -49,7 +54,6 @@ def convert_to_embedding_format(card_data):
         
     # 5. メタデータ: category / evolvesTo / rarity
     category = card_data.get("category", "")
-    evolves_to = card_data.get("evolvesTo", "")
     rarity = card_data.get("rarity", {})
     rarity_symbol = rarity.get("symbol", "")
     rarity_level = rarity.get("level", "")
@@ -57,8 +61,6 @@ def convert_to_embedding_format(card_data):
     meta_text_parts = []
     if category:
         meta_text_parts.append(f"このカードは{category}カテゴリに属し")
-    if evolves_to:
-        meta_text_parts.append(f"進化先は{evolves_to}")
     if rarity_symbol or rarity_level:
         meta_text_parts.append(f"レアリティは{rarity_symbol}（レベル{rarity_level}）")
 
@@ -69,19 +71,22 @@ def convert_to_embedding_format(card_data):
             "namespace": "metadata",
             "text": meta_text
         })
+
     return entries
 
 if __name__ == "__main__":
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
-    sample_path = os.path.join(data_dir, 'sample_data.json')
-    out_path = os.path.join(data_dir, 'embedding_data.json')
+    sample_path = os.path.join(data_dir, 'data.json')
+    out_path = os.path.join(data_dir, 'convert_data.json')
 
     with open(sample_path, "r", encoding="utf-8") as f:
-        card_json = json.load(f)
+        card_list = json.load(f)
 
-    embedding_data = convert_to_embedding_format(card_json)
+    embedding_data = []
+    for card in card_list:
+        embedding_data.extend(convert_to_embedding_format(card))
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(embedding_data, f, ensure_ascii=False, indent=2)
 
-    print(f"embedding_data.json を {out_path} に出力しました。")
+    print(f"{out_path} に出力しました。")
