@@ -11,7 +11,7 @@ def build_text(data):
     return data.get('text', '')
 
 def main():
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'embedding_data.json')
+    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'convert_data.json')
     with open(data_path, encoding='utf-8') as f:
         data_list = json.load(f)
 
