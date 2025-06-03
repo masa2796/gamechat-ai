@@ -1,23 +1,49 @@
-import { openai } from "@ai-sdk/openai";
-import { frontendTools } from "@assistant-ui/react-ai-sdk";
-import { streamText } from "ai";
-
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages, system, tools } = await req.json();
+  const body = await req.json();
+  const question = body.question;
 
-  const result = streamText({
-    model: openai("gpt-4o"),
-    messages,    
-    toolCallStreaming: true,
-    system,
-    tools: {
-      ...frontendTools(tools),
-    },
-    onError: console.log,
-  });
+  if (!question) {
+    return new Response(
+      JSON.stringify({ error: "questionが空です" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
-  return result.toDataStreamResponse();
+  try {
+    const ragRes = await fetch("http://127.0.0.1:8000/api/rag/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question,
+        top_k: 3,
+        with_context: true,
+        recaptchaToken: "test",
+      }),
+    });
+
+    if (!ragRes.ok) {
+      const errorText = await ragRes.text();
+      return new Response(
+        JSON.stringify({ error: `API Error: ${ragRes.status}` }),
+        { status: ragRes.status, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const data = await ragRes.json();
+    
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (error) {
+    console.error("API Error:", error);
+    return new Response(
+      JSON.stringify({ error: "サーバーエラーが発生しました" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }

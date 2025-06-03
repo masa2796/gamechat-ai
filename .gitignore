@@ -8,6 +8,11 @@ backend/.env
 # .venv
 .venv
 
+# Pythonキャッシュ
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Node modules
 node_modules/
 frontend/node_modules/
