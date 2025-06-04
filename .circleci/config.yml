@@ -72,17 +72,15 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Set up venv
+          name: Set up venv and install dependencies
           command: |
             cd backend
             python -m venv .venv
             . .venv/bin/activate
             pip install -r requirements.txt
-      - run:
-          name: Run pytest
-          command: |
-            cd backend
-            PYTHONPATH=. pytest
+            which python
+            which pytest
+            pytest
 
 workflows:
   version: 2
