@@ -13,10 +13,8 @@ async def test_generate_answer_with_context(monkeypatch):
                 content = "これはテストです。"
             message = Message()
         choices = [Choice()]
-
     def dummy_create(*args, **kwargs):
         return DummyResponse()
-
     monkeypatch.setattr(
         "app.services.llm_service.openai.chat.completions.create",
         dummy_create
@@ -33,13 +31,11 @@ async def test_generate_answer_greeting(monkeypatch):
     class DummyResponse:
         class Choice:
             class Message:
-                content = "こんにちは！ご質問があればどうぞ。"
+                content = "こんにちは！ご質問があればどうぞ"
             message = Message()
         choices = [Choice()]
-
     def dummy_create(*args, **kwargs):
         return DummyResponse()
-
     monkeypatch.setattr(
         "app.services.llm_service.openai.chat.completions.create",
         dummy_create
