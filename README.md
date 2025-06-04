@@ -10,20 +10,19 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 ### フロントエンド
 - Next.js (React + TypeScript)
 - Tailwind CSS
-- assistant-ui（shadcn/uiベース）
 
 ### バックエンド
-- Node.js + Express
+- Python + FastAPI
 - Firebase Functions（オプション）
 
 ### AI・検索関連
 - OpenAI API (ChatGPT, Embedding)
-- Pinecone（ベクトル検索サービス）
+- Upstash Vector（ベクトル検索サービス／Dense Index対応）
 - Python（データ埋め込み・アップロードスクリプト）
 
 ### インフラ・ホスティング
 - Firebase Hosting / Vercel（フロントエンド）
-- Firebase Firestore / Pinecone（データベース）
+- Firebase Firestore / Upstash Vector（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
 
 ---
@@ -32,23 +31,25 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 
 - `.nvmrc` により Node.js バージョンを統一（例: `18`）
 - `.env.example` を `.env` にコピーして環境変数を設定
-- `package-lock.json` により依存パッケージのバージョンを固定
+- `requirements.txt` により Python パッケージのバージョンを固定
+- `package-lock.json` や `package.json` は**バックエンドでは不要**（FastAPI運用時）
 
 | ツール / 言語          | バージョン例    | 備考                                      |
 |----------------------|------------------|-------------------------------------------|
-| Node.js              | 18.x 以上        | `nvm` でバージョン管理                   |
-| npm                  | 9.x 以上         | パッケージ管理                            |
+| Node.js              | 18.x 以上        | `nvm` でバージョン管理（フロント用）      |
+| npm                  | 9.x 以上         | パッケージ管理（フロント用）              |
 | React                | 19.x             | フロントエンドUIライブラリ                |
 | Python               | 3.9〜3.11        | 埋め込み処理やRAG部分で使用               |
+| FastAPI              | 最新             | バックエンドAPI                           |
 | VS Code              | 最新             | 開発用IDE                                 |
 | Git                  | 最新             | バージョン管理ツール                      |
 | OpenAI API           | 利用予定         | `.env` にキーを設定                       |
+| Upstash Vector       | 利用予定         | `.env` にURL・トークンを設定              |
 
 ### バージョン管理ファイル
 
 - `.nvmrc`: Node.js のバージョン指定
 - `.venv/`: Python 仮想環境ディレクトリ（`python -m venv .venv` で作成）
-- `package-lock.json`: Node.js パッケージの固定
 - `requirements.txt`: Python の依存パッケージ一覧
 - `.env.example`: 環境変数のテンプレート
 
@@ -65,6 +66,8 @@ cd gamechat-ai
 
 ### 2. 依存パッケージのインストール
 
+- フロントエンド
+
 ```bash
 npm install
 cd frontend
@@ -73,12 +76,22 @@ cd ../backend
 npm install
 ```
 
+- バックエンド（FastAPI）
+
+```bash
+cd ../backend
+python -m venv .venv
+source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
+pip install -r [requirements.txt](http://_vscodecontentref_/0)
+```
+
 ### 3. 環境変数ファイルの作成
 
 - `backend/.env` に OpenAI APIキー等を設定してください。
   ```
   OPENAI_API_KEY=your_openai_api_key
-  PINECONE_API_KEY=your_pinecone_api_key
+  UPSTASH_VECTOR_REST_URL=your_upstash_vector_url
+  UPSTASH_VECTOR_REST_TOKEN=your_upstash_vector_token
   ```
 - `frontend/.env` は通常不要ですが、APIエンドポイント等を設定したい場合に利用します。
 
@@ -91,12 +104,12 @@ npm install
   ```
   → http://localhost:3000
 
-- バックエンド（Express）:  
+- バックエンド（FastAPI）:  
   ```bash
   cd backend
-  npm run dev
+  uvicorn app.main:app --reload 
   ```
-  → http://localhost:4000
+  → http://localhost:8000
 
 ---
 
@@ -115,31 +128,82 @@ gamechat-ai/
 │   ├── package.json
 │   ├── postcss.config.js
 │   ├── tailwind.config.js
-│   ├── vitest.config.ts          # テスト設定
-│   ├── vitest.setup.ts           # テストセットアップ
-│   ├── tsconfig.json             # TypeScript設定
+│   ├── vitest.config.ts
+│   ├── vitest.setup.ts
+│   ├── tsconfig.json
 │   └── .env
 │
-├── backend/                      # Node.js + Express（バックエンドAPI）
-│   ├── src/
-│   │   ├── routes/               # APIルート
-│   │   ├── services/             # サービス層
-│   │   └── index.ts              # エントリーポイント
-│   ├── package.json
-│   └── .env
+├── backend/                      # Python + FastAPI（バックエンドAPI）
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                 # FastAPIアプリケーション
+│   │   ├── core/
+│   │   │   ├── config.py          # 環境変数・設定
+│   │   │   └── exception_handlers.py
+│   │   ├── models/
+│   │   │   └── rag_models.py      # Pydanticモデル
+│   │   ├── routers/
+│   │   │   └── rag.py             # APIエンドポイント
+│   │   └── services/
+│   │       ├── auth_service.py    # 認証処理
+│   │       ├── embedding_service.py  # エンベディング
+│   │       ├── vector_service.py  # ベクトル検索
+│   │       └── llm_service.py     # LLM処理
+│   └── requirements.txt
 │
-├── data/                         # 攻略データ（RAG用）
-│   └── sample_data.json
+├── data/                         # 攻略データ（git管理外）
 │
 ├── scripts/                      # Pythonスクリプト
-│   └── embed_and_upload.py
+│   ├── convert_to_format.py  
+│   ├── embedding.py
+│   └── upstash_connection.py
 │
-├── .nvmrc                        # Node.jsバージョン指定
-├── requirements.txt              # Python依存パッケージ
-├── .env.example                  # 環境変数テンプレート
+├── .nvmrc
+├── requirements.txt
 ├── README.md
+├── .env.example
 └── .gitignore
 ```
+
+---
+
+## ベクトルDB（Upstash Vector）へのインデクシング・アップロード
+
+### 概要
+エンベディング済みの攻略データ（例: `embedding_list.jsonl`）を、Upstash Vectorにアップロードし、ベクトル検索可能な状態にします。
+
+### インデックス管理方針
+- Upstash Vectorのインデックスは「Dense（密）」型で作成してください（OpenAIのエンベディングは密ベクトルです）。
+- データごとに `namespace` を分けて管理することで、用途や種類ごとの検索が可能です。
+- インデックスのURLやトークンは `backend/.env` で安全に管理します。
+
+### アップロード処理
+- `scripts/upstash_connection.py` を利用して、`embedding_list.jsonl` の各行（1ベクトルずつ）をUpstash Vectorにアップロードします。
+- スクリプトは以下のように実行します。
+
+```bash
+python upstash_connection.py
+```
+
+### スクリプトの主な流れ:
+- .env からUpstashの接続情報を読み込む
+- embedding_list.jsonl を1行ずつ読み込み、各ベクトルを Vector オブジェクトとして生成
+- namespace ごとにUpstash Vectorへ upsert で登録
+- アップロードが完了したベクトルIDを標準出力に表示
+
+### 注意事項
+- インデックスの型（Dense/Sparse）がデータと一致していることを必ず確認してください。
+- APIキーやトークンなどの機密情報は .env で管理し、Gitには絶対に含めないでください。
+- 大量データをアップロードする場合は、APIレート制限やエラー処理に注意してください。
+
+---
+
+## RAG API仕様
+
+本APIはカードゲームのカード名に関する自然言語の質問に対し、検索拡張生成（RAG）を用いた回答を返します。
+
+- エンドポイント：POST `/api/rag/query`
+- リクエスト例・レスポンス例・バリデーション・セキュリティ対策などは [RAG API仕様書](./docs/rag_api_spec.md) を参照してください。
 
 ---
 
@@ -177,6 +241,7 @@ gamechat-ai/
 `<タイプ>/<変更内容>-<issue番号（任意）>`
 
 ### タイプの種類：
+
 - `feature`：新機能の追加
 - `fix`：バグ修正
 - `refactor`：リファクタリング（挙動を変えない改善）
@@ -188,25 +253,44 @@ gamechat-ai/
 ## .gitignore（推奨）
 
 ```
-# Next.js build output
-.next/
-# Node modules
-node_modules/
-# OS files
-.DS_Store
-Thumbs.db
-# Env files
+# .env files (root, frontend, backend)
 .env
 .env.local
 .env.*.local
+frontend/.env
+backend/.env
+
+# Python仮想環境
+.venv
+
+# Node modules
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build output / cache
+.next/
+dist/
+frontend/dist/
+backend/dist/
+coverage/
+
 # Log files
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-# Editor settings
+
+# Editor/IDE settings
 .vscode/
-# Test coverage
-coverage/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# データディレクトリ（サンプルや生成データ）
+data/
 ```
 
 ---
