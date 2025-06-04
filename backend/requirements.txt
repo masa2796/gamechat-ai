@@ -12,3 +12,4 @@ python-dotenv
 openai
 pydantic
 pytest-asyncio
+pytest
