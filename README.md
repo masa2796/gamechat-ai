@@ -107,7 +107,7 @@ pip install -r [requirements.txt](http://_vscodecontentref_/0)
 - バックエンド（FastAPI）:  
   ```bash
   cd backend
-  uvicorn rag_api:app --reload
+  uvicorn app.main:app --reload 
   ```
   → http://localhost:8000
 
@@ -134,9 +134,22 @@ gamechat-ai/
 │   └── .env
 │
 ├── backend/                      # Python + FastAPI（バックエンドAPI）
-│   ├── rag_api.py                # FastAPI本体
-│   ├── requirements.txt
-│   └── .env
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                 # FastAPIアプリケーション
+│   │   ├── core/
+│   │   │   ├── config.py          # 環境変数・設定
+│   │   │   └── exception_handlers.py
+│   │   ├── models/
+│   │   │   └── rag_models.py      # Pydanticモデル
+│   │   ├── routers/
+│   │   │   └── rag.py             # APIエンドポイント
+│   │   └── services/
+│   │       ├── auth_service.py    # 認証処理
+│   │       ├── embedding_service.py  # エンベディング
+│   │       ├── vector_service.py  # ベクトル検索
+│   │       └── llm_service.py     # LLM処理
+│   └── requirements.txt
 │
 ├── data/                         # 攻略データ（git管理外）
 │

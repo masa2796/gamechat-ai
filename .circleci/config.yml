@@ -5,6 +5,10 @@ executors:
     docker:
       - image: cimg/node:20.11
     working_directory: ~/project
+  python-executor:
+    docker:
+      - image: cimg/python:3.11
+    working_directory: ~/project
 
 jobs:
   install:
@@ -63,6 +67,23 @@ jobs:
           name: Test
           command: cd frontend && npm test
 
+  backend-test:
+    executor: python-executor
+    steps:
+      - checkout
+      - run:
+          name: Set up venv
+          command: |
+            cd backend
+            python -m venv .venv
+            . .venv/bin/activate
+            pip install -r requirements.txt
+      - run:
+          name: Run pytest
+          command: |
+            cd backend
+            PYTHONPATH=. pytest
+
 workflows:
   version: 2
   frontend-ci:
@@ -77,3 +98,4 @@ workflows:
       - start-server:
           requires:
             - build
+      - backend-test
