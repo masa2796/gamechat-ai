@@ -1,0 +1,67 @@
+import httpx
+from fastapi import Request, Response
+from typing import Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class AuthService:
+    async def verify_recaptcha(self, token: str) -> bool:
+        RECAPTCHA_SECRET = os.getenv("RECAPTCHA_SECRET_TEST")
+        url = "https://www.google.com/recaptcha/api/siteverify"
+        data = {
+            "secret": RECAPTCHA_SECRET,
+            "response": token,
+        }
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, data=data, timeout=5)
+            if resp.status_code != 200:
+                return False
+            result = resp.json()
+            return result.get("success", False)
+
+    def is_suspicious(self, request: Request, user_ip: str) -> bool:
+        # レート制限や異常検出ロジック
+        return False
+
+    async def verify_request(
+        self, 
+        request: Request, 
+        response: Response, 
+        recaptcha_token: Optional[str], 
+        recaptcha_passed: Optional[str]
+    ) -> bool:
+        user_ip = request.client.host
+        
+        if not recaptcha_passed:
+            # 初回認証
+            if not recaptcha_token:
+                return False
+            result = await self.verify_recaptcha(recaptcha_token)
+            if result:
+                self._set_auth_cookie(response)
+                return True
+            return False
+        else:
+            # Cookie認証済み
+            if self.is_suspicious(request, user_ip):
+                # 再認証が必要
+                if not recaptcha_token:
+                    return False
+                result = await self.verify_recaptcha(recaptcha_token)
+                if result:
+                    self._set_auth_cookie(response)
+                    return True
+                return False
+            return True
+    
+    def _set_auth_cookie(self, response: Response):
+        response.set_cookie(
+            key="recaptcha_passed",
+            value="true",
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=60*60*24*7
+        )
