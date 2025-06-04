@@ -1,9 +1,11 @@
 import pytest
 from app.services.llm_service import LLMService
 from app.models.rag_models import ContextItem
+import openai
 
 @pytest.mark.asyncio
 async def test_generate_answer_with_context(monkeypatch):
+    openai.api_key = "dummy_key"
     llm = LLMService()
     context = [ContextItem(title="テスト", text="これはテストです。", score=0.9)]
 
@@ -26,6 +28,7 @@ async def test_generate_answer_with_context(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_generate_answer_greeting(monkeypatch):
+    openai.api_key = "dummy_key"
     llm = LLMService()
 
     class DummyResponse:
