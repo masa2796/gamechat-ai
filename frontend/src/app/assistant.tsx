@@ -1,45 +1,139 @@
 "use client";
 
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
-import { Thread } from "@/components/assistant-ui/thread";
+import { useState } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export const Assistant = () => {
-  const runtime = useChatRuntime({
-    api: "/api/chat",
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    
+    const userMessage: Message = { role: "user", content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: input })
+      });
+      
+      const data = await res.json();
+      const botMessage: Message = { 
+        role: "assistant", 
+        content: data.answer || "エラーが発生しました" 
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error:", error);
+      const errorMessage: Message = { 
+        role: "assistant", 
+        content: "エラーが発生しました。もう一度お試しください。" 
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Build Your Own ChatGPT UX
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    Starter Template
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </header>
-          <Thread />
-        </SidebarInset>
-      </SidebarProvider>
-    </AssistantRuntimeProvider>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="#">
+                  GameChat AI
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  Chat
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+        
+        {/* チャット画面 */}
+        <div className="flex flex-col h-[calc(100vh-4rem)]">
+          {/* メッセージ履歴 */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {messages.length === 0 ? (
+              <div className="text-center text-gray-500 mt-8">
+                <p>GameChat AIへようこそ！</p>
+                <p>ゲームに関する質問をお気軽にどうぞ。</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-3xl mx-auto">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] p-3 rounded-lg ${
+                      msg.role === 'user' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-100 text-gray-900'
+                    }`}>
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 text-gray-900 p-3 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                        考え中...
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* 入力エリア */}
+          <div className="border-t p-4">
+            <div className="max-w-3xl mx-auto">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ゲームについて質問してください..."
+                  disabled={loading}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={loading || !input.trim()}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
+                >
+                  送信
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
