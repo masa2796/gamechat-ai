@@ -22,7 +22,6 @@ class AuthService:
             return result.get("success", False)
 
     def is_suspicious(self, request: Request, user_ip: str) -> bool:
-        # レート制限や異常検出ロジック
         return False
 
     async def verify_request(
@@ -35,7 +34,6 @@ class AuthService:
         user_ip = request.client.host
         
         if not recaptcha_passed:
-            # 初回認証
             if not recaptcha_token:
                 return False
             result = await self.verify_recaptcha(recaptcha_token)
@@ -44,9 +42,7 @@ class AuthService:
                 return True
             return False
         else:
-            # Cookie認証済み
             if self.is_suspicious(request, user_ip):
-                # 再認証が必要
                 if not recaptcha_token:
                     return False
                 result = await self.verify_recaptcha(recaptcha_token)
