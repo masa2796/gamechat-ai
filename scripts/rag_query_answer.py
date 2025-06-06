@@ -76,7 +76,7 @@ def search_vector_db_all_namespaces(query, top_k=3, namespaces=None):
 
 def generate_llm_answer(query, context_text):
     response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "あなたはポケモンカードの専門家です。与えられた情報をもとに、ユーザーの質問に日本語で簡潔かつ正確に答えてください。"},
             {"role": "user", "content": f"質問: {query}\n\n参考情報: {context_text}"}
