@@ -137,6 +137,8 @@ gamechat-ai/
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py                 # FastAPIアプリケーション
+│   │   ├── config/
+│   │   │   └── ng_words.py
 │   │   ├── core/
 │   │   │   ├── config.py          # 環境変数・設定
 │   │   │   └── exception_handlers.py
@@ -149,6 +151,11 @@ gamechat-ai/
 │   │       ├── embedding_service.py  # エンベディング
 │   │       ├── vector_service.py  # ベクトル検索
 │   │       └── llm_service.py     # LLM処理
+│   ├── tests/
+│   │   ├── test_api.py            # サービス層のテスト
+│   │   ├── test_llm_service.py            # サービス層のテスト
+│   │   ├── test_response_guidelines.py  # ガイドラインに基づく応答テスト
+│   │   └── test_vector_service.py # ベクトル検索のテスト
 │   └── requirements.txt
 │
 ├── data/                         # 攻略データ（git管理外）
@@ -156,7 +163,13 @@ gamechat-ai/
 ├── scripts/                      # Pythonスクリプト
 │   ├── convert_to_format.py  
 │   ├── embedding.py
+│   ├── rag_query_answer.py
 │   └── upstash_connection.py
+│
+├── docs/                         # ドキュメント
+│   ├── talk-guidelines.md        # 雑談対応ガイドライン
+│   ├── rag_api_spec.md           # RAG API仕様書
+│   └── assistant-ui-notes.md     # UIに関するメモ
 │
 ├── .nvmrc
 ├── requirements.txt
