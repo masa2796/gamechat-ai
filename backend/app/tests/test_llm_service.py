@@ -1,11 +1,12 @@
 import pytest
 from backend.app.services.llm_service import LLMService
 from backend.app.models.rag_models import ContextItem
-import openai
 
 @pytest.mark.asyncio
 async def test_generate_answer_with_context(monkeypatch):
-    openai.api_key = "dummy_key"
+    # 環境変数でAPIキーを設定
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    
     llm = LLMService()
     context = [ContextItem(title="テスト", text="これはテストです。", score=0.9)]
 
@@ -18,7 +19,7 @@ async def test_generate_answer_with_context(monkeypatch):
     def dummy_create(*args, **kwargs):
         return DummyResponse()
     monkeypatch.setattr(
-        "app.services.llm_service.openai.chat.completions.create",
+        "openai.chat.completions.create",
         dummy_create
     )
 
@@ -28,7 +29,9 @@ async def test_generate_answer_with_context(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_generate_answer_greeting(monkeypatch):
-    openai.api_key = "dummy_key"
+    # 環境変数でAPIキーを設定
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    
     llm = LLMService()
 
     class DummyResponse:
@@ -40,7 +43,7 @@ async def test_generate_answer_greeting(monkeypatch):
     def dummy_create(*args, **kwargs):
         return DummyResponse()
     monkeypatch.setattr(
-        "app.services.llm_service.openai.chat.completions.create",
+        "openai.chat.completions.create",
         dummy_create
     )
 
