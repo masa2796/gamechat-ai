@@ -16,12 +16,15 @@ async def test_generate_answer_with_context(monkeypatch):
                 content = "これはテストです。"
             message = Message()
         choices = [Choice()]
+    
     def dummy_create(*args, **kwargs):
         return DummyResponse()
-    monkeypatch.setattr(
-        "openai.chat.completions.create",
-        dummy_create
-    )
+    
+    # LLMサービスのクライアントを直接モック
+    from unittest.mock import MagicMock
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = dummy_create
+    llm.client = mock_client
 
     answer = await llm.generate_answer("テストとは？", context)
     assert isinstance(answer, str)
@@ -40,12 +43,15 @@ async def test_generate_answer_greeting(monkeypatch):
                 content = "こんにちは！ご質問があればどうぞ"
             message = Message()
         choices = [Choice()]
+    
     def dummy_create(*args, **kwargs):
         return DummyResponse()
-    monkeypatch.setattr(
-        "openai.chat.completions.create",
-        dummy_create
-    )
+    
+    # LLMサービスのクライアントを直接モック
+    from unittest.mock import MagicMock
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = dummy_create
+    llm.client = mock_client
 
     answer = await llm.generate_answer("おはようございます", [])
     assert "こんにちは" in answer or "ご質問があればどうぞ" in answer
