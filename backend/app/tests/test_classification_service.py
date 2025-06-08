@@ -33,9 +33,10 @@ class TestClassificationService:
     @pytest.mark.asyncio
     async def test_classify_filterable_query(self, classification_service, mock_openai_response, monkeypatch):
         """フィルター可能クエリの分類テスト"""
-        # OpenAI APIをモック (同期関数なのでMagicMockを使用)
-        mock_create = MagicMock(return_value=mock_openai_response)
-        monkeypatch.setattr("openai.chat.completions.create", mock_create)
+        # OpenAI クライアントをモック
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_openai_response
+        monkeypatch.setattr(classification_service, "client", mock_client)
         
         request = ClassificationRequest(query="HPが100以上のポケモン")
         result = await classification_service.classify_query(request)
@@ -61,8 +62,9 @@ class TestClassificationService:
             "reasoning": "抽象的評価を検出"
         }"""
         
-        mock_create = MagicMock(return_value=mock_response)
-        monkeypatch.setattr("openai.chat.completions.create", mock_create)
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_response
+        monkeypatch.setattr(classification_service, "client", mock_client)
         
         request = ClassificationRequest(query="強いポケモンを教えて")
         result = await classification_service.classify_query(request)
@@ -80,8 +82,9 @@ class TestClassificationService:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "無効なJSON"
         
-        mock_create = MagicMock(return_value=mock_response)
-        monkeypatch.setattr("openai.chat.completions.create", mock_create)
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_response
+        monkeypatch.setattr(classification_service, "client", mock_client)
         
         request = ClassificationRequest(query="テストクエリ")
         result = await classification_service.classify_query(request)
@@ -95,8 +98,9 @@ class TestClassificationService:
     async def test_classify_with_api_error(self, classification_service, monkeypatch):
         """API呼び出しエラー時のフォールバックテスト"""
         # API例外を発生させるモック
-        mock_create = MagicMock(side_effect=Exception("API Error"))
-        monkeypatch.setattr("openai.chat.completions.create", mock_create)
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("API Error")
+        monkeypatch.setattr(classification_service, "client", mock_client)
         
         request = ClassificationRequest(query="テストクエリ")
         result = await classification_service.classify_query(request)

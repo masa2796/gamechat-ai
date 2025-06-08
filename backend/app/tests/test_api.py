@@ -47,8 +47,24 @@ async def test_process_query_without_ng_word(monkeypatch):
     async def mock_generate_answer(question, context_items):
         return "ポケモンの進化についての回答です。"
 
-    monkeypatch.setattr(service.embedding_service, "get_embedding", mock_get_embedding)
-    monkeypatch.setattr(service.vector_service, "search", mock_search)
+    # ハイブリッド検索サービス全体をモック
+    async def mock_hybrid_search(query, top_k):
+        return {
+            "classification": {
+                "query_type": "semantic",
+                "summary": query,
+                "confidence": 0.8
+            },
+            "search_strategy": {
+                "use_database": False,
+                "use_vector": True
+            },
+            "db_results": [],
+            "vector_results": [],
+            "merged_results": []
+        }
+
+    monkeypatch.setattr(service.hybrid_search_service, "search", mock_hybrid_search)
     monkeypatch.setattr(service.llm_service, "generate_answer", mock_generate_answer)
 
     result = await service.process_query(rag_req)

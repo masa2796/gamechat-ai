@@ -1,13 +1,23 @@
 from typing import List
 import openai
+import os
 from ..models.rag_models import ContextItem
 from ..core.config import settings
 
-openai.api_key = settings.OPENAI_API_KEY
-
 class LLMService:
+    def __init__(self):
+        # OpenAI クライアントを初期化
+        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        if api_key:
+            self.client = openai.OpenAI(api_key=api_key)
+        else:
+            self.client = None
+
     async def generate_answer(self, query: str, context_items: List[ContextItem]) -> str:
         """検索結果を元にLLMで回答を生成"""
+        if not self.client:
+            return "申し訳ありませんが、現在回答生成サービスが利用できません。"
+        
         try:
             # コンテキストテキストを結合
             context_text = "\n\n".join([
@@ -58,7 +68,7 @@ class LLMService:
 
 上記の参考情報を基に、質問に対する回答をお願いします。"""
 
-            response = openai.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},

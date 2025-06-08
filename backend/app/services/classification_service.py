@@ -1,14 +1,19 @@
 import openai
 import json
+import os
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
-
-openai.api_key = settings.OPENAI_API_KEY
 
 class ClassificationService:
     """LLMによるクエリ分類・要約サービス"""
     
     def __init__(self):
+        # OpenAI クライアントを初期化
+        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        if api_key:
+            self.client = openai.OpenAI(api_key=api_key)
+        else:
+            self.client = None
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -43,9 +48,19 @@ class ClassificationService:
     async def classify_query(self, request: ClassificationRequest) -> ClassificationResult:
         """クエリを分類・要約する"""
         try:
+            if not self.client:
+                print("OpenAI APIキーが設定されていません - フォールバック分類を使用")
+                return ClassificationResult(
+                    query_type=QueryType.SEMANTIC,
+                    summary=request.query,
+                    confidence=0.3,
+                    search_keywords=[request.query],
+                    reasoning="APIキー未設定 - フォールバック分類"
+                )
+            
             user_prompt = f"質問: {request.query}"
             
-            response = openai.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": self.system_prompt},
