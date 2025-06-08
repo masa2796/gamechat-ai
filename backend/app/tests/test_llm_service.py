@@ -1,6 +1,6 @@
 import pytest
-from app.services.llm_service import LLMService
-from app.models.rag_models import ContextItem
+from backend.app.services.llm_service import LLMService
+from backend.app.models.rag_models import ContextItem
 import openai
 
 @pytest.mark.asyncio

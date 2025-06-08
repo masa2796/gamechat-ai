@@ -66,34 +66,38 @@ cd gamechat-ai
 
 ### 2. 依存パッケージのインストール
 
+- Python環境（バックエンド・スクリプト共通）
+
+```bash
+# ルートディレクトリで仮想環境を作成・アクティベート
+python -m venv .venv
+source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
 - フロントエンド
 
 ```bash
-npm install
 cd frontend
 npm install
-cd ../backend
+cd ..
+```
+
+- ルートディレクトリ（開発スクリプト用）
+
+```bash
 npm install
 ```
 
-- バックエンド（FastAPI）
-
-```bash
-cd ../backend
-python -m venv .venv
-source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
-pip install -r [requirements.txt](http://_vscodecontentref_/0)
-```
+**注意**: プロジェクト全体で統一された仮想環境（`.venv`）を使用しています。バックエンド、スクリプト、テストはすべてルートディレクトリの仮想環境で実行してください。
 
 ### 3. 環境変数ファイルの作成
 
-- `backend/.env` に OpenAI APIキー等を設定してください。
+- ルートディレクトリの `.env` に OpenAI APIキー等を設定してください。
+  ```bash
+  cp .env.example .env
+  # .envファイルを編集して適切な値を設定
   ```
-  OPENAI_API_KEY=your_openai_api_key
-  UPSTASH_VECTOR_REST_URL=your_upstash_vector_url
-  UPSTASH_VECTOR_REST_TOKEN=your_upstash_vector_token
-  ```
-- `frontend/.env` は通常不要ですが、APIエンドポイント等を設定したい場合に利用します。
 
 ### 4. 開発サーバーの起動
 
@@ -106,8 +110,9 @@ pip install -r [requirements.txt](http://_vscodecontentref_/0)
 
 - バックエンド（FastAPI）:  
   ```bash
-  cd backend
-  uvicorn app.main:app --reload 
+  # ルートディレクトリで仮想環境をアクティベート
+  source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
+  uvicorn backend.app.main:app --reload 
   ```
   → http://localhost:8000
 
@@ -151,12 +156,11 @@ gamechat-ai/
 │   │       ├── embedding_service.py  # エンベディング
 │   │       ├── vector_service.py  # ベクトル検索
 │   │       └── llm_service.py     # LLM処理
-│   ├── tests/
-│   │   ├── test_api.py            # サービス層のテスト
-│   │   ├── test_llm_service.py            # サービス層のテスト
-│   │   ├── test_response_guidelines.py  # ガイドラインに基づく応答テスト
-│   │   └── test_vector_service.py # ベクトル検索のテスト
-│   └── requirements.txt
+│   └── tests/
+│       ├── test_api.py            # サービス層のテスト
+│       ├── test_llm_service.py            # サービス層のテスト
+│       ├── test_response_guidelines.py  # ガイドラインに基づく応答テスト
+│       └── test_vector_service.py # ベクトル検索のテスト
 │
 ├── data/                         # 攻略データ（git管理外）
 │
@@ -172,6 +176,7 @@ gamechat-ai/
 │   └── assistant-ui-notes.md     # UIに関するメモ
 │
 ├── .nvmrc
+├── pytest.ini
 ├── requirements.txt
 ├── README.md
 ├── .env.example
@@ -188,7 +193,7 @@ gamechat-ai/
 ### インデックス管理方針
 - Upstash Vectorのインデックスは「Dense（密）」型で作成してください（OpenAIのエンベディングは密ベクトルです）。
 - データごとに `namespace` を分けて管理することで、用途や種類ごとの検索が可能です。
-- インデックスのURLやトークンは `backend/.env` で安全に管理します。
+- インデックスのURLやトークンは `.env` で安全に管理します。
 
 ### アップロード処理
 - `scripts/upstash_connection.py` を利用して、`embedding_list.jsonl` の各行（1ベクトルずつ）をUpstash Vectorにアップロードします。
@@ -266,20 +271,16 @@ python upstash_connection.py
 ## .gitignore（推奨）
 
 ```
-# .env files (root, frontend, backend)
+# .env files
 .env
 .env.local
 .env.*.local
-frontend/.env
-backend/.env
 
 # Python仮想環境
-.venv
+.venv/
 
 # Node modules
 node_modules/
-frontend/node_modules/
-backend/node_modules/
 
 # Build output / cache
 .next/
