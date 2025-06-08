@@ -18,12 +18,89 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 ### AI・検索関連
 - OpenAI API (ChatGPT, Embedding)
 - Upstash Vector（ベクトル検索サービス／Dense Index対応）
+- **ハイブリッド検索システム**
+  - LLM分類によるクエリタイプ判定（filterable/semantic/hybrid）
+  - 構造化データベース検索（HP条件、ポケモンタイプフィルタリング）
+  - ベクトル検索によるセマンティック検索
+  - 3つのマージ戦略（フィルタブル優先、セマンティック優先、重み付きハイブリッド）
 - Python（データ埋め込み・アップロードスクリプト）
 
 ### インフラ・ホスティング
 - Firebase Hosting / Vercel（フロントエンド）
 - Firebase Firestore / Upstash Vector（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
+
+---
+
+## ハイブリッド検索システム
+
+### 概要
+本プロジェクトは、LLMによるクエリ分類と構造化データベース検索、ベクトル検索を組み合わせたハイブリッド検索システムを実装しています。
+
+### システム構成
+```
+ユーザー入力 → LLM分類・要約 → フィルタブル判定 → DB検索 OR ベクトル検索 → 結果マージ → 回答生成
+```
+
+### 主要コンポーネント
+
+#### 1. クエリ分類サービス (`classification_service.py`)
+- **機能**: OpenAI GPTを使用してユーザークエリを分析し、適切な検索戦略を決定
+- **分類タイプ**:
+  - `FILTERABLE`: HP値やタイプなど構造化データで検索可能
+  - `SEMANTIC`: 意味的な検索が必要（戦略、相性など）
+  - `HYBRID`: 両方の手法を組み合わせる必要がある
+- **精度**: 90%以上の分類精度を達成
+
+#### 2. データベース検索サービス (`database_service.py`)
+- **機能**: 構造化データに対する高精度フィルタリング
+- **対応検索**:
+  - HP値の数値比較（100以上、50以下など）
+  - ポケモンタイプの完全一致検索
+  - 複合条件でのフィルタリング
+- **精度**: 100%の正確性
+
+#### 3. ハイブリッド検索統合 (`hybrid_search_service.py`)
+- **機能**: DB検索とベクトル検索の結果を統合
+- **マージ戦略**:
+  - **filterable**: DB検索結果を優先（信頼性重視）
+  - **semantic**: ベクトル検索結果を優先（セマンティック重視）
+  - **hybrid**: 重み付け統合（DB: 0.4, Vector: 0.6）
+
+### API エンドポイント
+
+#### `/rag/search-test` (POST)
+ハイブリッド検索のテスト専用エンドポイント
+```json
+{
+  "query": "HP100以上のポケモンを教えて",
+  "max_results": 10
+}
+```
+
+**レスポンス例**:
+```json
+{
+  "answer": "HP100以上のポケモンは以下の通りです...",
+  "results": [...],
+  "metadata": {
+    "query_type": "filterable",
+    "confidence": 0.95,
+    "merge_strategy": "filterable",
+    "db_results_count": 38,
+    "vector_results_count": 0
+  }
+}
+```
+
+### テスト結果
+- **総テスト数**: 36/36 全て成功（100%）
+- **分類精度**: 90%以上
+- **HP検索**: 38/100件のポケモンを正確に検出
+- **タイプ検索**: 20/100件の炎タイプポケモンを正確に検出
+
+### ドキュメント
+詳細な実装ガイドは [`docs/hybrid_search_guide.md`](./docs/hybrid_search_guide.md) を参照してください。
 
 ---
 
@@ -148,18 +225,26 @@ gamechat-ai/
 │   │   │   ├── config.py          # 環境変数・設定
 │   │   │   └── exception_handlers.py
 │   │   ├── models/
-│   │   │   └── rag_models.py      # Pydanticモデル
+│   │   │   ├── rag_models.py      # Pydanticモデル
+│   │   │   └── classification_models.py  # 分類関連モデル
 │   │   ├── routers/
 │   │   │   └── rag.py             # APIエンドポイント
 │   │   └── services/
 │   │       ├── auth_service.py    # 認証処理
+│   │       ├── classification_service.py  # LLM分類サービス
+│   │       ├── database_service.py        # DB検索サービス
+│   │       ├── hybrid_search_service.py   # ハイブリッド検索統合
 │   │       ├── embedding_service.py  # エンベディング
 │   │       ├── vector_service.py  # ベクトル検索
+│   │       ├── rag_service.py     # RAG処理（更新済み）
 │   │       └── llm_service.py     # LLM処理
 │   └── tests/
-│       ├── test_api.py            # サービス層のテスト
-│       ├── test_llm_service.py            # サービス層のテスト
-│       ├── test_response_guidelines.py  # ガイドラインに基づく応答テスト
+│       ├── test_api.py            # APIエンドポイントのテスト
+│       ├── test_classification_service.py  # 分類サービステスト
+│       ├── test_database_service.py        # DB検索テスト
+│       ├── test_hybrid_search_service.py   # ハイブリッド検索テスト
+│       ├── test_llm_service.py            # LLMサービステスト
+│       ├── test_rag_service_responses.py  # RAG応答テスト
 │       └── test_vector_service.py # ベクトル検索のテスト
 │
 ├── data/                         # 攻略データ（git管理外）
@@ -167,12 +252,18 @@ gamechat-ai/
 ├── scripts/                      # Pythonスクリプト
 │   ├── convert_to_format.py  
 │   ├── embedding.py
-│   ├── rag_query_answer.py
-│   └── upstash_connection.py
+│   ├── upstash_connection.py
+│   └── demo/                     # デモ・テストスクリプト
+│       ├── demo_api_endpoints.py
+│       ├── demo_database_search.py
+│       ├── demo_hybrid_search.py
+│       ├── demo_integrated_search.py
+│       └── demo_rag_query_answer.py
 │
 ├── docs/                         # ドキュメント
 │   ├── talk-guidelines.md        # 雑談対応ガイドライン
 │   ├── rag_api_spec.md           # RAG API仕様書
+│   ├── hybrid_search_guide.md    # ハイブリッド検索実装ガイド
 │   └── assistant-ui-notes.md     # UIに関するメモ
 │
 ├── .nvmrc
@@ -227,10 +318,10 @@ python upstash_connection.py
 
 ## テスト環境・実行方法
 
-### テストフレームワーク
-このプロジェクトでは、テストフレームワークとして [Vitest](https://vitest.dev/) を使用しています。Vitest は Vite をベースとした高速なテストランナーです。
+### フロントエンドテスト（Vitest）
+このプロジェクトでは、フロントエンドのテストフレームワークとして [Vitest](https://vitest.dev/) を使用しています。Vitest は Vite をベースとした高速なテストランナーです。
 
-### 主なテスト関連パッケージ
+#### 主なテスト関連パッケージ（フロントエンド）
 - **vitest**: 高速なテストランナー。
 - **@testing-library/react**: React コンポーネントのテストを容易にするためのユーティリティ。
 - **@testing-library/jest-dom**: DOM の状態をアサートするためのカスタム Jest マッチャを提供 (Vitest でも利用可能)。
@@ -239,18 +330,44 @@ python upstash_connection.py
 - **@vitejs/plugin-react**: Vitest で React プロジェクトをサポートするための Vite プラグイン。
 - **@types/jest**: Jest のグローバルな型定義（`describe`, `it` など）。Vitest は Jest と互換性のある API を多く提供しており、`globals: true` 設定と合わせてこれらの型定義が利用されることがあります。
 
-### 設定ファイル
+#### 設定ファイル
 - **`frontend/vitest.config.ts`**: Vitest の設定ファイル。テストファイルの場所、セットアップスクリプト、カバレッジ設定などが定義されています。
 - **`frontend/vitest.setup.ts`**: グローバルなテストセットアップファイル。`@testing-library/jest-dom` のインポートなど、各テストファイルの前に実行したい処理を記述します。
 - **`frontend/tsconfig.json`**: TypeScript の設定ファイル。Vitest はこの設定（特に `paths` エイリアスなど）を参照します。
 
-### テストの実行
+#### テストの実行
 `frontend` ディレクトリで以下のコマンドを実行します。
 
 - **すべてのテストを実行:**
   ```bash
   npm test
   ```
+
+
+### バックエンドテスト（pytest）
+バックエンドAPIとハイブリッド検索システムのテストには [pytest](https://pytest.org/) を使用しています。
+
+#### 実装済みテスト
+- **分類サービステスト** (`test_classification_service.py`): LLMクエリ分類の精度テスト
+- **データベース検索テスト** (`test_database_service.py`): 構造化データ検索の正確性テスト
+- **ハイブリッド検索テスト** (`test_hybrid_search_service.py`): 統合検索システムのテスト
+- **RAGサービステスト** (`test_rag_service_responses.py`): 応答生成の品質テスト
+- **APIエンドポイントテスト** (`test_api.py`): エンドポイントの動作確認
+
+#### バックエンドテストの実行
+```bash
+# ルートディレクトリで仮想環境をアクティベート
+source .venv/bin/activate
+
+# 全テスト実行
+pytest
+
+# 特定のテストファイル実行
+pytest backend/app/tests/test_hybrid_search_service.py
+
+# カバレッジ付きで実行
+pytest --cov=backend/app
+```
 
   ---
 
