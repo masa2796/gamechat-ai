@@ -1,6 +1,6 @@
 from typing import List
 from upstash_vector import Index
-from app.models.rag_models import ContextItem
+from ..models.rag_models import ContextItem
 import os
 from dotenv import load_dotenv
 load_dotenv()

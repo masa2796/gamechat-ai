@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, Response, Body, Cookie, HTTPException
 from typing import Optional
-from app.models.rag_models import RagRequest
-from app.services.rag_service import RagService
-from app.services.auth_service import AuthService
+from ..models.rag_models import RagRequest
+from ..services.rag_service import RagService
+from ..services.auth_service import AuthService
 
 router = APIRouter()
 rag_service = RagService()

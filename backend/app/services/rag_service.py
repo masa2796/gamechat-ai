@@ -1,9 +1,9 @@
 from fastapi import HTTPException
-from app.models.rag_models import RagRequest
-from app.services.embedding_service import EmbeddingService
-from app.services.vector_service import VectorService
-from app.services.llm_service import LLMService
-from app.config.ng_words import NG_WORDS
+from ..models.rag_models import RagRequest
+from .embedding_service import EmbeddingService
+from .vector_service import VectorService
+from .llm_service import LLMService
+from ..config.ng_words import NG_WORDS
 
 class RagService:
     def __init__(self):
