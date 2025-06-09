@@ -57,9 +57,10 @@ class HybridSearchService:
         
         if search_strategy.use_vector_search:
             print("--- ベクトル意味検索実行 ---")
-            # 元のクエリまたは要約されたクエリを使用
-            search_query = classification.summary if classification.summary else query
-            query_embedding = await self.embedding_service.get_embedding(search_query)
+            # 分類結果に基づく最適化された埋め込み生成
+            query_embedding = await self.embedding_service.get_embedding_from_classification(
+                query, classification
+            )
             # ベクトル検索でも多めに結果を取得
             vector_results = await self.vector_service.search(query_embedding, 10)
             print(f"ベクトル検索結果: {len(vector_results)}件")
