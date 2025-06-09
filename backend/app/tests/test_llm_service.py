@@ -1,11 +1,12 @@
 import pytest
-from app.services.llm_service import LLMService
-from app.models.rag_models import ContextItem
-import openai
+from backend.app.services.llm_service import LLMService
+from backend.app.models.rag_models import ContextItem
 
 @pytest.mark.asyncio
 async def test_generate_answer_with_context(monkeypatch):
-    openai.api_key = "dummy_key"
+    # 環境変数でAPIキーを設定
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    
     llm = LLMService()
     context = [ContextItem(title="テスト", text="これはテストです。", score=0.9)]
 
@@ -15,12 +16,15 @@ async def test_generate_answer_with_context(monkeypatch):
                 content = "これはテストです。"
             message = Message()
         choices = [Choice()]
+    
     def dummy_create(*args, **kwargs):
         return DummyResponse()
-    monkeypatch.setattr(
-        "app.services.llm_service.openai.chat.completions.create",
-        dummy_create
-    )
+    
+    # LLMサービスのクライアントを直接モック
+    from unittest.mock import MagicMock
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = dummy_create
+    llm.client = mock_client
 
     answer = await llm.generate_answer("テストとは？", context)
     assert isinstance(answer, str)
@@ -28,7 +32,9 @@ async def test_generate_answer_with_context(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_generate_answer_greeting(monkeypatch):
-    openai.api_key = "dummy_key"
+    # 環境変数でAPIキーを設定
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    
     llm = LLMService()
 
     class DummyResponse:
@@ -37,12 +43,15 @@ async def test_generate_answer_greeting(monkeypatch):
                 content = "こんにちは！ご質問があればどうぞ"
             message = Message()
         choices = [Choice()]
+    
     def dummy_create(*args, **kwargs):
         return DummyResponse()
-    monkeypatch.setattr(
-        "app.services.llm_service.openai.chat.completions.create",
-        dummy_create
-    )
+    
+    # LLMサービスのクライアントを直接モック
+    from unittest.mock import MagicMock
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = dummy_create
+    llm.client = mock_client
 
     answer = await llm.generate_answer("おはようございます", [])
     assert "こんにちは" in answer or "ご質問があればどうぞ" in answer

@@ -1,6 +1,6 @@
 from typing import List
 from upstash_vector import Index
-from app.models.rag_models import ContextItem
+from ..models.rag_models import ContextItem
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -11,7 +11,7 @@ class VectorService:
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
         self.vector_index = Index(url=upstash_url, token=upstash_token)
     
-    async def search(self, query_embedding: List[float], top_k: int = 3, namespaces: List[str] = None) -> List[ContextItem]:
+    async def search(self, query_embedding: List[float], top_k: int = 50, namespaces: List[str] = None) -> List[ContextItem]:
         try:
             if namespaces is None:
                 namespaces = [
