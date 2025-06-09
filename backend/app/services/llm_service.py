@@ -1,13 +1,23 @@
 from typing import List
 import openai
-from app.models.rag_models import ContextItem
-from app.core.config import settings
-
-openai.api_key = settings.OPENAI_API_KEY
+import os
+from ..models.rag_models import ContextItem
+from ..core.config import settings
 
 class LLMService:
+    def __init__(self):
+        # OpenAI クライアントを初期化
+        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        if api_key:
+            self.client = openai.OpenAI(api_key=api_key)
+        else:
+            self.client = None
+
     async def generate_answer(self, query: str, context_items: List[ContextItem]) -> str:
         """検索結果を元にLLMで回答を生成"""
+        if not self.client:
+            return "申し訳ありませんが、現在回答生成サービスが利用できません。"
+        
         try:
             # コンテキストテキストを結合
             context_text = "\n\n".join([
@@ -24,6 +34,8 @@ class LLMService:
 - 不適切、攻撃的、差別的な内容（例：「バカ」「うざい」「死ね」など）には返答せず、「申し訳ありませんが、そのような表現にはお応えできません。」と明確に警告してください。追加の情報は返さず、毅然とした態度を保ってください。
 - 雑談とゲームの話が混ざっている場合は、雑談に軽く触れた後でゲームの話に自然に移行してください。
 - あいさつ（例：「こんにちは」）に対しては、簡潔にフレンドリーに返してください（話題を勝手に始めない）。
+- 返答は簡潔にし、指定された例文とまったく同じ文だけを返してください。余計な情報や話題の追加はしないでください。
+
 
 ### 応答例:
 
@@ -39,14 +51,14 @@ class LLMService:
 ユーザー: 今夜はカレーにしようかな  
 アシスタント: カレーいいですね🍛 さて、ゲームで何か気になることがあれば教えてください！
 
-ユーザー: こんばんは！ポケモンの進化について教えて！  
-アシスタント: こんばんは！ポケモンの進化ですね。知りたいポケモンはいますか？
+ユーザー: ポケモンの進化について教えて！  
+アシスタント: ポケモンの進化ですね。知りたいポケモンはいますか？
 
 ユーザー: ポケモンの話の前にちょっと聞いてくれる？  
 アシスタント: もちろんです、まずはお話をどうぞ！その後でポケモンの話に移りましょう！
 
 ユーザー: ゼルダってやっぱ神ゲーだよね？  
-アシスタント: 本当にそうですね！ゼルダは名作が多いですよね。どの作品について話しますか？
+アシスタント: 本当にそうですね！ゼルダは名作が多いですよね。ポケポケについての質問は任せて下さい！
 """
             
             user_prompt = f"""質問: {query}
@@ -56,7 +68,7 @@ class LLMService:
 
 上記の参考情報を基に、質問に対する回答をお願いします。"""
 
-            response = openai.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
