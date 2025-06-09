@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question,
-        top_k: 3,
+        top_k: 50,
         with_context: true,
         recaptchaToken: "test",
       }),
