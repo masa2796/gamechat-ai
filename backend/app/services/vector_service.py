@@ -11,7 +11,7 @@ class VectorService:
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
         self.vector_index = Index(url=upstash_url, token=upstash_token)
     
-    async def search(self, query_embedding: List[float], top_k: int = 3, namespaces: List[str] = None) -> List[ContextItem]:
+    async def search(self, query_embedding: List[float], top_k: int = 50, namespaces: List[str] = None) -> List[ContextItem]:
         try:
             if namespaces is None:
                 namespaces = [

@@ -89,10 +89,16 @@ class TestClassificationService:
         request = ClassificationRequest(query="テストクエリ")
         result = await classification_service.classify_query(request)
         
-        # フォールバック値を確認
-        assert result.query_type == QueryType.SEMANTIC
+        # 修正されたフォールバック値を確認
+        assert result.query_type == QueryType.FILTERABLE  # 複合クエリ対応でFILTERABLEに変更
         assert result.confidence == 0.5  # JSONパースエラー時のフォールバック値
         assert "JSON解析エラー" in result.reasoning
+        # 手動キーワード抽出の確認
+        assert "ダメージ" in result.filter_keywords
+        assert "40以上" in result.filter_keywords
+        assert "技" in result.filter_keywords
+        assert "水" in result.filter_keywords
+        assert "タイプ" in result.filter_keywords
 
     @pytest.mark.asyncio
     async def test_classify_with_api_error(self, classification_service, monkeypatch):
@@ -158,3 +164,33 @@ class TestClassificationService:
         assert strategy.use_vector_search is True
         assert strategy.db_filter_params is not None
         assert strategy.vector_search_params is not None
+
+    @pytest.mark.asyncio
+    async def test_classify_complex_filterable_query(self, classification_service, monkeypatch):
+        """複合フィルター条件クエリの分類テスト"""
+        # 複合条件用のモック
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = """{
+            "query_type": "filterable",
+            "summary": "ダメージ40以上の技を持つ水タイプポケモン検索",
+            "confidence": 0.95,
+            "filter_keywords": ["ダメージ", "40以上", "技", "水", "タイプ"],
+            "search_keywords": [],
+            "reasoning": "技のダメージ条件とタイプ条件を検出"
+        }"""
+        
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_response
+        monkeypatch.setattr(classification_service, "client", mock_client)
+        
+        request = ClassificationRequest(query="ダメージが40以上の技を持つ、水タイプポケモンを教えて")
+        result = await classification_service.classify_query(request)
+        
+        assert result.query_type == QueryType.FILTERABLE
+        assert result.confidence == 0.95
+        assert "ダメージ" in result.filter_keywords
+        assert "40以上" in result.filter_keywords
+        assert "技" in result.filter_keywords
+        assert "水" in result.filter_keywords
+        assert "タイプ" in result.filter_keywords

@@ -8,7 +8,7 @@ class ContextItem(BaseModel):
 
 class RagRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=200)
-    top_k: Optional[int] = 3
+    top_k: Optional[int] = 50
     with_context: Optional[bool] = True
     recaptchaToken: Optional[str] = None
 
@@ -22,8 +22,8 @@ class RagRequest(BaseModel):
     @field_validator("top_k")
     @classmethod
     def top_k_range(cls, v):
-        if v is not None and (v < 1 or v > 10):
-            raise ValueError("top_kは1〜10の範囲で指定してください")
+        if v is not None and (v < 1 or v > 100):
+            raise ValueError("top_kは1〜100の範囲で指定してください")
         return v
 
 class RagResponse(BaseModel):

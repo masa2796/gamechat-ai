@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from backend.app.services.database_service import DatabaseService
 from backend.app.models.rag_models import ContextItem
 
@@ -91,7 +91,7 @@ class TestDatabaseService:
         
         assert len(results) == 1
         assert results[0].title == "テストポケモン1"
-        assert results[0].score == 1.0  # 完全一致
+        assert results[0].score == 2.0  # 修正: タイプマッチは+2.0ポイント
 
     @pytest.mark.asyncio
     async def test_filter_search_no_keywords(self, database_service, sample_data, monkeypatch):
@@ -130,7 +130,7 @@ class TestDatabaseService:
         
         score = database_service._calculate_filter_score(item, keywords)
         
-        assert score == 1.0  # 完全一致
+        assert score == 2.0  # 修正: タイプマッチは+2.0ポイント
 
     def test_calculate_filter_score_no_match(self, database_service):
         """マッチなしのスコア計算テスト"""
@@ -170,3 +170,100 @@ class TestDatabaseService:
         assert "種類: ねずみポケモン" in text
         assert "進化段階: たね" in text
         assert "弱点: 闘" in text
+
+    @pytest.fixture
+    def mock_data(self):
+        """複合条件テスト用のモックデータ"""
+        return [
+            {
+                "id": "test-001",
+                "name": "カメックス",
+                "type": "水",
+                "hp": 150,
+                "attacks": [
+                    {"name": "みずでっぽう", "damage": 40},
+                    {"name": "ハイドロポンプ", "damage": 80}
+                ]
+            },
+            {
+                "id": "test-002",
+                "name": "フシギダネ",
+                "type": "草",
+                "hp": 70,
+                "attacks": [
+                    {"name": "はっぱカッター", "damage": 30},
+                    {"name": "つるのムチ", "damage": 10}
+                ]
+            },
+            {
+                "id": "test-003",
+                "name": "ゼニガメ",
+                "type": "水",
+                "hp": 60,
+                "attacks": [
+                    {"name": "たいあたり", "damage": 20},
+                    {"name": "みずでっぽう", "damage": 50}
+                ]
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_filter_search_damage_and_type_condition(self, database_service, mock_data, monkeypatch):
+        """ダメージ条件とタイプ条件の複合検索テスト"""
+        # データ読み込みをモック
+        monkeypatch.setattr(database_service, "_load_data", lambda: mock_data)
+        
+        # 水タイプで40以上のダメージを持つポケモンの検索
+        keywords = ["ダメージ", "40以上", "技", "水", "タイプ"]
+        results = await database_service.filter_search(keywords, 5)
+        
+        # 結果を確認
+        assert len(results) >= 1  # カメックスとゼニガメが該当するはず
+        assert isinstance(results, list)
+        # 水タイプで40以上のダメージ技を持つポケモンが上位に来ることを確認
+        if len(results) > 0:
+            assert results[0].score >= 5.0  # 複合条件マッチで高スコア
+
+    @pytest.mark.asyncio
+    async def test_filter_search_damage_condition_only(self, database_service, mock_data, monkeypatch):
+        """ダメージ条件のみの検索テスト"""
+        # データ読み込みをモック
+        monkeypatch.setattr(database_service, "_load_data", lambda: mock_data)
+        
+        keywords = ["ダメージ", "40以上", "技"]
+        results = await database_service.filter_search(keywords, 5)
+        
+        # 結果を確認
+        assert isinstance(results, list)
+        assert len(results) >= 2  # カメックスとゼニガメが該当するはず
+
+    def test_calculate_filter_score_damage_match(self, database_service):
+        """ダメージ条件マッチのスコア計算テスト"""
+        item = {
+            "name": "テストポケモン",
+            "type": "水",
+            "attacks": [
+                {"name": "みずでっぽう", "damage": 50},
+                {"name": "ハイドロポンプ", "damage": 30}
+            ]
+        }
+        keywords = ["ダメージ", "40以上", "技"]
+        score = database_service._calculate_filter_score(item, keywords)
+        
+        # ダメージ50の技があるので、40以上の条件にマッチしてスコアが付くはず
+        assert score > 0
+
+    def test_calculate_filter_score_damage_and_type_match(self, database_service):
+        """ダメージ条件とタイプ条件の複合マッチのスコア計算テスト"""
+        item = {
+            "name": "カメックス",
+            "type": "水",
+            "attacks": [
+                {"name": "ハイドロポンプ", "damage": 60}
+            ]
+        }
+        keywords = ["ダメージ", "40以上", "技", "水", "タイプ"]
+        score = database_service._calculate_filter_score(item, keywords)
+        
+        # 水タイプ（+2.0）とダメージ40以上（+2.0）の両方にマッチするので高スコア
+        assert score >= 4.0  # 少なくとも4.0以上のスコアが期待される

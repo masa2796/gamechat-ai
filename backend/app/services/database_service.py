@@ -34,7 +34,7 @@ class DatabaseService:
             print(f"データ読み込みエラー: {e}")
             return []
     
-    async def filter_search(self, filter_keywords: List[str], top_k: int = 3) -> List[ContextItem]:
+    async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[ContextItem]:
         """フィルターキーワードに基づいて構造化検索を実行"""
         try:
             data = self._load_data()
@@ -77,14 +77,14 @@ class DatabaseService:
         except Exception as e:
             print(f"データベース検索エラー: {e}")
             return self._get_fallback_results()
-    
+
     def _calculate_filter_score(self, item: Dict[str, Any], keywords: List[str]) -> float:
         """アイテムとキーワードのマッチスコアを計算"""
         if not keywords:
             return 0.0
-        
+
         score = 0.0
-        total_keywords = len(keywords)
+        total_conditions = 0
         
         # アイテムの全テキストを結合
         searchable_text = ""
@@ -101,53 +101,119 @@ class DatabaseService:
                 elif isinstance(item[field], dict):
                     searchable_text += f" {' '.join(str(v) for v in item[field].values())}"
         
-        # 数値フィールドの特別処理
+        searchable_text_lower = searchable_text.lower()
+        
+        # 条件別スコア計算
+        type_matched = False
+        damage_matched = False
+        hp_matched = False
+        
+        print(f"  評価中: {item.get('name', 'Unknown')} (タイプ: {item.get('type', 'Unknown')})")
+        
+        # HPキーワードと数値条件の組み合わせをチェック
+        has_hp_keyword = any("hp" in kw.lower() for kw in keywords)
+        has_hp_condition = any(cond in ' '.join(keywords).lower() for cond in ["40以上", "50以上", "100以上", "150以上"])
+        
+        if has_hp_keyword and has_hp_condition:
+            total_conditions += 1
+            try:
+                hp_value = int(item["hp"]) if "hp" in item and item["hp"] else 0
+                # 数値条件を確認
+                for kw in keywords:
+                    if "40以上" in kw.lower() and hp_value >= 40:
+                        score += 2.0
+                        hp_matched = True
+                        print(f"    HPマッチ: {hp_value} >= 40 -> +2.0")
+                        break
+                    elif "50以上" in kw.lower() and hp_value >= 50:
+                        score += 2.0
+                        hp_matched = True
+                        print(f"    HPマッチ: {hp_value} >= 50 -> +2.0")
+                        break
+                    elif "100以上" in kw.lower() and hp_value >= 100:
+                        score += 2.0
+                        hp_matched = True
+                        print(f"    HPマッチ: {hp_value} >= 100 -> +2.0")
+                        break
+                    elif "150以上" in kw.lower() and hp_value >= 150:
+                        score += 2.0
+                        hp_matched = True
+                        print(f"    HPマッチ: {hp_value} >= 150 -> +2.0")
+                        break
+            except (ValueError, TypeError):
+                pass
+        
+        # ダメージキーワードと数値条件の組み合わせをチェック  
+        has_damage_keyword = any(kw.lower() in ["ダメージ", "技", "攻撃"] for kw in keywords)
+        has_damage_condition = any(cond in ' '.join(keywords).lower() for cond in ["30以上", "40以上", "50以上", "60以上"])
+        
+        if has_damage_keyword and has_damage_condition and not hp_matched:
+            total_conditions += 1
+            if "attacks" in item and item["attacks"]:
+                for attack in item["attacks"]:
+                    if isinstance(attack, dict) and "damage" in attack:
+                        try:
+                            damage_value = int(attack["damage"]) if attack["damage"] else 0
+                            # 数値条件を確認
+                            for kw in keywords:
+                                if "30以上" in kw.lower() and damage_value >= 30:
+                                    score += 2.0
+                                    damage_matched = True
+                                    print(f"    ダメージマッチ: {damage_value} >= 30 -> +2.0")
+                                    break
+                                elif "40以上" in kw.lower() and damage_value >= 40:
+                                    score += 2.0
+                                    damage_matched = True
+                                    print(f"    ダメージマッチ: {damage_value} >= 40 -> +2.0")
+                                    break
+                                elif "50以上" in kw.lower() and damage_value >= 50:
+                                    score += 2.0
+                                    damage_matched = True
+                                    print(f"    ダメージマッチ: {damage_value} >= 50 -> +2.0")
+                                    break
+                                elif "60以上" in kw.lower() and damage_value >= 60:
+                                    score += 2.0
+                                    damage_matched = True
+                                    print(f"    ダメージマッチ: {damage_value} >= 60 -> +2.0")
+                                    break
+                            if damage_matched:
+                                break
+                        except (ValueError, TypeError):
+                            pass
+        
         for keyword in keywords:
             keyword_lower = keyword.lower()
             
-            # HP関連の処理
-            if "hp" in keyword_lower or keyword_lower == "hp":
-                try:
-                    hp_value = int(item["hp"]) if "hp" in item and item["hp"] else 0
-                    # 他のキーワードで数値条件をチェック
-                    for other_keyword in keywords:
-                        if "100以上" in other_keyword or ("100" in other_keyword and "以上" in keywords):
-                            if hp_value >= 100:
-                                score += 2.0  # 数値条件マッチは高スコア
-                        elif "150以上" in other_keyword:
-                            if hp_value >= 150:
-                                score += 2.0
-                        elif "50以上" in other_keyword:
-                            if hp_value >= 50:
-                                score += 2.0
-                except (ValueError, TypeError):
-                    pass
-            
-            # 数値条件の直接処理
-            if "100以上" in keyword_lower:
-                try:
-                    hp_value = int(item["hp"]) if "hp" in item and item["hp"] else 0
-                    if hp_value >= 100:
-                        score += 2.0
-                except (ValueError, TypeError):
-                    pass
-            
             # タイプ関連の処理
             if keyword_lower in ["炎", "水", "草", "電気", "超", "闘", "悪", "鋼", "フェアリー"]:
-                if "type" in item and item["type"]:
-                    if keyword_lower == item["type"].lower():
-                        score += 2.0
+                if not type_matched:  # 重複チェックを追加
+                    total_conditions += 1
+                    if "type" in item and item["type"]:
+                        if keyword_lower == item["type"].lower():
+                            score += 2.0
+                            type_matched = True
+                            print(f"    タイプマッチ: {keyword} -> +2.0")
             
-            # 一般的なテキストマッチング
-            searchable_text_lower = searchable_text.lower()
-            if keyword_lower in searchable_text_lower:
-                score += 1.0
-            # 部分マッチも考慮
-            elif any(keyword_lower in word for word in searchable_text_lower.split()):
+            # 一般的なテキストマッチング（低いスコア、HP・ダメージ・タイプ以外）
+            elif (keyword_lower not in ["hp", "40以上", "50以上", "100以上", "150以上", "30以上", "60以上", "ダメージ", "技", "攻撃", "タイプ"] and 
+                  keyword_lower in searchable_text_lower):
                 score += 0.5
+                print(f"    テキストマッチ: {keyword} -> +0.5")
+            # 部分マッチも考慮
+            elif (keyword_lower not in ["hp", "40以上", "50以上", "100以上", "150以上", "30以上", "60以上", "ダメージ", "技", "攻撃", "タイプ"] and
+                  any(keyword_lower in word for word in searchable_text_lower.split())):
+                score += 0.3
+                print(f"    部分マッチ: {keyword} -> +0.3")
         
-        # 正規化（0.0-1.0の範囲）
-        return min(score / total_keywords, 1.0)
+        # 複合条件の場合、両方の条件を満たした場合にボーナス
+        if type_matched and (damage_matched or hp_matched):
+            score += 1.0
+            print("    複合条件ボーナス: +1.0")
+        
+        print(f"    最終スコア: {score}")
+        
+        # スコアを正規化
+        return score
     
     def _extract_title(self, item: Dict[str, Any]) -> str:
         """アイテムからタイトルを抽出"""

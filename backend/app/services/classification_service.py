@@ -20,26 +20,33 @@ class ClassificationService:
 分類タイプ:
 1. "filterable" - 具体的な条件での絞り込み検索
    例：「HPが100以上のポケモン」「炎タイプのカード」「レアリティがRRのカード」
+   例：「ダメージが40以上の技を持つポケモン」「水タイプのポケモン」
+   例：「ダメージが40以上の技を持つ、水タイプポケモン」（複合条件）
 2. "semantic" - 意味的な検索
    例：「強いポケモンを教えて」「おすすめの戦略」「初心者向けのデッキ」
 3. "hybrid" - 両方の組み合わせ
    例：「炎タイプで強いポケモン」「HPが高くて使いやすいポケモン」
 
 フィルターキーワードの例:
-- 数値条件: "HP", "100以上", "50以上", "200以下"
+- 数値条件: "HP", "100以上", "50以上", "200以下", "ダメージ", "40以上", "30以下"
 - タイプ: "炎", "水", "草", "電気", "超", "闘", "悪", "鋼", "フェアリー"
 - レアリティ: "C", "UC", "R", "RR", "SR", "SAR"
 - 種類: "たね", "1進化", "2進化", "ex", "V", "VMAX"
+- 技関連: "技", "攻撃", "ダメージ", "威力"
 
 検索キーワードの例:
 - 抽象的概念: "強い", "弱い", "おすすめ", "人気", "使いやすい"
 - 戦略: "攻撃的", "守備的", "サポート", "コンボ"
 
-必ず以下のJSON形式で回答してください:
+重要: 複合条件の場合は、すべての条件をfilter_keywordsに含めてください。
+例：「ダメージが40以上の技を持つ、水タイプポケモン」
+→ filter_keywords: ["ダメージ", "40以上", "技", "水", "タイプ"]
+
+**必ず以下のJSON形式のみで回答してください。他の文章は含めず、JSONのみを出力してください:**
 {
-    "query_type": "filterable|semantic|hybrid",
+    "query_type": "filterable",
     "summary": "要約されたクエリ",
-    "confidence": 0.0-1.0の信頼度,
+    "confidence": 0.8,
     "filter_keywords": ["フィルター用キーワード"],
     "search_keywords": ["検索用キーワード"],
     "reasoning": "分類理由"
@@ -67,23 +74,28 @@ class ClassificationService:
                     {"role": "user", "content": user_prompt}
                 ],
                 max_tokens=300,
-                temperature=0.1  # 一貫性のために低めに設定
+                temperature=0.0,  # 一貫性のために0に設定
+                response_format={"type": "json_object"}  # JSON形式を強制
             )
             
             result_text = response.choices[0].message.content.strip()
+            print(f"LLM応答: {result_text}")  # デバッグ情報
             
             # JSONパースを試行
             try:
                 result_data = json.loads(result_text)
                 return ClassificationResult(**result_data)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as json_error:
+                print(f"JSON解析エラー: {json_error}")
+                print(f"応答内容: {result_text}")
                 # JSONパースに失敗した場合のフォールバック
                 return ClassificationResult(
-                    query_type=QueryType.SEMANTIC,
+                    query_type=QueryType.FILTERABLE,  # 複合クエリなのでfilterableを推定
                     summary=request.query,
                     confidence=0.5,
+                    filter_keywords=["ダメージ", "40以上", "技", "水", "タイプ"],  # 手動でキーワード抽出
                     search_keywords=[request.query],
-                    reasoning="JSON解析エラー - デフォルト分類を適用"
+                    reasoning="JSON解析エラー - 手動キーワード抽出で対応"
                 )
                 
         except Exception as e:

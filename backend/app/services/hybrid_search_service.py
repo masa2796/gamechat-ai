@@ -49,8 +49,9 @@ class HybridSearchService:
         
         if search_strategy.use_db_filter and classification.filter_keywords:
             print("--- データベースフィルター検索実行 ---")
+            # DB検索では全ての該当結果を取得（50件まで）
             db_results = await self.database_service.filter_search(
-                classification.filter_keywords, top_k
+                classification.filter_keywords, 50
             )
             print(f"DB検索結果: {len(db_results)}件")
         
@@ -59,7 +60,8 @@ class HybridSearchService:
             # 元のクエリまたは要約されたクエリを使用
             search_query = classification.summary if classification.summary else query
             query_embedding = await self.embedding_service.get_embedding(search_query)
-            vector_results = await self.vector_service.search(query_embedding, top_k)
+            # ベクトル検索でも多めに結果を取得
+            vector_results = await self.vector_service.search(query_embedding, 10)
             print(f"ベクトル検索結果: {len(vector_results)}件")
         
         # Step 4: 結果のマージ・選択

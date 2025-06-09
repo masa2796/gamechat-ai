@@ -42,7 +42,7 @@ async def search_test(
         raise HTTPException(status_code=401, detail="認証に失敗しました")
     
     query = query_data.get("query", "")
-    top_k = query_data.get("top_k", 3)
+    top_k = query_data.get("top_k", 50)
     
     if not query:
         raise HTTPException(status_code=400, detail="クエリが必要です")
