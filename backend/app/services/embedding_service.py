@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 import openai
 from fastapi import HTTPException
 import os
@@ -146,3 +146,36 @@ class EmbeddingService:
             return False
             
         return True
+
+    def get_embedding_stats(self, classification: ClassificationResult) -> Dict[str, Any]:
+        """埋め込み生成の統計情報を取得"""
+        
+        embedding_text = self._determine_embedding_text("sample query", classification)
+        
+        return {
+            "strategy": self._get_embedding_strategy(classification),
+            "text_length": len(embedding_text),
+            "confidence_level": "high" if classification.confidence >= 0.8 else (
+                "medium" if classification.confidence >= 0.5 else "low"
+            ),
+            "query_type": classification.query_type,
+            "has_summary": bool(classification.summary and len(classification.summary.strip()) > 5),
+            "has_search_keywords": bool(classification.search_keywords),
+            "has_filter_keywords": bool(classification.filter_keywords)
+        }
+    
+    def _get_embedding_strategy(self, classification: ClassificationResult) -> str:
+        """使用される埋め込み戦略を取得"""
+        
+        if classification.confidence >= 0.8:
+            if classification.summary and len(classification.summary.strip()) > 5:
+                if self._is_summary_quality_good(classification.summary, "sample"):
+                    return "summary_based"
+        
+        if classification.confidence >= 0.5:
+            if classification.query_type == QueryType.SEMANTIC and classification.search_keywords:
+                return "keywords_enhanced"
+            elif classification.query_type == QueryType.HYBRID:
+                return "hybrid_keywords"
+        
+        return "fallback_original"
