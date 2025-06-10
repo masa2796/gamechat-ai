@@ -1,0 +1,133 @@
+[
+  {
+    "test_name": "挨拶 - 検索スキップ",
+    "question": "こんにちは！",
+    "response_time": 1.814100980758667,
+    "search_skipped": true,
+    "skip_expected": true,
+    "skip_match": true,
+    "answer_length": 31,
+    "context_count": 0,
+    "classification": {
+      "query_type": "greeting",
+      "summary": "挨拶",
+      "confidence": 0.9,
+      "filter_keywords": [],
+      "search_keywords": [],
+      "reasoning": "ユーザーの発言は一般的な挨拶であり、特定の情報検索を必要としないため。"
+    },
+    "search_info": {
+      "query_type": "greeting",
+      "confidence": 0.9,
+      "db_results_count": 0,
+      "vector_results_count": 0
+    }
+  },
+  {
+    "test_name": "単純なセマンティック検索",
+    "question": "ピカチュウの情報を教えて",
+    "response_time": 13.834285020828247,
+    "search_skipped": false,
+    "skip_expected": false,
+    "skip_match": true,
+    "answer_length": 128,
+    "context_count": 5,
+    "classification": {
+      "query_type": "semantic",
+      "summary": "ピカチュウの情報を教えて",
+      "confidence": 0.9,
+      "filter_keywords": [],
+      "search_keywords": [
+        "ピカチュウ",
+        "情報"
+      ],
+      "reasoning": "特定のポケモンであるピカチュウに関する情報を求めているため、意味的な検索が適している。"
+    },
+    "search_info": {
+      "query_type": "semantic",
+      "confidence": 0.9,
+      "db_results_count": 0,
+      "vector_results_count": 15
+    }
+  },
+  {
+    "test_name": "複雑なフィルター検索",
+    "question": "HP100以上の炎タイプのポケモンを教えて",
+    "response_time": 14.322355031967163,
+    "search_skipped": false,
+    "skip_expected": false,
+    "skip_match": true,
+    "answer_length": 165,
+    "context_count": 5,
+    "classification": {
+      "query_type": "filterable",
+      "summary": "HP100以上の炎タイプのポケモンを探す",
+      "confidence": 0.9,
+      "filter_keywords": [
+        "HP",
+        "100以上",
+        "炎",
+        "タイプ"
+      ],
+      "search_keywords": [],
+      "reasoning": "具体的な条件での絞り込み検索であり、HPとタイプに関する明確なフィルター条件が提示されているため。"
+    },
+    "search_info": {
+      "query_type": "filterable",
+      "confidence": 0.9,
+      "db_results_count": 24,
+      "vector_results_count": 0
+    }
+  },
+  {
+    "test_name": "挨拶2 - 検索スキップ",
+    "question": "おはよう",
+    "response_time": 1.7436530590057373,
+    "search_skipped": true,
+    "skip_expected": true,
+    "skip_match": true,
+    "answer_length": 33,
+    "context_count": 0,
+    "classification": {
+      "query_type": "greeting",
+      "summary": "挨拶",
+      "confidence": 0.9,
+      "filter_keywords": [],
+      "search_keywords": [],
+      "reasoning": "ユーザーの発言は一般的な挨拶であり、特定の情報検索を必要としないため。"
+    },
+    "search_info": {
+      "query_type": "greeting",
+      "confidence": 0.9,
+      "db_results_count": 0,
+      "vector_results_count": 0
+    }
+  },
+  {
+    "test_name": "具体的な質問",
+    "question": "リザードンの技を教えて",
+    "response_time": 16.37946391105652,
+    "search_skipped": false,
+    "skip_expected": false,
+    "skip_match": true,
+    "answer_length": 160,
+    "context_count": 5,
+    "classification": {
+      "query_type": "semantic",
+      "summary": "リザードンの技を知りたい",
+      "confidence": 0.9,
+      "filter_keywords": [],
+      "search_keywords": [
+        "リザードン",
+        "技"
+      ],
+      "reasoning": "特定のポケモン（リザードン）の技に関する情報を求めているため、意味的な検索に分類。"
+    },
+    "search_info": {
+      "query_type": "semantic",
+      "confidence": 0.9,
+      "db_results_count": 0,
+      "vector_results_count": 15
+    }
+  }
+]
