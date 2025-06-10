@@ -1,14 +1,9 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from backend.app.services.hybrid_search_service import HybridSearchService
 from backend.app.models.classification_models import ClassificationResult, QueryType
 from backend.app.models.rag_models import ContextItem
-import os
-
-def test_check_api_key():
-    print("OPENAI_API_KEY:", os.environ.get("OPENAI_API_KEY"))
-    assert True
-    
+   
 class TestHybridSearchService:
     """ハイブリッド検索サービスのテスト"""
 
