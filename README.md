@@ -18,11 +18,17 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 ### AI・検索関連
 - OpenAI API (ChatGPT, Embedding)
 - Upstash Vector（ベクトル検索サービス／Dense Index対応）
-- **ハイブリッド検索システム**
+- **ハイブリッド検索システム（最適化対応）**
   - LLM分類によるクエリタイプ判定（filterable/semantic/hybrid）
   - 構造化データベース検索（HP条件、ポケモンタイプフィルタリング）
   - ベクトル検索によるセマンティック検索
   - 3つのマージ戦略（フィルタブル優先、セマンティック優先、重み付きハイブリッド）
+  - **🆕 分類ベース検索最適化システム**
+    - 分類タイプ別の動的閾値・件数調整（semantic: 0.75, hybrid: 0.70, filterable: 0.65）
+    - 信頼度による段階的パラメータ調整（高/中/低信頼度別の最適化）
+    - ネームスペース優先順位最適化（分類タイプに応じた検索対象調整）
+    - 検索品質評価・適応的マージシステム
+    - 高度なエラーハンドリング・フォールバック戦略
   - **LLM分類に基づく埋め込み最適化システム**
     - 信頼度による段階的フォールバック戦略（高信頼度：要約使用、中信頼度：キーワード活用、低信頼度：元質問使用）
     - 要約・キーワード情報を活用した埋め込み生成（検索精度向上）
@@ -259,27 +265,28 @@ npm install
 ### 3. 環境変数ファイルの作成
 
 - ルートディレクトリの `.env` に OpenAI APIキー等を設定してください。
-  ```bash
-  cp .env.example .env
-  # .envファイルを編集して適切な値を設定
-  ```
+```bash
+cp .env.example .env
+# .envファイルを編集して適切な値を設定
+```
 
 ### 4. 開発サーバーの起動
 
 - フロントエンド（Next.js）:  
-  ```bash
-  cd frontend
-  npm run dev
-  ```
-  → http://localhost:3000
+```bash
+cd frontend
+npm run dev
+```
+→ http://localhost:3000
 
 - バックエンド（FastAPI）:  
-  ```bash
-  # ルートディレクトリで仮想環境をアクティベート
-  source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
-  uvicorn backend.app.main:app --reload 
-  ```
-  → http://localhost:8000
+  
+```bash
+# ルートディレクトリで仮想環境をアクティベート
+source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
+uvicorn backend.app.main:app --reload 
+```
+→ http://localhost:8000
 
 ---
 
@@ -421,9 +428,9 @@ python upstash_connection.py
 `frontend` ディレクトリで以下のコマンドを実行します。
 
 - **すべてのテストを実行:**
-  ```bash
+```bash
   npm test
-  ```
+ ```
 
 
 ### バックエンドテスト（pytest）
