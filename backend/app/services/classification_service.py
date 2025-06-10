@@ -18,14 +18,19 @@ class ClassificationService:
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
 分類タイプ:
-1. "filterable" - 具体的な条件での絞り込み検索
+1. "greeting" - 挨拶・雑談（検索不要）
+   例：「こんにちは」「おはよう」「ありがとう」「よろしく」「お疲れ様」
+   例：「元気？」「調子はどう？」「今日は暑いね」
+2. "filterable" - 具体的な条件での絞り込み検索
    例：「HPが100以上のポケモン」「炎タイプのカード」「レアリティがRRのカード」
    例：「ダメージが40以上の技を持つポケモン」「水タイプのポケモン」
    例：「ダメージが40以上の技を持つ、水タイプポケモン」（複合条件）
-2. "semantic" - 意味的な検索
+3. "semantic" - 意味的な検索
    例：「強いポケモンを教えて」「おすすめの戦略」「初心者向けのデッキ」
-3. "hybrid" - 両方の組み合わせ
+4. "hybrid" - 両方の組み合わせ
    例：「炎タイプで強いポケモン」「HPが高くて使いやすいポケモン」
+
+重要: 挨拶や一般的な会話は「greeting」として分類し、検索キーワードは空にしてください。
 
 フィルターキーワードの例:
 - 数値条件: "HP", "100以上", "50以上", "200以下", "ダメージ", "40以上", "30以下"
@@ -44,7 +49,7 @@ class ClassificationService:
 
 **必ず以下のJSON形式のみで回答してください。他の文章は含めず、JSONのみを出力してください:**
 {
-    "query_type": "filterable",
+    "query_type": "greeting",
     "summary": "要約されたクエリ",
     "confidence": 0.8,
     "filter_keywords": ["フィルター用キーワード"],
@@ -111,7 +116,13 @@ class ClassificationService:
 
     def determine_search_strategy(self, classification: ClassificationResult) -> SearchStrategy:
         """分類結果に基づいて検索戦略を決定"""
-        if classification.query_type == QueryType.FILTERABLE:
+        if classification.query_type == QueryType.GREETING:
+            # 挨拶の場合は検索不要
+            return SearchStrategy(
+                use_db_filter=False,
+                use_vector_search=False
+            )
+        elif classification.query_type == QueryType.FILTERABLE:
             return SearchStrategy(
                 use_db_filter=True,
                 use_vector_search=False,

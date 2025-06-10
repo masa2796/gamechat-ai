@@ -44,7 +44,7 @@ async def test_process_query_without_ng_word(monkeypatch):
     async def mock_search(query_embedding, top_k):
         return []
 
-    async def mock_generate_answer(question, context_items):
+    async def mock_generate_answer(query, context_items, classification=None, search_info=None):
         return "ポケモンの進化についての回答です。"
 
     # ハイブリッド検索サービス全体をモック

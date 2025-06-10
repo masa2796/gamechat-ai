@@ -24,7 +24,14 @@ class RagService:
         )
         
         context_items = search_result["merged_results"]
-        answer = await self.llm_service.generate_answer(rag_req.question, context_items)
+        
+        # 分類結果と検索情報を含めて回答生成
+        answer = await self.llm_service.generate_answer(
+            query=rag_req.question,
+            context_items=context_items,
+            classification=search_result["classification"],
+            search_info=search_result.get("search_quality", {})
+        )
         
         if rag_req.with_context:
             return {
