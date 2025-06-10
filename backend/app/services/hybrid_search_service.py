@@ -40,6 +40,27 @@ class HybridSearchService:
         print(f"要約: {classification.summary}")
         print(f"信頼度: {classification.confidence}")
         
+        # 挨拶の場合は検索をスキップ
+        if classification.query_type == QueryType.GREETING:
+            print("=== 挨拶検出: 検索をスキップ ===")
+            return {
+                "classification": classification,
+                "search_strategy": {
+                    "use_database": False,
+                    "use_vector": False,
+                    "skip_search": True,
+                    "reason": "greeting_detected"
+                },
+                "db_results": [],
+                "vector_results": [],
+                "merged_results": [],
+                "search_quality": {
+                    "overall_score": 1.0,
+                    "greeting_detected": True,
+                    "search_needed": False
+                }
+            }
+        
         # Step 2: 検索戦略の決定と最適化
         search_strategy = self.classification_service.determine_search_strategy(classification)
         optimized_limits = self._get_optimized_limits(classification, top_k)
