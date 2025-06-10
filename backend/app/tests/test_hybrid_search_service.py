@@ -123,6 +123,33 @@ class TestHybridSearchService:
         assert len(result["vector_results"]) == 1
         assert len(result["merged_results"]) == 2  # マージされた結果
 
+    @pytest.mark.asyncio
+    async def test_search_greeting_query(self, hybrid_search_service, monkeypatch):
+        """挨拶クエリの検索スキップテスト"""
+        # 分類サービスのモック（挨拶を返す）
+        mock_classification = ClassificationResult(
+            query_type=QueryType.GREETING,
+            summary="挨拶",
+            confidence=0.9,
+            filter_keywords=[],
+            search_keywords=[]
+        )
+        
+        mock_classify = AsyncMock(return_value=mock_classification)
+        monkeypatch.setattr(hybrid_search_service.classification_service, "classify_query", mock_classify)
+        
+        result = await hybrid_search_service.search("こんにちは", 3)
+        
+        # 挨拶の場合は検索をスキップ
+        assert result["classification"].query_type == QueryType.GREETING
+        assert result["search_strategy"]["skip_search"]
+        assert result["search_strategy"]["reason"] == "greeting_detected"
+        assert len(result["db_results"]) == 0
+        assert len(result["vector_results"]) == 0
+        assert len(result["merged_results"]) == 0
+        assert result["search_quality"]["greeting_detected"]
+        assert not result["search_quality"]["search_needed"]
+
     def test_merge_results_filterable_priority(self, hybrid_search_service, sample_context_items):
         """フィルター優先のマージテスト"""
         classification = ClassificationResult(

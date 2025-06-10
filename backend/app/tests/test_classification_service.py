@@ -194,3 +194,51 @@ class TestClassificationService:
         assert "技" in result.filter_keywords
         assert "水" in result.filter_keywords
         assert "タイプ" in result.filter_keywords
+
+    @pytest.mark.asyncio
+    async def test_classify_greeting_query(self, classification_service, monkeypatch):
+        """挨拶クエリの分類テスト"""
+        # 挨拶応答のモック
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = """{
+            "query_type": "greeting",
+            "summary": "挨拶",
+            "confidence": 0.9,
+            "filter_keywords": [],
+            "search_keywords": [],
+            "reasoning": "ユーザーの発言は挨拶であり、検索は不要"
+        }"""
+        
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_response
+        monkeypatch.setattr(classification_service, "client", mock_client)
+        
+        request = ClassificationRequest(query="こんにちは")
+        result = await classification_service.classify_query(request)
+        
+        assert isinstance(result, ClassificationResult)
+        assert result.query_type == QueryType.GREETING
+        assert result.confidence == 0.9
+        assert len(result.filter_keywords) == 0
+        assert len(result.search_keywords) == 0
+        assert "挨拶" in result.reasoning
+
+    @pytest.mark.asyncio
+    async def test_greeting_search_strategy(self, classification_service):
+        """挨拶の検索戦略テスト"""
+        # 挨拶の分類結果を直接作成
+        classification = ClassificationResult(
+            query_type=QueryType.GREETING,
+            summary="挨拶",
+            confidence=0.9,
+            filter_keywords=[],
+            search_keywords=[],
+            reasoning="挨拶検出"
+        )
+        
+        strategy = classification_service.determine_search_strategy(classification)
+        
+        # 挨拶の場合は検索しない
+        assert not strategy.use_db_filter
+        assert not strategy.use_vector_search

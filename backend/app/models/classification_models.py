@@ -7,6 +7,7 @@ class QueryType(str, Enum):
     FILTERABLE = "filterable"  # フィルター可能（通常DBでクエリ検索）
     SEMANTIC = "semantic"      # 意味検索（ベクトルDBで意味検索）
     HYBRID = "hybrid"          # 両方を使用
+    GREETING = "greeting"      # 挨拶・雑談（検索不要）
 
 class ClassificationRequest(BaseModel):
     """LLMによる分類リクエスト"""
