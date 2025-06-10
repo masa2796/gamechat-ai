@@ -13,6 +13,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 backend/.pytest_cache
+.pytest_chche/
 
 # Node modules
 node_modules/

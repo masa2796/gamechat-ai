@@ -1,10 +1,9 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from backend.app.services.hybrid_search_service import HybridSearchService
 from backend.app.models.classification_models import ClassificationResult, QueryType
 from backend.app.models.rag_models import ContextItem
-
-
+   
 class TestHybridSearchService:
     """ハイブリッド検索サービスのテスト"""
 
@@ -76,7 +75,7 @@ class TestHybridSearchService:
         mock_vector_search = AsyncMock(return_value=mock_vector_results)
         
         monkeypatch.setattr(hybrid_search_service.classification_service, "classify_query", mock_classify)
-        monkeypatch.setattr(hybrid_search_service.embedding_service, "get_embedding", mock_embedding)
+        monkeypatch.setattr(hybrid_search_service.embedding_service, "get_embedding_from_classification", mock_embedding)
         monkeypatch.setattr(hybrid_search_service.vector_service, "search", mock_vector_search)
         
         result = await hybrid_search_service.search("強いポケモンを教えて", 3)
@@ -114,7 +113,7 @@ class TestHybridSearchService:
         
         monkeypatch.setattr(hybrid_search_service.classification_service, "classify_query", mock_classify)
         monkeypatch.setattr(hybrid_search_service.database_service, "filter_search", mock_db_search)
-        monkeypatch.setattr(hybrid_search_service.embedding_service, "get_embedding", mock_embedding)
+        monkeypatch.setattr(hybrid_search_service.embedding_service, "get_embedding_from_classification", mock_embedding)
         monkeypatch.setattr(hybrid_search_service.vector_service, "search", mock_vector_search)
         
         result = await hybrid_search_service.search("炎タイプで強いポケモン", 3)
