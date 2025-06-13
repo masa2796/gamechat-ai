@@ -3,39 +3,32 @@ from backend.app.services.llm_service import LLMService
 from backend.app.models.rag_models import ContextItem
 
 @pytest.mark.asyncio
-async def test_generate_answer_with_context(monkeypatch):
-    # 環境変数でAPIキーを設定
-    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+async def test_generate_answer_with_context(mock_openai_client):
+    # 環境変数のAPIキー設定は不要（autouseフィクスチャで処理済み）
     
     llm = LLMService()
+    # モッククライアントを直接設定
+    llm.client = mock_openai_client
+    
     context = [ContextItem(title="テスト", text="これはテストです。", score=0.9)]
 
-    class DummyResponse:
-        class Choice:
-            class Message:
-                content = "これはテストです。"
-            message = Message()
-        choices = [Choice()]
-    
-    def dummy_create(*args, **kwargs):
-        return DummyResponse()
-    
-    # LLMサービスのクライアントを直接モック
-    from unittest.mock import MagicMock
-    mock_client = MagicMock()
-    mock_client.chat.completions.create = dummy_create
-    llm.client = mock_client
+    # レスポンス内容をカスタマイズ
+    mock_openai_client.chat.completions.create.return_value.choices[0].message.content = "これはテストです。"
 
     answer = await llm.generate_answer("テストとは？", context)
     assert isinstance(answer, str)
     assert "テスト" in answer or "情報がありません" in answer
 
 @pytest.mark.asyncio
-async def test_generate_answer_greeting(monkeypatch):
-    # 環境変数でAPIキーを設定
-    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+async def test_generate_answer_greeting(mock_openai_client):
+    # 環境変数のAPIキー設定は不要（autouseフィクスチャで処理済み）
     
     llm = LLMService()
+    # モッククライアントを設定
+    llm.client = mock_openai_client
+    
+    # 挨拶用のレスポンスをカスタマイズ
+    mock_openai_client.chat.completions.create.return_value.choices[0].message.content = "こんにちは！ご質問があればどうぞ"
 
     class DummyResponse:
         class Choice:
