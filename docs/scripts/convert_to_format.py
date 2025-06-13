@@ -1,5 +1,12 @@
 import os
 import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+# プロジェクトルートディレクトリを取得
+project_root = Path(__file__).parent.parent
+dotenv_path = project_root / 'backend' / '.env'
+load_dotenv(dotenv_path=dotenv_path)
 
 def convert_to_embedding_format(card_data):
     entries = []
@@ -118,9 +125,9 @@ def convert_to_embedding_format(card_data):
 
 
 if __name__ == "__main__":
-    data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
-    sample_path = os.path.join(data_dir, 'data.json')
-    out_path = os.path.join(data_dir, 'convert_data.json')
+    # 環境変数からパスを取得、なければデフォルトパスを使用
+    sample_path = os.getenv("DATA_FILE_PATH", str(project_root / 'data' / 'data.json'))
+    out_path = os.getenv("CONVERTED_DATA_FILE_PATH", str(project_root / 'data' / 'convert_data.json'))
 
     with open(sample_path, "r", encoding="utf-8") as f:
         card_list = json.load(f)
