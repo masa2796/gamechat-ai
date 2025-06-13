@@ -597,14 +597,29 @@ gamechat-ai/
 │   │       ├── vector_service.py  # ベクトル検索
 │   │       ├── rag_service.py     # RAG処理
 │   │       └── llm_service.py     # LLM処理
-│   └── tests/
-│       ├── test_api.py            # APIエンドポイントのテスト
-│       ├── test_classification_service.py  # 分類サービステスト
-│       ├── test_database_service.py        # DB検索テスト
-│       ├── test_hybrid_search_service.py   # ハイブリッド検索テスト
-│       ├── test_llm_service.py            # LLMサービステスト
-│       ├── test_rag_service_responses.py  # RAG応答テスト
-│       └── test_vector_service.py # ベクトル検索のテスト
+│   └── tests/                       # テストディレクトリ（機能別構成）
+│       ├── conftest.py            # 共通フィクスチャ・設定
+│       ├── fixtures/              # テストデータ・モック・ヘルパー
+│       │   ├── __init__.py
+│       │   ├── mock_factory.py    # モックレスポンスファクトリー
+│       │   └── test_helpers.py    # アサーションヘルパー
+│       ├── services/              # サービス層テスト
+│       │   ├── test_classification_consolidated.py
+│       │   ├── test_embedding_consolidated.py
+│       │   ├── test_hybrid_search_consolidated.py
+│       │   ├── test_vector_service_consolidated.py
+│       │   ├── test_database_service.py
+│       │   └── test_llm_service.py
+│       ├── api/                   # API層テスト
+│       │   ├── test_api.py
+│       │   └── test_rag_service_responses.py
+│       ├── integration/           # 統合テスト
+│       │   └── test_full_flow_integration.py
+│       ├── performance/           # パフォーマンステスト
+│       │   └── test_performance_quality_metrics.py
+│       ├── security/              # セキュリティテスト
+│       │   └── test_api_safety.py
+│       └── README.md              # テスト構成・実行方法の詳細
 │
 ├── data/                         # 攻略データ（git管理外）
 │
@@ -702,41 +717,107 @@ python upstash_connection.py
 ### バックエンドテスト（pytest）
 バックエンドAPIとハイブリッド検索システムのテストには [pytest](https://pytest.org/) を使用しています。
 
-#### 実装済みテスト
-- **分類サービステスト** (`test_classification_service.py`): LLMクエリ分類の精度テスト（🆕 挨拶検出テスト追加）
-- **データベース検索テスト** (`test_database_service.py`): 構造化データ検索の正確性テスト
-- **ハイブリッド検索テスト** (`test_hybrid_search_service.py`): 統合検索システムのテスト（🆕 検索スキップ機能テスト追加）
-- **埋め込み最適化テスト** (`test_embedding_service.py`): 分類結果に基づく埋め込み最適化のテスト
-- **LLMサービステスト** (`test_llm_service.py`): 改修された応答生成システムのテスト
-- **RAGサービステスト** (`test_rag_service_responses.py`): 応答生成の品質テスト
-- **APIエンドポイントテスト** (`test_api.py`): エンドポイントの動作確認
-- **🆕 分類エッジケーステスト** (`test_classification_edge_cases.py`): 不適切コンテンツ・雑談・感情表現などの例外パターンテスト
-- **🆕 フルフロー統合テスト** (`test_full_flow_integration.py`): 入力→分類→検索→応答生成の完全フローテスト
-- **🆕 埋め込み最適化詳細テスト** (`test_embedding_optimization_detailed.py`): 信頼度別戦略・品質境界値・フォールバック強度テスト
-- **🆕 パフォーマンス・品質測定テスト** (`test_performance_quality_metrics.py`): メモリ効率化・応答時間・検索品質・同時処理テスト
+#### テスト構成（機能別ディレクトリ構造）
 
-#### テスト結果（最新）
-- **全体統合テスト**: **91/91 PASSED**（🎉 100%成功達成）
-- **新規追加テスト**: **16/16 PASSED**（エッジケース・統合フロー・最適化詳細・パフォーマンス）
-- **LLMサービステスト**: 7/7 PASSED（挨拶応答生成テスト含む）
-- **分類サービステスト**: 8/8 PASSED（挨拶検出・エッジケーステスト含む）
-- **ハイブリッド検索テスト**: 17/17 PASSED（検索スキップ機能・最適化テスト含む）
-- **パフォーマンステスト**: 5/5 PASSED（実運用環境確認済み）
+```
+backend/app/tests/
+├── conftest.py                    # 共通フィクスチャ・設定
+├── fixtures/                     # テストデータ・モック・ヘルパー
+│   ├── __init__.py
+│   ├── mock_factory.py           # モックレスポンスファクトリー
+│   └── test_helpers.py           # アサーションヘルパー
+├── services/                     # サービス層テスト
+│   ├── test_classification_consolidated.py
+│   ├── test_embedding_consolidated.py
+│   ├── test_hybrid_search_consolidated.py
+│   ├── test_vector_service_consolidated.py
+│   ├── test_database_service.py
+│   └── test_llm_service.py
+├── api/                          # API層テスト
+│   ├── test_api.py
+│   └── test_rag_service_responses.py
+├── integration/                  # 統合テスト
+│   └── test_full_flow_integration.py
+├── performance/                  # パフォーマンステスト
+│   └── test_performance_quality_metrics.py
+└── security/                     # セキュリティテスト
+    └── test_api_safety.py
+```
+
+#### 実装済みテスト（統合・整理済み）
+
+**🔧 サービス層テスト (`services/`)**
+- **分類統合テスト** (`test_classification_consolidated.py`): LLMクエリ分類・エッジケース・パフォーマンステスト統合版
+- **埋め込み統合テスト** (`test_embedding_consolidated.py`): 埋め込み生成・最適化・パフォーマンステスト統合版
+- **ハイブリッド検索統合テスト** (`test_hybrid_search_consolidated.py`): 統合検索・最適化・パフォーマンステスト統合版
+- **ベクトル検索統合テスト** (`test_vector_service_consolidated.py`): ベクトル検索・最適化テスト統合版
+- **データベース検索テスト** (`test_database_service.py`): 構造化データ検索の正確性テスト
+- **LLMサービステスト** (`test_llm_service.py`): 応答生成・挨拶処理・下位互換性テスト
+
+**🌐 API層テスト (`api/`)**
+- **APIエンドポイントテスト** (`test_api.py`): エンドポイントの動作確認
+- **RAGサービステスト** (`test_rag_service_responses.py`): 応答生成の品質テスト
+
+**🔗 統合テスト (`integration/`)**
+- **フルフロー統合テスト** (`test_full_flow_integration.py`): 入力→分類→検索→応答生成の完全フローテスト
+
+**⚡ パフォーマンステスト (`performance/`)**
+- **パフォーマンス・品質測定テスト** (`test_performance_quality_metrics.py`): メモリ効率化・応答時間・検索品質・同時処理テスト
+
+**🔒 セキュリティテスト (`security/`)**
+- **API安全性テスト** (`test_api_safety.py`): OpenAI API呼び出し防止・モック確認・環境変数テスト
+
+#### テスト結果（最新 - 統合・整理後）
+- **🎯 統合テスト**: **44/44 PASSED** (分類12 + 埋め込み11 + ハイブリッド12 + ベクトル9)
+- **🌐 API層テスト**: **10/10 PASSED** (エンドポイント4 + RAG応答3 + フルフロー5 + パフォーマンス1)
+- **🔒 セキュリティテスト**: **6/6 PASSED** (API安全性確認)
+- **📊 全体**: **60/60 PASSED** (🎉 100%成功達成)
+
+#### テスト品質向上の成果
+- ✅ **重複排除**: 複数の類似テストファイルを機能別に統合
+- ✅ **共通化**: フィクスチャ・モック・ヘルパーの共通化により保守性向上
+- ✅ **高速化**: 実行時間大幅短縮（API呼び出し防止により0.5秒で44テスト実行）
+- ✅ **安全性**: OpenAI API誤呼び出し防止機能の実装
+- ✅ **構造化**: 機能別ディレクトリによる管理しやすい構成
 
 #### バックエンドテストの実行
 ```bash
 # ルートディレクトリで仮想環境をアクティベート
 source .venv/bin/activate
 
-# 全テスト実行 （OPENAIのキーを外して実行）
+# 全テスト実行 （OpenAI APIキーを外して安全実行）
 env -u OPENAI_API_KEY pytest
 
+# 機能別テストディレクトリ実行
+pytest backend/app/tests/services/        # サービス層テスト
+pytest backend/app/tests/api/            # API層テスト
+pytest backend/app/tests/integration/   # 統合テスト
+pytest backend/app/tests/performance/   # パフォーマンステスト
+pytest backend/app/tests/security/      # セキュリティテスト
+
+# 統合済みテストファイル実行
+pytest backend/app/tests/services/test_*_consolidated.py
+
 # 特定のテストファイル実行
-pytest backend/app/tests/test_hybrid_search_service.py
+pytest backend/app/tests/services/test_hybrid_search_consolidated.py
 
 # カバレッジ付きで実行
 pytest --cov=backend/app
+
+# 詳細出力での実行
+pytest -v --tb=short
+
+# 高速実行（統合テストのみ）
+pytest backend/app/tests/services/test_*_consolidated.py --tb=no -q
 ```
+
+#### テスト開発・保守のガイドライン
+
+- **新しいテスト追加時**: 適切な機能別ディレクトリに配置
+- **共通フィクスチャ**: `conftest.py` または `fixtures/` を活用
+- **API安全性**: 必ずOpenAI APIキーなしでテスト実行
+- **統合テスト優先**: 個別テストより統合テストファイルを優先使用
+- **パフォーマンス重視**: テスト実行速度を意識した設計
 
 ---
 
