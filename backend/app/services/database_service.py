@@ -1,14 +1,15 @@
 from typing import List, Dict, Any
 import json
 from ..models.rag_models import ContextItem
+from ..core.config import settings
 
 class DatabaseService:
     """通常のデータベース検索サービス（構造化データのフィルタリング）"""
     
     def __init__(self):
-        # データファイルのパスを設定
-        self.data_path = "/Users/masaki/Documents/gamechat-ai/data/data.json"
-        self.converted_data_path = "/Users/masaki/Documents/gamechat-ai/data/convert_data.json"
+        # 設定ファイルからデータファイルのパスを取得
+        self.data_path = settings.DATA_FILE_PATH
+        self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
         self.cache = None
     
     def _load_data(self) -> List[Dict[str, Any]]:

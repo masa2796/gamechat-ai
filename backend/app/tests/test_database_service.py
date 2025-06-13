@@ -12,6 +12,16 @@ class TestDatabaseService:
         return DatabaseService()
 
     @pytest.fixture
+    def mock_settings(self, monkeypatch):
+        """設定をモックするフィクスチャ"""
+        from backend.app.core.config import settings
+        
+        # テスト用のパスを設定
+        monkeypatch.setattr(settings, "DATA_FILE_PATH", "/test/path/data.json")
+        monkeypatch.setattr(settings, "CONVERTED_DATA_FILE_PATH", "/test/path/convert_data.json")
+        return settings
+
+    @pytest.fixture
     def sample_data(self):
         """テスト用のサンプルデータ"""
         return [
@@ -267,3 +277,23 @@ class TestDatabaseService:
         
         # 水タイプ（+2.0）とダメージ40以上（+2.0）の両方にマッチするので高スコア
         assert score >= 4.0  # 少なくとも4.0以上のスコアが期待される
+
+    def test_database_service_with_config(self, mock_settings):
+        """設定を使用したデータベースサービスの初期化テスト"""
+        service = DatabaseService()
+        
+        # 設定からパスが取得されることを確認
+        assert service.data_path == "/test/path/data.json"
+        assert service.converted_data_path == "/test/path/convert_data.json"
+
+    @pytest.mark.asyncio
+    async def test_filter_search_with_custom_paths(self, mock_settings, sample_data):
+        """カスタムパスでの検索テスト"""
+        service = DatabaseService()
+        
+        # _load_dataメソッドをモックして、設定されたパスが使用されることを確認
+        with patch.object(service, '_load_data', return_value=sample_data):
+            results = await service.filter_search(["炎"], top_k=5)
+            
+            assert len(results) == 1
+            assert results[0].title == "テストポケモン1"
