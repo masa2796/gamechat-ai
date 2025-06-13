@@ -33,33 +33,11 @@ class HybridSearchService:
         print(f"クエリ: {query}")
         
         # Step 1: LLMによる分類・要約
-        classification_request = ClassificationRequest(query=query)
-        classification = await self.classification_service.classify_query(classification_request)
-        
-        print(f"分類結果: {classification.query_type}")
-        print(f"要約: {classification.summary}")
-        print(f"信頼度: {classification.confidence}")
+        classification = await self._classify_query(query)
         
         # 挨拶の場合は検索をスキップ
-        if classification.query_type == QueryType.GREETING:
-            print("=== 挨拶検出: 検索をスキップ ===")
-            return {
-                "classification": classification,
-                "search_strategy": {
-                    "use_database": False,
-                    "use_vector": False,
-                    "skip_search": True,
-                    "reason": "greeting_detected"
-                },
-                "db_results": [],
-                "vector_results": [],
-                "merged_results": [],
-                "search_quality": {
-                    "overall_score": 1.0,
-                    "greeting_detected": True,
-                    "search_needed": False
-                }
-            }
+        if self._is_greeting(classification):
+            return self._create_greeting_response(classification)
         
         # Step 2: 検索戦略の決定と最適化
         search_strategy = self.classification_service.determine_search_strategy(classification)
@@ -69,6 +47,77 @@ class HybridSearchService:
         print(f"最適化限界: {optimized_limits}")
         
         # Step 3: 各検索の実行
+        db_results, vector_results = await self._execute_searches(
+            classification, search_strategy, optimized_limits, query
+        )
+        
+        # Step 4: 結果の品質評価
+        search_quality = self._evaluate_search_quality(
+            db_results, vector_results, classification
+        )
+        
+        # Step 5: 最適化されたマージ・選択
+        merged_results = self._merge_results_optimized(
+            db_results, vector_results, classification, top_k, search_quality
+        )
+        
+        print(f"最終結果: {len(merged_results)}件")
+        print(f"検索品質: {search_quality}")
+        
+        return {
+            "classification": classification,
+            "search_strategy": search_strategy,
+            "db_results": db_results,
+            "vector_results": vector_results,
+            "merged_results": merged_results,
+            "search_quality": search_quality,
+            "optimization_applied": True
+        }
+
+    async def _classify_query(self, query: str) -> ClassificationResult:
+        """クエリを分類する"""
+        classification_request = ClassificationRequest(query=query)
+        classification = await self.classification_service.classify_query(classification_request)
+        
+        print(f"分類結果: {classification.query_type}")
+        print(f"要約: {classification.summary}")
+        print(f"信頼度: {classification.confidence}")
+        
+        return classification
+
+    def _is_greeting(self, classification: ClassificationResult) -> bool:
+        """挨拶かどうかを判定"""
+        return classification.query_type == QueryType.GREETING
+
+    def _create_greeting_response(self, classification: ClassificationResult) -> Dict[str, Any]:
+        """挨拶用のレスポンスを作成"""
+        print("=== 挨拶検出: 検索をスキップ ===")
+        return {
+            "classification": classification,
+            "search_strategy": {
+                "use_database": False,
+                "use_vector": False,
+                "skip_search": True,
+                "reason": "greeting_detected"
+            },
+            "db_results": [],
+            "vector_results": [],
+            "merged_results": [],
+            "search_quality": {
+                "overall_score": 1.0,
+                "greeting_detected": True,
+                "search_needed": False
+            }
+        }
+
+    async def _execute_searches(
+        self, 
+        classification: ClassificationResult, 
+        search_strategy: Any, 
+        optimized_limits: Dict[str, int],
+        query: str
+    ) -> tuple[List[ContextItem], List[ContextItem]]:
+        """各検索を実行する"""
         db_results = []
         vector_results = []
         
@@ -96,28 +145,7 @@ class HybridSearchService:
             )
             print(f"ベクトル検索結果: {len(vector_results)}件")
         
-        # Step 4: 結果の品質評価
-        search_quality = self._evaluate_search_quality(
-            db_results, vector_results, classification
-        )
-        
-        # Step 5: 最適化されたマージ・選択
-        merged_results = self._merge_results_optimized(
-            db_results, vector_results, classification, top_k, search_quality
-        )
-        
-        print(f"最終結果: {len(merged_results)}件")
-        print(f"検索品質: {search_quality}")
-        
-        return {
-            "classification": classification,
-            "search_strategy": search_strategy,
-            "db_results": db_results,
-            "vector_results": vector_results,
-            "merged_results": merged_results,
-            "search_quality": search_quality,
-            "optimization_applied": True
-        }
+        return db_results, vector_results
     
     def _get_optimized_limits(self, classification: ClassificationResult, top_k: int) -> Dict[str, int]:
         """分類結果に基づいて検索限界を最適化"""
