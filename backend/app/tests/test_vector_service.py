@@ -1,6 +1,6 @@
 import pytest
-from app.services.vector_service import VectorService
-from app.models.rag_models import ContextItem
+from backend.app.services.vector_service import VectorService
+from backend.app.models.rag_models import ContextItem
 
 @pytest.mark.asyncio
 async def test_search_returns_context(monkeypatch):
