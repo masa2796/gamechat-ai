@@ -101,7 +101,7 @@ class TestDatabaseService:
         
         assert len(results) == 1
         assert results[0].title == "テストポケモン1"
-        assert results[0].score == 2.0  # 修正: タイプマッチは+2.0ポイント
+        assert results[0].score == 2.5  # タイプマッチ(+2.0) + テキストマッチ(+0.5)
 
     @pytest.mark.asyncio
     async def test_filter_search_no_keywords(self, database_service, sample_data, monkeypatch):
@@ -140,7 +140,7 @@ class TestDatabaseService:
         
         score = database_service._calculate_filter_score(item, keywords)
         
-        assert score == 2.0  # 修正: タイプマッチは+2.0ポイント
+        assert score == 2.5  # タイプマッチ(+2.0) + テキストマッチ(+0.5)
 
     def test_calculate_filter_score_no_match(self, database_service):
         """マッチなしのスコア計算テスト"""

@@ -30,43 +30,95 @@ class LLMService:
             return self._generate_greeting_response(query, classification)
         
         try:
-            # コンテキストテキストを結合（より構造化された形式で）
-            context_text = self._format_context_items(context_items)
+            # 回答生成のためのコンテキスト準備
+            context_data = self._prepare_context_data(context_items, classification, search_info)
             
-            # コンテキスト品質を分析
-            context_quality = self._analyze_context_quality(context_items)
-            
-            # 分類結果の要約テキスト生成
-            classification_summary = self._format_classification_info(classification)
-            
-            # 検索情報の要約（品質分析結果を含む）
-            search_summary = self._format_search_info(search_info, context_quality)
-            
-            # 改良されたシステムプロンプト
+            # プロンプトの構築
             system_prompt = self._get_optimized_system_prompt()
-            
-            # より文脈に沿ったユーザープロンプト構成
-            user_prompt = self._build_enhanced_user_prompt(
-                query, context_text, classification_summary, search_summary, context_quality
-            )
+            user_prompt = self._build_enhanced_user_prompt(query, context_data)
 
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,  # 簡潔な回答を促すため削減
-                temperature=0.3,  # より一貫性のある回答のため下げる
-                presence_penalty=0.1,  # 冗長性を減らす
-                frequency_penalty=0.1  # 繰り返しを減らす
-            )
+            # LLMに回答生成を依頼
+            response = await self._request_llm_response(system_prompt, user_prompt)
             
-            return response.choices[0].message.content.strip()
+            return response
             
         except Exception as e:
             print(f"LLM回答生成エラー: {e}")
             return f"申し訳ありませんが、「{query}」に関する回答の生成中にエラーが発生しました。"
+
+    def _prepare_context_data(
+        self, 
+        context_items: List[ContextItem],
+        classification: Optional[ClassificationResult] = None,
+        search_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """回答生成のためのコンテキストデータを準備"""
+        # コンテキストテキストを結合（より構造化された形式で）
+        context_text = self._format_context_items(context_items)
+        
+        # コンテキスト品質を分析
+        context_quality = self._analyze_context_quality(context_items)
+        
+        # 分類結果の要約テキスト生成
+        classification_summary = self._format_classification_info(classification)
+        
+        # 検索情報の要約（品質分析結果を含む）
+        search_summary = self._format_search_info(search_info, context_quality)
+        
+        return {
+            "context_text": context_text,
+            "context_quality": context_quality,
+            "classification_summary": classification_summary,
+            "search_summary": search_summary
+        }
+
+    def _build_enhanced_user_prompt(self, query: str, context_data: Dict[str, Any]) -> str:
+        """強化されたユーザープロンプトを構築"""
+        prompt_parts = [f"【ユーザーの質問】\n{query}"]
+        
+        if context_data["classification_summary"]:
+            prompt_parts.append(context_data["classification_summary"])
+        
+        if context_data["search_summary"]:
+            prompt_parts.append(context_data["search_summary"])
+        
+        prompt_parts.append(f"【検索結果】\n{context_data['context_text']}")
+        
+        # 回答戦略に基づく具体的な指示
+        strategy_instructions = self._get_strategy_instructions(context_data["context_quality"])
+        
+        prompt_parts.append(f"""
+【回答指示】
+上記の質問分析結果と検索結果を参考に、以下の条件を満たす回答を生成してください：
+
+{strategy_instructions}
+
+1. **簡潔性重視**: 100-200文字程度で要点を明確に
+2. **文脈活用**: 分類結果で示された質問の意図を正確に理解
+3. **関連度考慮**: 検索結果の関連度スコアに基づいて回答の詳細度を調整
+4. **実用性**: ユーザーの判断や行動に直接役立つ情報を優先
+5. **自然な口調**: 親しみやすく、専門的すぎない表現
+
+前置きや冗長な説明は省略し、核心となる情報を中心に構成してください。
+""")
+        
+        return "\n".join(prompt_parts)
+
+    async def _request_llm_response(self, system_prompt: str, user_prompt: str) -> str:
+        """LLMにリクエストを送信して回答を取得"""
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=300,  # 簡潔な回答を促すため削減
+            temperature=0.3,  # より一貫性のある回答のため下げる
+            presence_penalty=0.1,  # 冗長性を減らす
+            frequency_penalty=0.1  # 繰り返しを減らす
+        )
+        
+        return response.choices[0].message.content.strip()
 
     def _generate_greeting_response(self, query: str, classification: ClassificationResult) -> str:
         """挨拶専用の応答を生成"""
@@ -245,44 +297,7 @@ class LLMService:
 
 必ず上記の方針に従い、質問の文脈を考慮した適切で簡潔な回答を生成してください。"""
     
-    def _build_enhanced_user_prompt(
-        self, 
-        query: str, 
-        context_text: str, 
-        classification_summary: str, 
-        search_summary: str,
-        context_quality: Optional[Dict[str, Any]] = None
-    ) -> str:
-        """強化されたユーザープロンプトを構築"""
-        prompt_parts = [f"【ユーザーの質問】\n{query}"]
-        
-        if classification_summary:
-            prompt_parts.append(classification_summary)
-        
-        if search_summary:
-            prompt_parts.append(search_summary)
-        
-        prompt_parts.append(f"【検索結果】\n{context_text}")
-        
-        # 回答戦略に基づく具体的な指示
-        strategy_instructions = self._get_strategy_instructions(context_quality)
-        
-        prompt_parts.append(f"""
-【回答指示】
-上記の質問分析結果と検索結果を参考に、以下の条件を満たす回答を生成してください：
-
-{strategy_instructions}
-
-1. **簡潔性重視**: 100-200文字程度で要点を明確に
-2. **文脈活用**: 分類結果で示された質問の意図を正確に理解
-3. **関連度考慮**: 検索結果の関連度スコアに基づいて回答の詳細度を調整
-4. **実用性**: ユーザーの判断や行動に直接役立つ情報を優先
-5. **自然な口調**: 親しみやすく、専門的すぎない表現
-
-前置きや冗長な説明は省略し、核心となる情報を中心に構成してください。
-""")
-        
-        return "\n".join(prompt_parts)
+    # レガシーメソッドを削除（新しい実装に統合されたため）
     
     def _get_strategy_instructions(self, context_quality: Optional[Dict[str, Any]]) -> str:
         """回答戦略に基づく具体的な指示を生成"""
