@@ -11,9 +11,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class VectorService:
-    def __init__(self):
+    """Upstash Vector を使用した類似検索サービス（最適化対応）"""
+    
+    def __init__(self) -> None:
         upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
+        
+        if not upstash_url or not upstash_token:
+            raise VectorSearchException(
+                message="Upstash Vector設定が不完全です",
+                code="UPSTASH_CONFIG_MISSING"
+            )
+        
         self.vector_index = Index(url=upstash_url, token=upstash_token)
     
     @handle_service_exceptions("vector", fallback_return=[])
@@ -21,7 +30,7 @@ class VectorService:
         self, 
         query_embedding: List[float], 
         top_k: int = 50, 
-        namespaces: List[str] = None,
+        namespaces: Optional[List[str]] = None,
         classification: Optional[ClassificationResult] = None,
         min_score: Optional[float] = None
     ) -> List[ContextItem]:
@@ -49,7 +58,12 @@ class VectorService:
             namespaces = self._get_default_namespaces(classification)
         
         if min_score is None:
-            min_score = settings.VECTOR_SEARCH_CONFIG["minimum_score"]
+            config = settings.VECTOR_SEARCH_CONFIG
+            min_score_value = config.get("minimum_score")
+            if isinstance(min_score_value, (int, float)):
+                min_score = float(min_score_value)
+            else:
+                min_score = 0.5
         
         GameChatLogger.log_info("vector_service", "ベクトル検索を開始", {
             "namespaces": namespaces,
@@ -79,15 +93,24 @@ class VectorService:
                 })
                 
                 for i, match in enumerate(matches):
-                    score = getattr(match, 'score', None) or float(match.score) if hasattr(match, 'score') else 0
+                    # scoreの型安全な取得
+                    score_value = getattr(match, 'score', None)
+                    if score_value is not None:
+                        score = float(score_value)
+                    else:
+                        score = 0.0
                     
                     # スコア閾値による除外
-                    if score < min_score:
+                    if min_score is not None and score < min_score:
                         continue
                         
                     meta = getattr(match, 'metadata', None)
-                    text = meta.get('text') if meta else getattr(match, 'text', None)
-                    title = meta.get('title', f"{namespace} - 情報") if meta else f"{namespace} - 情報"
+                    if meta and hasattr(meta, 'get'):
+                        text = meta.get('text')
+                        title = meta.get('title', f"{namespace} - 情報")
+                    else:
+                        text = getattr(match, 'text', None)
+                        title = f"{namespace} - 情報"
                     
                     if text:
                         all_results.append({
@@ -143,10 +166,13 @@ class VectorService:
         
         config = settings.VECTOR_SEARCH_CONFIG
         
-        # 分類タイプ別の検索件数調整
-        if classification.query_type in config["search_limits"]:
-            vector_limit = config["search_limits"][classification.query_type]["vector"]
-            top_k = min(top_k, vector_limit)
+        # 分類タイプ別の検索件数調整 (型安全)
+        search_limits = config.get("search_limits", {})
+        if isinstance(search_limits, dict) and classification.query_type.value in search_limits:
+            type_limits = search_limits[classification.query_type.value]
+            if isinstance(type_limits, dict):
+                vector_limit = type_limits.get("vector", 15)
+                top_k = min(top_k, vector_limit)
         
         # 信頼度による類似度閾値調整
         confidence_level = "high" if classification.confidence >= 0.8 else (
@@ -154,17 +180,30 @@ class VectorService:
         )
         
         if min_score is None:
-            base_threshold = config["similarity_thresholds"].get(
-                classification.query_type, config["minimum_score"]
-            )
-            confidence_adjustment = config["confidence_adjustments"][confidence_level]
+            # 型安全なconfig辞書アクセス
+            similarity_thresholds = config.get("similarity_thresholds", {})
+            if isinstance(similarity_thresholds, dict):
+                base_threshold = similarity_thresholds.get(classification.query_type.value, 0.7)
+            else:
+                minimum_score = config.get("minimum_score", 0.5)
+                if isinstance(minimum_score, (int, float)):
+                    base_threshold = float(minimum_score)
+                else:
+                    base_threshold = 0.7
+                
+            confidence_adjustments = config.get("confidence_adjustments", {})
+            if isinstance(confidence_adjustments, dict):
+                confidence_adjustment = confidence_adjustments.get(confidence_level, 0.7)
+            else:
+                confidence_adjustment = 0.7
+                
             min_score = base_threshold * confidence_adjustment
         
         # ネームスペース最適化
         if namespaces is None:
             namespaces = self._get_optimized_namespaces(classification)
         
-        print(f"[VectorService] パラメータ最適化完了:")
+        print("[VectorService] パラメータ最適化完了:")
         print(f"  top_k: {top_k}, min_score: {min_score:.3f}")
         print(f"  信頼度レベル: {confidence_level}")
         

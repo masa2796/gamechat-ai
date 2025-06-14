@@ -14,14 +14,14 @@ class RagRequest(BaseModel):
 
     @field_validator("question")
     @classmethod
-    def question_not_blank(cls, v):
+    def question_not_blank(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("questionは空白のみ不可")
         return v
 
     @field_validator("top_k")
     @classmethod
-    def top_k_range(cls, v):
+    def top_k_range(cls, v: Optional[int]) -> Optional[int]:
         if v is not None and (v < 1 or v > 100):
             raise ValueError("top_kは1〜100の範囲で指定してください")
         return v
