@@ -18,16 +18,44 @@ class HybridSearchService:
     
     async def search(self, query: str, top_k: int = 3) -> Dict[str, Any]:
         """
-        クエリを分類し、最適化された検索戦略で結果を取得
+        クエリを分類し、最適化された検索戦略で結果を取得します。
         
+        このメソッドはハイブリッド検索システムの中核となる機能で、
+        LLMによる分類結果に基づいて最適な検索戦略を選択し、
+        データベース検索とベクトル検索を組み合わせて最適な結果を返します。
+        
+        Args:
+            query: 検索クエリ文字列
+                例: "HP100以上のカード", "強いカードを教えて"
+            top_k: 返却する最大結果数 (デフォルト: 3)
+                
         Returns:
-            Dict containing:
-            - classification: 分類結果
-            - search_strategy: 使用した検索戦略
-            - db_results: データベース検索結果 (if applicable)
-            - vector_results: ベクトル検索結果 (if applicable)
-            - merged_results: マージされた最終結果
-            - search_quality: 検索品質評価
+            検索結果を含む辞書:
+            - classification: 分類結果 (ClassificationResult)
+            - search_strategy: 使用した検索戦略 (SearchStrategy)
+            - db_results: データベース検索結果 (List[ContextItem])
+            - vector_results: ベクトル検索結果 (List[ContextItem])
+            - merged_results: マージされた最終結果 (List[ContextItem])
+            - search_quality: 検索品質評価 (Dict[str, Any])
+            - optimization_applied: 最適化適用フラグ (bool)
+            
+        Raises:
+            ClassificationException: クエリ分類に失敗した場合
+            DatabaseException: データベース検索でエラーが発生した場合
+            VectorException: ベクトル検索でエラーが発生した場合
+            
+        Examples:
+            >>> service = HybridSearchService()
+            >>> result = await service.search("HP100以上のカード", top_k=5)
+            >>> print(result["classification"].query_type)
+            QueryType.FILTERABLE
+            >>> print(len(result["merged_results"]))
+            5
+            
+            >>> # 挨拶の場合は検索をスキップ
+            >>> result = await service.search("こんにちは")
+            >>> print(result["classification"].query_type)
+            QueryType.GREETING
         """
         print("=== 最適化統合検索開始 ===")
         print(f"クエリ: {query}")
@@ -408,9 +436,9 @@ class HybridSearchService:
         
         if classification.query_type == QueryType.SEMANTIC:
             suggestions = [
-                "• より具体的なポケモン名やカード名で検索",
+                "• より具体的なカード名やキャラクター名で検索",
                 "• 「技」「HP」「タイプ」などの具体的な属性を含めた検索",
-                "• 「強い草タイプのポケモン」のように条件を明確化"
+                "• 「強い草タイプのカード」のように条件を明確化"
             ]
         
         elif classification.query_type == QueryType.FILTERABLE:

@@ -41,7 +41,7 @@
         "ピカチュウ",
         "情報"
       ],
-      "reasoning": "特定のポケモンであるピカチュウに関する情報を求めているため、意味的な検索が適している。"
+      "reasoning": "特定のカードであるピカチュウに関する情報を求めているため、意味的な検索が適している。"
     },
     "search_info": {
       "query_type": "semantic",
@@ -52,7 +52,7 @@
   },
   {
     "test_name": "複雑なフィルター検索",
-    "question": "HP100以上の炎タイプのポケモンを教えて",
+    "question": "HP100以上の炎タイプのカードを教えて",
     "response_time": 14.322355031967163,
     "search_skipped": false,
     "skip_expected": false,
@@ -61,7 +61,7 @@
     "context_count": 5,
     "classification": {
       "query_type": "filterable",
-      "summary": "HP100以上の炎タイプのポケモンを探す",
+      "summary": "HP100以上の炎タイプのカードを探す",
       "confidence": 0.9,
       "filter_keywords": [
         "HP",
@@ -121,7 +121,7 @@
         "リザードン",
         "技"
       ],
-      "reasoning": "特定のポケモン（リザードン）の技に関する情報を求めているため、意味的な検索に分類。"
+      "reasoning": "特定のカード（リザードン）の技に関する情報を求めているため、意味的な検索に分類。"
     },
     "search_info": {
       "query_type": "semantic",

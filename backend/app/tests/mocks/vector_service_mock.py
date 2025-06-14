@@ -21,17 +21,17 @@ class MockVectorService:
         """デフォルトのモック結果を設定"""
         self._mock_results = [
             ContextItem(
-                title="テスト用ポケモン1",
+                title="テスト用カード1",
                 text="これはテスト用のモックデータです。HP: 100, タイプ: 炎",
                 score=0.9
             ),
             ContextItem(
-                title="テスト用ポケモン2", 
+                title="テスト用カード2", 
                 text="これもテスト用のモックデータです。HP: 80, タイプ: 水",
                 score=0.8
             ),
             ContextItem(
-                title="テスト用ポケモン3",
+                title="テスト用カード3",
                 text="さらにテスト用のモックデータです。HP: 120, タイプ: 草",
                 score=0.7
             )

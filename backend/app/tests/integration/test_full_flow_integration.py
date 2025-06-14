@@ -19,17 +19,16 @@ class TestFullFlowIntegration:
     @pytest.mark.asyncio
     async def test_normal_question_full_flow(self, rag_service, monkeypatch):
         """通常質問の完全フローテスト"""
-        
-        # フルフローをモック
+         # フルフローをモック
         async def mock_process_query(request):
             return {
-                "answer": "リザードンは炎タイプのポケモンです。",
+                "answer": "リザードンは炎タイプの強力なカードです。",
                 "context": [
-                    {"title": "リザードン", "text": "炎タイプの最終進化ポケモン", "score": 0.9}
+                    {"title": "リザードン", "text": "炎タイプの最終進化カード", "score": 0.9}
                 ],
                 "classification": {
                     "query_type": "semantic",
-                    "summary": "リザードンの情報検索", 
+                    "summary": "リザードンの情報検索",
                     "confidence": 0.9
                 },
                 "search_info": {
@@ -50,13 +49,13 @@ class TestFullFlowIntegration:
                 "expected_min_answer_length": 10
             },
             {
-                "question": "HPが100以上の炎タイプポケモン",
+                "question": "HPが100以上の炎タイプカード",
                 "expected_classification": "filterable", 
                 "expected_has_context": True,
                 "expected_min_answer_length": 15
             },
             {
-                "question": "炎タイプで強いポケモンは？",
+                "question": "炎タイプで強いカードは？",
                 "expected_classification": "hybrid",
                 "expected_has_context": True,
                 "expected_min_answer_length": 18  # より現実的な値に修正
@@ -186,7 +185,7 @@ class TestFullFlowIntegration:
         # 複雑な分類結果のモック
         mock_classification = ClassificationResult(
             query_type=QueryType.HYBRID,
-            summary="ダメージ40以上の技を持つ水タイプの強いポケモン",
+            summary="ダメージ40以上の技を持つ水タイプの強いカード",
             confidence=0.85,
             filter_keywords=["ダメージ", "40以上", "技", "水", "タイプ"],
             search_keywords=["強い"],
@@ -196,12 +195,12 @@ class TestFullFlowIntegration:
         # DB検索結果のモック
         mock_db_results = [
             ContextItem(title="カメックス", text="水タイプで高いダメージの技を持つ", score=0.9),
-            ContextItem(title="ブラストイズ", text="水タイプの強力なポケモン", score=0.8)
+            ContextItem(title="ブラストイズ", text="水タイプの強力なカード", score=0.8)
         ]
         
         # ベクトル検索結果のモック
         mock_vector_results = [
-            ContextItem(title="強力な水ポケモン特集", text="戦略的に優秀な水タイプ", score=0.85),
+            ContextItem(title="強力な水カード特集", text="戦略的に優秀な水タイプ", score=0.85),
             ContextItem(title="高ダメージ技解説", text="効果的な攻撃技の紹介", score=0.8)
         ]
         
@@ -217,7 +216,7 @@ class TestFullFlowIntegration:
         monkeypatch.setattr(hybrid_search_service.vector_service, "search", mock_vector_search)
         
         result = await hybrid_search_service.search(
-            "ダメージが40以上の技を持つ、水タイプで強いポケモンを教えて", 5
+            "ダメージが40以上の技を持つ、水タイプで強いカードを教えて", 5
         )
         
         # 複雑なクエリの処理確認

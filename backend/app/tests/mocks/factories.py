@@ -22,16 +22,16 @@ class ContextItemFactory:
         ]
     
     @staticmethod
-    def create_pokemon_items(count: int = 5) -> List[ContextItem]:
-        """ポケモン関連のContextItemを生成"""
-        pokemon_data = [
-            {"title": "ピカチュウ", "text": "電気タイプのマスコットポケモン。10まんボルトが得意技。", "score": 0.95},
+    def create_game_card_items(count: int = 5) -> List[ContextItem]:
+        """ゲームカード関連のContextItemを生成"""
+        card_data = [
+            {"title": "ピカチュウ", "text": "電気タイプのマスコットカード。10まんボルトが得意技。", "score": 0.95},
             {"title": "リザードン", "text": "炎/飛行タイプの最終進化。強力なかえんほうしゃを使う。", "score": 0.92},
-            {"title": "フシギダネ", "text": "草タイプのたねポケモン。はっぱカッターで攻撃する。", "score": 0.90},
+            {"title": "フシギダネ", "text": "草タイプのたねカード。はっぱカッターで攻撃する。", "score": 0.90},
             {"title": "カメックス", "text": "水タイプの最終進化。ハイドロポンプが必殺技。", "score": 0.89},
             {"title": "フシギバナ", "text": "草/毒タイプの最終進化。はなびらのまいで攻撃。", "score": 0.88},
-            {"title": "ゼニガメ", "text": "水タイプのかめポケモン。みずでっぽうを使う。", "score": 0.86},
-            {"title": "ヒトカゲ", "text": "炎タイプのとかげポケモン。ひのこで攻撃する。", "score": 0.85}
+            {"title": "ゼニガメ", "text": "水タイプのかめカード。みずでっぽうを使う。", "score": 0.86},
+            {"title": "ヒトカゲ", "text": "炎タイプのとかげカード。ひのこで攻撃する。", "score": 0.85}
         ]
         
         return [
@@ -40,7 +40,7 @@ class ContextItemFactory:
                 text=data["text"],
                 score=data["score"]
             )
-            for data in pokemon_data[:count]
+            for data in card_data[:count]
         ]
     
     @staticmethod
@@ -115,7 +115,7 @@ class ClassificationResultFactory:
             query_type=QueryType.SEMANTIC,
             summary=summary,
             confidence=confidence,
-            search_keywords=search_keywords or ["強い", "ポケモン"],
+            search_keywords=search_keywords or ["強い", "カード"],
             filter_keywords=[],
             reasoning="意味的な内容に基づく検索クエリとして分類"
         )
@@ -185,12 +185,12 @@ class TestScenarioFactory:
     """複合的なテストシナリオのファクトリー"""
     
     @staticmethod
-    def create_successful_pokemon_search():
-        """成功するポケモン検索シナリオ"""
+    def create_successful_game_card_search():
+        """成功するゲームカード検索シナリオ"""
         return {
-            "query": "強いポケモンを教えて",
+            "query": "強いカードを教えて",
             "classification": ClassificationResultFactory.create_semantic_result(),
-            "context_items": ContextItemFactory.create_pokemon_items(3),
+            "context_items": ContextItemFactory.create_game_card_items(3),
             "expected_response_keywords": ["ピカチュウ", "リザードン", "強力"]
         }
     
@@ -198,7 +198,7 @@ class TestScenarioFactory:
     def create_filter_search_scenario():
         """フィルター検索シナリオ"""
         return {
-            "query": "HPが100以上のポケモン",
+            "query": "HPが100以上のカード",
             "classification": ClassificationResultFactory.create_filterable_result(),
             "context_items": ContextItemFactory.create_high_score_items(3),
             "expected_response_keywords": ["HP", "100以上", "高い"]
@@ -208,7 +208,7 @@ class TestScenarioFactory:
     def create_hybrid_search_scenario():
         """ハイブリッド検索シナリオ"""
         return {
-            "query": "炎タイプで攻撃力の高いポケモン",
+            "query": "炎タイプで攻撃力の高いカード",
             "classification": ClassificationResultFactory.create_hybrid_result(),
             "db_results": ContextItemFactory.create_db_search_items(2),
             "vector_results": ContextItemFactory.create_vector_search_items(2),
@@ -222,7 +222,7 @@ class TestScenarioFactory:
             "query": "こんにちは",
             "classification": ClassificationResultFactory.create_greeting_result(),
             "context_items": [],
-            "expected_response": "こんにちは！ポケモンについて何か知りたいことはありますか？"
+            "expected_response": "こんにちは！ゲームカードについて何か知りたいことはありますか？"
         }
     
     @staticmethod

@@ -40,7 +40,7 @@ def test_talk_guidelines_without_ng_word(monkeypatch):
     monkeypatch.setattr(rag.rag_service, "process_query", mock_process_query)
     monkeypatch.setattr(rag.auth_service, "verify_request", mock_verify_request)
 
-    response = client.post("/api/rag/query", json={"question": "ポケモンの進化について教えて！"})
+    response = client.post("/api/rag/query", json={"question": "カードの進化について教えて！"})
     assert response.status_code == 200
     assert response.json()["answer"] == "通常の回答"
 

@@ -25,11 +25,11 @@ class TestVectorService:
     async def test_search_with_multiple_results(
         self, 
         vector_service, 
-        pokemon_context_items
+        game_card_context_items
     ):
         """複数結果の検索テスト"""
         # MockVectorServiceにカスタム結果を設定
-        vector_service.set_mock_results(pokemon_context_items[:3])
+        vector_service.set_mock_results(game_card_context_items[:3])
         
         result = await vector_service.search([0.1] * 1536, top_k=3)
         
@@ -66,7 +66,7 @@ class TestVectorServiceOptimization:
     async def test_adaptive_top_k_adjustment(
         self, 
         vector_service,
-        pokemon_context_items,
+        game_card_context_items,
         semantic_classification
     ):
         """動的top_k調整テスト"""
@@ -94,7 +94,7 @@ class TestVectorServiceOptimization:
     async def test_batch_search_optimization(
         self, 
         vector_service,
-        pokemon_context_items
+        game_card_context_items
     ):
         """バッチ検索最適化テスト"""
         # 複数のクエリベクトルでバッチ検索をシミュレート

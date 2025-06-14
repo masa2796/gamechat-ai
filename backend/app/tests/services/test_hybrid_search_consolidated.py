@@ -14,7 +14,7 @@ class TestHybridSearchService:
     async def test_search_returns_dict(
         self, 
         hybrid_search_service,
-        pokemon_context_items,
+        game_card_context_items,
         mock_openai_client
     ):
         """検索が辞書形式の結果を返すテスト"""
@@ -28,15 +28,15 @@ class TestHybridSearchService:
         
         # モックの設定（async関数として）
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:3]
+            return game_card_context_items[:3]
         
         async def mock_db_search(*args, **kwargs):
-            return pokemon_context_items[2:5]
+            return game_card_context_items[2:5]
         
         hybrid_search_service.vector_service.search = mock_vector_search
         hybrid_search_service.database_service.filter_search = mock_db_search
         
-        query = "強いポケモンを教えて"
+        query = "強いカードを教えて"
         result = await hybrid_search_service.search(query)
         
         # 基本的な構造チェック
@@ -80,7 +80,7 @@ class TestHybridSearchService:
     async def test_search_with_semantic_query(
         self, 
         hybrid_search_service,
-        pokemon_context_items,
+        game_card_context_items,
         mock_openai_client
     ):
         """意味的検索クエリのテスト"""
@@ -94,11 +94,11 @@ class TestHybridSearchService:
         
         # モックの設定（async関数として）
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:3]
+            return game_card_context_items[:3]
         
         hybrid_search_service.vector_service.search = mock_vector_search
         
-        query = "ポケモンについて教えて"
+        query = "カードについて教えて"
         result = await hybrid_search_service.search(query)
         
         assert isinstance(result, dict)
@@ -143,7 +143,7 @@ class TestHybridSearchOptimization:
     async def test_optimization_with_high_confidence(
         self,
         hybrid_search_service,
-        pokemon_context_items,
+        game_card_context_items,
         mock_openai_client
     ):
         """高信頼度での最適化テスト"""
@@ -157,7 +157,7 @@ class TestHybridSearchOptimization:
         
         # モックの設定
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:5]
+            return game_card_context_items[:5]
 
         hybrid_search_service.vector_service.search = mock_vector_search
         
@@ -171,7 +171,7 @@ class TestHybridSearchOptimization:
     async def test_search_strategy_selection(
         self,
         hybrid_search_service,
-        pokemon_context_items,
+        game_card_context_items,
         mock_openai_client
     ):
         """検索戦略選択テスト"""
@@ -185,10 +185,10 @@ class TestHybridSearchOptimization:
         
         # モックの設定
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:3]
+            return game_card_context_items[:3]
 
         async def mock_db_search(*args, **kwargs):
-            return pokemon_context_items[1:4]
+            return game_card_context_items[1:4]
 
         hybrid_search_service.vector_service.search = mock_vector_search
         hybrid_search_service.database_service.filter_search = mock_db_search
@@ -203,7 +203,7 @@ class TestHybridSearchOptimization:
     async def test_result_merging_and_deduplication(
         self, 
         hybrid_search_service,
-        pokemon_context_items
+        game_card_context_items
     ,
         mock_openai_client
     ):
@@ -213,8 +213,8 @@ class TestHybridSearchOptimization:
         hybrid_search_service.embedding_service.client = mock_openai_client
         
         # 重複を含む結果を設定
-        vector_results = pokemon_context_items[:3]
-        db_results = pokemon_context_items[1:4]  # 1つ重複
+        vector_results = game_card_context_items[:3]
+        db_results = game_card_context_items[1:4]  # 1つ重複
         
         async def mock_vector_search(*args, **kwargs):
             return vector_results
@@ -241,7 +241,7 @@ class TestHybridSearchPerformance:
     async def test_search_response_time(
         self,
         hybrid_search_service,
-        pokemon_context_items
+        game_card_context_items
     ,
         mock_openai_client
     ):
@@ -254,7 +254,7 @@ class TestHybridSearchPerformance:
 
         # モックの設定
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:3]
+            return game_card_context_items[:3]
 
         hybrid_search_service.vector_service.search = mock_vector_search
         
@@ -274,7 +274,7 @@ class TestHybridSearchPerformance:
     async def test_concurrent_search_handling(
         self,
         hybrid_search_service,
-        pokemon_context_items
+        game_card_context_items
     ,
         mock_openai_client
     ):
@@ -287,7 +287,7 @@ class TestHybridSearchPerformance:
 
         # モックの設定
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:2]
+            return game_card_context_items[:2]
 
         hybrid_search_service.vector_service.search = mock_vector_search
         
@@ -358,7 +358,7 @@ class TestHybridSearchConfiguration:
     async def test_service_with_different_top_k(
         self,
         hybrid_search_service,
-        pokemon_context_items
+        game_card_context_items
     ,
         mock_openai_client
     ):
@@ -369,7 +369,7 @@ class TestHybridSearchConfiguration:
         
         # モックの設定
         async def mock_vector_search(*args, **kwargs):
-            return pokemon_context_items[:kwargs.get('top_k', 3)]
+            return game_card_context_items[:kwargs.get('top_k', 3)]
 
         hybrid_search_service.vector_service.search = mock_vector_search
         
