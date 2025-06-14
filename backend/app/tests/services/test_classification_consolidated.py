@@ -385,15 +385,16 @@ class TestClassificationPerformance:
 
     @pytest.mark.asyncio
     async def test_api_key_safety_check(self, classification_service):
-        """APIキーの安全性チェック - 実際のAPIが呼び出されないことを確認"""
-        # クライアントがNoneの場合のフォールバック動作をテスト
+        """APIキーの安全性チェック - 例外が発生することを確認"""
+        # クライアントがNoneの場合の例外動作をテスト
         classification_service.client = None
         
         request = ClassificationRequest(query="テストクエリ")
-        result = await classification_service.classify_query(request)
         
-        # フォールバック分類が返されることを確認
-        assert isinstance(result, ClassificationResult)
-        assert result.query_type == QueryType.SEMANTIC
-        assert result.confidence == 0.3
-        assert "フォールバック分類" in result.reasoning
+        # ClassificationExceptionが発生することを確認
+        from backend.app.core.exceptions import ClassificationException
+        with pytest.raises(ClassificationException) as exc_info:
+            await classification_service.classify_query(request)
+        
+        assert exc_info.value.code == "API_KEY_NOT_SET"
+        assert "OpenAI APIキーが設定されていません" in str(exc_info.value)
