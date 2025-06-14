@@ -22,12 +22,12 @@ class MockUpstashResult:
         self.matches = matches
     
     @classmethod
-    def create_pokemon_results(cls, count: int = 3):
-        """ポケモン関連の検索結果を生成"""
-        pokemon_data = [
-            {"title": "ピカチュウ", "text": "電気タイプのマスコットポケモン", "score": 0.95},
+    def create_game_card_results(cls, count: int = 3):
+        """ゲームカード関連の検索結果を生成"""
+        card_data = [
+            {"title": "ピカチュウ", "text": "電気タイプのマスコットカード", "score": 0.95},
             {"title": "リザードン", "text": "炎/飛行タイプの最終進化", "score": 0.92},
-            {"title": "フシギダネ", "text": "草タイプのたねポケモン", "score": 0.90},
+            {"title": "フシギダネ", "text": "草タイプのたねカード", "score": 0.90},
             {"title": "カメックス", "text": "水タイプの最終進化", "score": 0.89},
             {"title": "フシギバナ", "text": "草/毒タイプの最終進化", "score": 0.88}
         ]
@@ -38,7 +38,7 @@ class MockUpstashResult:
                 title=data["title"],
                 text=data["text"]
             )
-            for data in pokemon_data[:count]
+            for data in card_data[:count]
         ]
         return cls(matches)
     
@@ -71,7 +71,7 @@ class MockClassificationResult:
             query_type=QueryType.SEMANTIC,
             summary=summary or "意味的検索クエリ",
             confidence=confidence,
-            search_keywords=["強い", "ポケモン"],
+            search_keywords=["強い", "カード"],
             filter_keywords=[],
             reasoning="意味的な検索として分類"
         )
@@ -175,8 +175,8 @@ class MockDatabaseConnection:
         mock_connection = MagicMock()
         mock_connection.execute.return_value = MagicMock()
         mock_connection.fetchall.return_value = [
-            {"title": "DBポケモン1", "text": "データベースから取得1", "score": 0.9},
-            {"title": "DBポケモン2", "text": "データベースから取得2", "score": 0.8}
+            {"title": "DBカード1", "text": "データベースから取得1", "score": 0.9},
+            {"title": "DBカード2", "text": "データベースから取得2", "score": 0.8}
         ]
         return mock_connection
     

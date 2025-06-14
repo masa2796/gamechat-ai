@@ -36,8 +36,8 @@ graph TD
 | 分類タイプ | 説明 | 例 | 使用する検索手法 |
 |-----------|------|----|--------------| 
 | **filterable** | 具体的な条件での絞り込み | "HPが100以上"、"炎タイプ" | データベース検索 |
-| **semantic** | 意味的な検索 | "強いポケモン"、"おすすめ" | ベクトル検索 |
-| **hybrid** | 両方の組み合わせ | "炎タイプで強いポケモン" | DB + ベクトル検索 |
+| **semantic** | 意味的な検索 | "強いカード"、"おすすめ" | ベクトル検索 |
+| **hybrid** | 両方の組み合わせ | "炎タイプで強いカード" | DB + ベクトル検索 |
 
 ---
 
@@ -91,13 +91,13 @@ class ClassificationResult(BaseModel):
 
 **特徴:**
 - HP値の数値比較（100以上、50以上など）
-- ポケモンタイプの正確なマッチング
+- カードタイプの正確なマッチング
 - 部分マッチによる柔軟な検索
 
 **検索性能:**
 - 総データ件数: 100件
-- HP100以上のポケモン: 38件検出
-- 炎タイプのポケモン: 20件検出
+- HP100以上のカード: 38件検出
+- 炎タイプのカード: 20件検出
 - 検索精度: 100%（完全一致）
 
 ### 4. ハイブリッド検索サービス (`hybrid_search_service.py`)
@@ -163,7 +163,7 @@ async def classify_query(self, request: ClassificationRequest):
 
 #### 1. 数値フィルター検索
 ```
-入力: "HPが100以上のポケモン"
+入力: "HPが100以上のカード"
 分類: filterable (信頼度: 0.9)
 戦略: DB検索のみ
 結果: フシギバナ, フシギバナex, バタフリーなど（38件から3件表示）
@@ -171,7 +171,7 @@ async def classify_query(self, request: ClassificationRequest):
 
 #### 2. タイプフィルター検索
 ```
-入力: "炎タイプのポケモン"
+入力: "炎タイプのカード"
 分類: filterable (信頼度: 0.9)
 戦略: DB検索のみ
 結果: ヒトカゲ, リザード, リザードンなど（20件から3件表示）
@@ -179,18 +179,18 @@ async def classify_query(self, request: ClassificationRequest):
 
 #### 3. 意味検索
 ```
-入力: "強いポケモンを教えて"
+入力: "強いカードを教えて"
 分類: semantic (信頼度: 0.8)
 戦略: ベクトル検索のみ
-結果: 意味的に関連するポケモン情報
+結果: 意味的に関連するカード情報
 ```
 
 #### 4. ハイブリッド検索
 ```
-入力: "炎タイプで強いポケモン"
+入力: "炎タイプで強いカード"
 分類: hybrid (実装では条件により調整)
 戦略: DB + ベクトル検索
-結果: 炎タイプかつ強さの評価が高いポケモン
+結果: 炎タイプかつ強さの評価が高いカード
 ```
 
 ## API仕様
@@ -203,7 +203,7 @@ async def classify_query(self, request: ClassificationRequest):
 **リクエスト:**
 ```json
 {
-  "query": "HPが100以上のポケモン",
+  "query": "HPが100以上のカード",
   "top_k": 3
 }
 ```
@@ -211,7 +211,7 @@ async def classify_query(self, request: ClassificationRequest):
 **レスポンス:**
 ```json
 {
-  "query": "HPが100以上のポケモン",
+  "query": "HPが100以上のカード",
   "classification": {
     "query_type": "filterable",
     "summary": "HP数値フィルター検索",
@@ -270,7 +270,7 @@ docs/
 
 ```
 data/
-├── data.json                              📊 ポケモンの構造化データ
+├── data.json                              📊 カードの構造化データ
 ├── convert_data.json                      🔄 エンベディング用中間データ
 └── embedding_list.jsonl                   🚀 ベクトル化済みデータ
 ```
