@@ -204,6 +204,6 @@ async def test_generate_greeting_response(monkeypatch):
         answer = await llm.generate_answer(query, [], classification=classification)
         assert isinstance(answer, str)
         assert len(answer) > 0
-        # 挨拶応答であることを確認（ポケモンカードに関する内容が含まれている）
-        assert "ポケモンカード" in answer or "カード" in answer
+        # 挨拶応答であることを確認（ゲームカードに関する内容が含まれている）
+        assert "ゲームカード" in answer or "カード" in answer
         print(f"✅ クエリ「{query}」→ 応答「{answer}」")

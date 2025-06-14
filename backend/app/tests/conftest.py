@@ -155,9 +155,9 @@ def sample_context_items(test_data_factory):
 
 
 @pytest.fixture
-def pokemon_context_items(test_data_factory):
-    """ポケモン関連のContextItem"""
-    return test_data_factory.create_pokemon_context_items()
+def game_card_context_items(test_data_factory):
+    """ゲームカード関連のContextItem"""
+    return test_data_factory.create_game_card_context_items()
 
 
 @pytest.fixture
@@ -209,11 +209,11 @@ def specific_classification():
     """特定検索分類結果のフィクスチャ"""
     return ClassificationResult(
         query_type=QueryType.FILTERABLE,
-        summary="特定のポケモンに関する検索",
+        summary="特定のカードに関する検索",
         confidence=0.95,
         search_keywords=["ピカチュウ", "でんき"],
         filter_keywords=["ピカチュウ"],
-        reasoning="特定のポケモンに関する検索"
+        reasoning="特定のカードに関する検索"
     )
 
 

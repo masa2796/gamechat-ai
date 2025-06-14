@@ -296,7 +296,7 @@ class VectorService:
         if classification.query_type == QueryType.SEMANTIC:
             return (
                 f"「{classification.summary or '検索内容'}」に関する情報が見つかりませんでした。"
-                "より具体的なポケモン名やカード名で検索してみてください。"
+                "より具体的なカード名やカード名で検索してみてください。"
             )
         
         elif classification.query_type == QueryType.FILTERABLE:

@@ -27,11 +27,17 @@ frontend/dist/
 backend/dist/
 coverage/
 
+# Sphinx documentation
+docs/sphinx/_build/
+docs/sphinx/_static/
+docs/sphinx/_templates/
+
 # Log files
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+docs/scripts/logs/
 
 # Editor/IDE settings
 .vscode/
@@ -40,6 +46,8 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+docs/.DS_Store
+docs/**/.DS_Store
 
 # data
 data/

@@ -54,7 +54,40 @@ class DatabaseService:
     
     @handle_service_exceptions("database", fallback_return=[])
     async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[ContextItem]:
-        """フィルターキーワードに基づいて構造化検索を実行"""
+        """
+        フィルターキーワードに基づいて構造化検索を実行します。
+        
+        数値条件（HP、ダメージ）、タイプ、レアリティなどの構造化データに対して
+        精密なフィルタリング検索を行い、マッチスコアでランキングされた結果を返します。
+        
+        Args:
+            filter_keywords: フィルタリング用キーワードのリスト
+                - 数値条件: ["HP", "100以上"], ["ダメージ", "40以上"]
+                - タイプ: ["炎", "タイプ"], ["水", "カード"]
+                - レアリティ: ["R", "レア"], ["SR", "スーパーレア"]
+            top_k: 返却する最大結果数 (デフォルト: 50)
+                
+        Returns:
+            マッチスコア順にソートされたContextItemのリスト
+            各アイテムには title, text, score が含まれます
+            
+        Raises:
+            DatabaseException: データファイルの読み込みに失敗した場合
+            ValueError: 不正なキーワード形式が含まれている場合
+            
+        Examples:
+            >>> service = DatabaseService()
+            >>> # HP100以上のカードを検索
+            >>> results = await service.filter_search(["HP", "100以上"], top_k=10)
+            >>> print(f"見つかった件数: {len(results)}")
+            >>> print(f"最高スコア: {results[0].score}")
+            
+            >>> # 複合条件での検索
+            >>> results = await service.filter_search(
+            ...     ["炎", "タイプ", "ダメージ", "40以上"], top_k=5
+            ... )
+            >>> # 炎タイプでダメージ40以上の技を持つカードが返される
+        """
         data = self._load_data()
         if not data:
             return self._get_fallback_results()
@@ -97,8 +130,40 @@ class DatabaseService:
             for result in filtered_results[:top_k]
         ]
 
-    def _calculate_filter_score(self, item: Dict[str, Any], keywords: List[str]) -> float:
-        """アイテムとキーワードのマッチスコアを計算"""
+    def _calculate_filter_score(
+        self, 
+        item: Dict[str, Any], 
+        keywords: List[str]
+    ) -> float:
+        """
+        アイテムとキーワードのマッチスコアを計算します。
+        
+        Args:
+            item: 評価対象のアイテムデータ
+                - name: アイテム名
+                - type: タイプ（炎、水など）
+                - hp: HP値
+                - attacks: 技のリスト
+            keywords: 検索キーワードのリスト
+                - 数値条件: "40以上", "100以上"など
+                - タイプ: "炎", "水"など
+                
+        Returns:
+            0.0-10.0の範囲でのマッチスコア
+            - 0.0: マッチなし
+            - 2.0: 単一条件マッチ
+            - 4.0+: 複合条件マッチ
+            
+        Raises:
+            ValueError: 不正なキーワード形式の場合
+            
+        Examples:
+            >>> service._calculate_filter_score(
+            ...     {"name": "リザードン", "type": "炎", "hp": 120},
+            ...     ["炎", "タイプ", "HP", "100以上"]
+            ... )
+            4.0
+        """
         if not keywords:
             return 0.0
 
@@ -119,7 +184,43 @@ class DatabaseService:
         return total_score
 
     def _calculate_hp_score(self, item: Dict[str, Any], keywords: List[str]) -> tuple[float, bool]:
-        """HP関連のスコア計算"""
+        """
+        HP関連のスコアを計算します。
+        
+        HPキーワードと数値条件の組み合わせを検出し、
+        カードのHP値が条件を満たす場合にスコアを付与します。
+        
+        Args:
+            item: 評価対象のアイテムデータ
+                - hp: HP値（整数または文字列）
+            keywords: 検索キーワードのリスト
+                - HP関連: "hp", "HP", "ヒットポイント"
+                - 数値条件: "40以上", "50以上", "100以上", "150以上"
+                
+        Returns:
+            tuple[float, bool]: (スコア, マッチしたかどうか)
+            - スコア: 条件を満たす場合は2.0、満たさない場合は0.0
+            - マッチフラグ: 他のスコア計算での重複防止用
+            
+        Examples:
+            >>> service = DatabaseService()
+            >>> item = {"name": "リザードン", "hp": 120}
+            >>> keywords = ["HP", "100以上"]
+            >>> score, matched = service._calculate_hp_score(item, keywords)
+            >>> print(f"スコア: {score}, マッチ: {matched}")
+            スコア: 2.0, マッチ: True
+            
+            >>> # 条件を満たさない場合
+            >>> item = {"name": "ピカチュウ", "hp": 60}
+            >>> score, matched = service._calculate_hp_score(item, keywords)
+            >>> print(f"スコア: {score}, マッチ: {matched}")
+            スコア: 0.0, マッチ: False
+            
+        Note:
+            - HPキーワードと数値条件の両方が必要です
+            - HP値が数値変換できない場合は0として扱います
+            - 複数の数値条件がある場合、最初にマッチした条件でスコアを決定します
+        """
         score = 0.0
         matched = False
         

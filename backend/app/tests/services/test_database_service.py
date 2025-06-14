@@ -28,30 +28,30 @@ class TestDatabaseService:
         return [
             {
                 "id": "test-001",
-                "name": "テストポケモン1",
+                "name": "テストカード1",
                 "type": "炎",
                 "hp": 120,
-                "species": "テストポケモン",
+                "species": "テストカード",
                 "stage": "たね",
                 "attacks": [{"name": "テスト技", "damage": 50}],
                 "weakness": "水"
             },
             {
                 "id": "test-002", 
-                "name": "テストポケモン2",
+                "name": "テストカード2",
                 "type": "水",
                 "hp": 80,
-                "species": "テストポケモン",
+                "species": "テストカード",
                 "stage": "1進化",
                 "attacks": [{"name": "みずでっぽう", "damage": 30}],
                 "weakness": "草"
             },
             {
                 "id": "test-003",
-                "name": "テストポケモン3",
+                "name": "テストカード3",
                 "type": "草",
                 "hp": 150,
-                "species": "テストポケモン",
+                "species": "テストカード",
                 "stage": "2進化",
                 "attacks": [{"name": "はっぱカッター", "damage": 60}],
                 "weakness": "炎"
@@ -106,7 +106,7 @@ class TestDatabaseService:
             with mock_open, mock_json_load:
                 data = database_service._load_data()
                 assert len(data) == 3
-                assert data[0]["name"] == "テストポケモン1"
+                assert data[0]["name"] == "テストカード1"
 
         @pytest.mark.asyncio
         async def test_filter_search_with_valid_keywords_hp_condition(self, database_service, sample_data, monkeypatch):
@@ -116,14 +116,14 @@ class TestDatabaseService:
             
             results = await database_service.filter_search(["HP", "100以上"], top_k=5)
             
-            # HP100以上のポケモンを確認
-            assert len(results) == 2  # HP120とHP150のポケモン
+            # HP100以上のカードを確認
+            assert len(results) == 2  # HP120とHP150のカード
             assert all(isinstance(item, ContextItem) for item in results)
             
             # 結果の内容を確認
             names = [item.title for item in results]
-            assert "テストポケモン1" in names  # HP120
-            assert "テストポケモン3" in names  # HP150
+            assert "テストカード1" in names  # HP120
+            assert "テストカード3" in names  # HP150
 
         @pytest.mark.asyncio
         async def test_filter_search_with_valid_keywords_type_condition(self, database_service, sample_data, monkeypatch):
@@ -133,7 +133,7 @@ class TestDatabaseService:
             results = await database_service.filter_search(["炎"], top_k=5)
             
             assert len(results) == 1
-            assert results[0].title == "テストポケモン1"
+            assert results[0].title == "テストカード1"
             assert results[0].score == 2.5  # タイプマッチ(+2.0) + テキストマッチ(+0.5)
 
         @pytest.mark.asyncio
@@ -142,14 +142,14 @@ class TestDatabaseService:
             # データ読み込みをモック
             monkeypatch.setattr(database_service, "_load_data", lambda: mock_data)
             
-            # 水タイプで40以上のダメージを持つポケモンの検索
+            # 水タイプで40以上のダメージを持つカードの検索
             keywords = ["ダメージ", "40以上", "技", "水", "タイプ"]
             results = await database_service.filter_search(keywords, 5)
             
             # 結果を確認
             assert len(results) >= 1  # カメックスとゼニガメが該当するはず
             assert isinstance(results, list)
-            # 水タイプで40以上のダメージ技を持つポケモンが上位に来ることを確認
+            # 水タイプで40以上のダメージ技を持つカードが上位に来ることを確認
             if len(results) > 0:
                 assert results[0].score >= 5.0  # 複合条件マッチで高スコア
 
@@ -188,7 +188,7 @@ class TestDatabaseService:
                 "name": "ピカチュウ",
                 "type": "電気",
                 "hp": 60,
-                "species": "ねずみポケモン",
+                "species": "ねずみカード",
                 "stage": "たね",
                 "attacks": [{"name": "でんきショック"}],
                 "weakness": "闘"
@@ -198,7 +198,7 @@ class TestDatabaseService:
             
             assert "タイプ: 電気" in text
             assert "HP: 60" in text
-            assert "種類: ねずみポケモン" in text
+            assert "種類: ねずみカード" in text
             assert "進化段階: たね" in text
             assert "弱点: 闘" in text
 
@@ -220,7 +220,7 @@ class TestDatabaseService:
                 results = await service.filter_search(["炎"], top_k=5)
                 
                 assert len(results) == 1
-                assert results[0].title == "テストポケモン1"
+                assert results[0].title == "テストカード1"
 
     # === 異常系テスト ===
     class TestErrorCases:
@@ -294,7 +294,7 @@ class TestDatabaseService:
         def test_calculate_filter_score_damage_match(self, database_service):
             """ダメージ条件マッチのスコア計算パフォーマンステスト"""
             item = {
-                "name": "テストポケモン",
+                "name": "テストカード",
                 "type": "水",
                 "attacks": [
                     {"name": "みずでっぽう", "damage": 50},

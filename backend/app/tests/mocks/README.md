@@ -39,10 +39,10 @@ mock_response = MagicMock()
 mock_response.choices = [MagicMock()]
 mock_response.choices[0].message.content = """{
     "query_type": "semantic",
-    "summary": "強いポケモンの検索",
+    "summary": "強いカードの検索",
     "confidence": 0.8,
     "filter_keywords": [],
-    "search_keywords": ["強い", "ポケモン"],
+    "search_keywords": ["強い", "カード"],
     "reasoning": "セマンティック検索として分類"
 }"""
 mock_client.chat.completions.create.return_value = mock_response
@@ -56,9 +56,9 @@ from backend.app.tests.mocks import MockOpenAIResponse
 # 新しい方法: ファクトリーを使用
 mock_response = MockOpenAIResponse.create_classification_response(
     query_type="semantic",
-    summary="強いポケモンの検索",
+    summary="強いカードの検索",
     confidence=0.8,
-    search_keywords=["強い", "ポケモン"],
+    search_keywords=["強い", "カード"],
     filter_keywords=[]
 )
 
@@ -76,8 +76,8 @@ from backend.app.tests.mocks import ContextItemFactory
 # 高品質アイテムを3つ生成
 high_quality_items = ContextItemFactory.create_high_score_items(count=3, base_score=0.9)
 
-# ポケモン関連アイテムを生成
-pokemon_items = ContextItemFactory.create_pokemon_items(count=5)
+# ゲームカード関連アイテムを生成
+game_card_items = ContextItemFactory.create_game_card_items(count=5)
 
 # 混在品質アイテムを生成
 mixed_items = ContextItemFactory.create_mixed_quality_items(high_count=2, low_count=3)
@@ -103,8 +103,8 @@ greeting = MockClassificationResult.create_greeting()
 ```python
 from backend.app.tests.mocks import MockUpstashResult
 
-# ポケモン検索結果
-pokemon_results = MockUpstashResult.create_pokemon_results(count=3)
+# ゲームカード検索結果
+game_card_results = MockUpstashResult.create_game_card_results(count=3)
 
 # 高スコア検索結果
 high_score_results = MockUpstashResult.create_high_score_results(count=3, base_score=0.9)
@@ -119,7 +119,7 @@ empty_results = MockUpstashResult.create_empty_result()
 from backend.app.tests.mocks import TestScenarioFactory
 
 # 成功する検索シナリオ
-success_scenario = TestScenarioFactory.create_successful_pokemon_search()
+success_scenario = TestScenarioFactory.create_successful_game_card_search()
 query = success_scenario["query"]
 classification = success_scenario["classification"] 
 context_items = success_scenario["context_items"]
