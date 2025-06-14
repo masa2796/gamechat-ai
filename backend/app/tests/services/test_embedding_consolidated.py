@@ -281,21 +281,10 @@ class TestEmbeddingPerformance:
         monkeypatch
     ):
         """フォールバック機構テスト"""
-        call_count = 0
+        # APIキーがない場合、例外が発生することをテスト
         
-        def mock_create_embedding(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                # 最初の呼び出しでエラー
-                raise Exception("First call error")
-            else:
-                # 2回目でフォールバック成功
-                return mock_openai_embedding_response
-        
-        mock_client = MagicMock()
-        mock_client.embeddings.create = mock_create_embedding
-        monkeypatch.setattr(embedding_service, "client", mock_client)
+        # クライアントをNoneに設定してAPIキーなしの状況をシミュレート
+        embedding_service.client = None
         
         # 低信頼度の分類結果でテスト
         classification = ClassificationResult(
@@ -308,11 +297,11 @@ class TestEmbeddingPerformance:
         )
         
         query = "テストクエリ"
-        embedding = await embedding_service.get_embedding_from_classification(
-            query, classification
-        )
         
-        # フォールバックにより成功
-        assert isinstance(embedding, list)
-        assert len(embedding) == 1536
-        assert call_count == 2  # エラー + フォールバック
+        # EmbeddingExceptionが発生することを確認
+        from backend.app.core.exceptions import EmbeddingException
+        
+        with pytest.raises(EmbeddingException) as exc_info:
+            await embedding_service.get_embedding_from_classification(query, classification)
+        
+        assert exc_info.value.code == "API_KEY_NOT_SET"

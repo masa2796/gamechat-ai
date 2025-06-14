@@ -4,6 +4,9 @@ import os
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
+from ..core.exceptions import LLMException
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 
 class LLMService:
     def __init__(self):
@@ -14,6 +17,7 @@ class LLMService:
         else:
             self.client = None
 
+    @handle_service_exceptions("llm", fallback_return=None)
     async def generate_answer(
         self, 
         query: str, 
@@ -23,28 +27,42 @@ class LLMService:
     ) -> str:
         """検索結果と元の質問、分類結果を元にLLMで回答を生成"""
         if not self.client:
-            return "申し訳ありませんが、現在回答生成サービスが利用できません。"
+            raise LLMException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
+            )
+        
+        GameChatLogger.log_info("llm_service", "回答生成開始", {
+            "query_length": len(query),
+            "context_count": len(context_items),
+            "classification_type": classification.query_type if classification else None
+        })
         
         # 挨拶の場合は専用の応答を生成
         if classification and classification.query_type == QueryType.GREETING:
             return self._generate_greeting_response(query, classification)
         
-        try:
-            # 回答生成のためのコンテキスト準備
-            context_data = self._prepare_context_data(context_items, classification, search_info)
-            
-            # プロンプトの構築
-            system_prompt = self._get_optimized_system_prompt()
-            user_prompt = self._build_enhanced_user_prompt(query, context_data)
+        # 回答生成のためのコンテキスト準備
+        context_data = self._prepare_context_data(context_items, classification, search_info)
+        
+        # プロンプトの構築
+        system_prompt = self._get_optimized_system_prompt()
+        user_prompt = self._build_enhanced_user_prompt(query, context_data)
 
-            # LLMに回答生成を依頼
-            response = await self._request_llm_response(system_prompt, user_prompt)
+        # LLMに回答生成を依頼
+        response = await self._request_llm_response(system_prompt, user_prompt)
+        
+        GameChatLogger.log_success("llm_service", "回答生成完了", {
+            "response_length": len(response) if response else 0
+        })
+        
+        # フォールバック値を返す場合の処理
+        if not response or not response.strip():
+            fallback_message = f"申し訳ありませんが、「{query}」に関する回答の生成中にエラーが発生しました。"
+            GameChatLogger.log_warning("llm_service", "空の回答、フォールバック実行")
+            return fallback_message
             
-            return response
-            
-        except Exception as e:
-            print(f"LLM回答生成エラー: {e}")
-            return f"申し訳ありませんが、「{query}」に関する回答の生成中にエラーが発生しました。"
+        return response
 
     def _prepare_context_data(
         self, 
