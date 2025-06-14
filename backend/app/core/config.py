@@ -1,14 +1,15 @@
 import os
 from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Settings:
-    RECAPTCHA_SECRET: str = os.getenv("RECAPTCHA_SECRET_TEST")
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY")
-    UPSTASH_VECTOR_REST_URL: str = os.getenv("UPSTASH_VECTOR_REST_URL")
-    UPSTASH_VECTOR_REST_TOKEN: str = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
+    RECAPTCHA_SECRET: Optional[str] = os.getenv("RECAPTCHA_SECRET_TEST")
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
+    UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     
     # プロジェクトルートディレクトリの取得
     PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent

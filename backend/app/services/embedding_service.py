@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import openai
 import os
 from dotenv import load_dotenv
@@ -10,13 +10,10 @@ from ..core.logging import GameChatLogger
 load_dotenv()
 
 class EmbeddingService:
-    def __init__(self):
+    def __init__(self) -> None:
         # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
         api_key = os.getenv("OPENAI_API_KEY")
-        if api_key:
-            self.client = openai.OpenAI(api_key=api_key)
-        else:
-            self.client = None
+        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
 
     @handle_service_exceptions("embedding")
     async def get_embedding(self, query: str) -> List[float]:
@@ -85,7 +82,8 @@ class EmbeddingService:
         # フォールバック処理
         if not result:
             GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
-            return await self.get_embedding(original_query)
+            fallback_result = await self.get_embedding(original_query)
+            return fallback_result if fallback_result is not None else []
             
         return result
 

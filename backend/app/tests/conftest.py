@@ -2,15 +2,19 @@
 テスト用の共通フィクスチャ定義
 """
 import pytest
+import os
 from unittest.mock import MagicMock
 from backend.app.services.classification_service import ClassificationService
 from backend.app.services.embedding_service import EmbeddingService
-from backend.app.services.vector_service import VectorService
 from backend.app.services.database_service import DatabaseService
 from backend.app.services.hybrid_search_service import HybridSearchService
 from backend.app.services.rag_service import RagService
 from backend.app.services.llm_service import LLMService
 from backend.app.models.classification_models import ClassificationResult, QueryType
+from backend.app.tests.mocks.vector_service_mock import MockVectorService
+
+# テスト環境変数を設定
+os.environ["TESTING"] = "true"
 
 # ヘルパークラスのインポート
 from backend.app.tests.fixtures.mock_factory import TestDataFactory, MockResponseFactory
@@ -111,8 +115,8 @@ def embedding_service():
 
 @pytest.fixture
 def vector_service():
-    """ベクトルサービスのインスタンス"""
-    return VectorService()
+    """ベクトルサービスのインスタンス（テスト用モック）"""
+    return MockVectorService()
 
 
 @pytest.fixture
@@ -122,15 +126,19 @@ def database_service():
 
 
 @pytest.fixture
-def hybrid_search_service():
-    """ハイブリッド検索サービスのインスタンス"""
-    return HybridSearchService()
+def hybrid_search_service(vector_service):
+    """ハイブリッド検索サービスのインスタンス（テスト用モック使用）"""
+    service = HybridSearchService()
+    service.vector_service = vector_service  # モックVectorServiceを注入
+    return service
 
 
 @pytest.fixture
-def rag_service():
-    """RAGサービスのインスタンス"""
-    return RagService()
+def rag_service(hybrid_search_service):
+    """RAGサービスのインスタンス（テスト用モック使用）"""
+    service = RagService()
+    service.hybrid_search_service = hybrid_search_service  # モック使用のHybridSearchServiceを注入
+    return service
 
 
 @pytest.fixture
