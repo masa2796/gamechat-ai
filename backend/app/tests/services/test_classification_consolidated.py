@@ -5,6 +5,7 @@ from backend.app.models.classification_models import (
     ClassificationResult, 
     QueryType
 )
+from backend.app.tests.mocks import MockOpenAIResponse, MockClassificationResult
 
 
 class TestClassificationService:
@@ -37,17 +38,16 @@ class TestClassificationService:
         semantic_classification
     ):
         """意味検索クエリの分類テスト"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="semantic",
+            summary="強いポケモンの検索",
+            confidence=0.8,
+            search_keywords=["強い", "ポケモン"],
+            filter_keywords=[]
+        )
+        
         mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "semantic",
-            "summary": "強いポケモンの検索",
-            "confidence": 0.8,
-            "filter_keywords": [],
-            "search_keywords": ["強い", "ポケモン"],
-            "reasoning": "セマンティック検索として分類"
-        }"""
         mock_client.chat.completions.create.return_value = mock_response
         classification_service.client = mock_client
         
@@ -65,16 +65,14 @@ class TestClassificationService:
         monkeypatch
     ):
         """挨拶クエリの分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "greeting",
-            "summary": "挨拶",
-            "confidence": 0.9,
-            "filter_keywords": [],
-            "search_keywords": [],
-            "reasoning": "挨拶として分類、検索不要"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="greeting",
+            summary="挨拶",
+            confidence=0.9,
+            search_keywords=[],
+            filter_keywords=[]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -94,16 +92,14 @@ class TestClassificationService:
         monkeypatch
     ):
         """特定のフィルター可能クエリの分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "filterable",
-            "summary": "ピカチュウの特定検索", 
-            "confidence": 0.95,
-            "filter_keywords": ["ピカチュウ"],
-            "search_keywords": ["ピカチュウ", "でんき", "ポケモン"],
-            "reasoning": "特定のポケモンに関する検索"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="filterable",
+            summary="ピカチュウの特定検索",
+            confidence=0.95,
+            search_keywords=["ピカチュウ", "でんき", "ポケモン"],
+            filter_keywords=["ピカチュウ"]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -127,16 +123,14 @@ class TestClassificationEdgeCases:
         monkeypatch
     ):
         """不適切コンテンツの分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "greeting",
-            "summary": "不適切な表現",
-            "confidence": 0.9,
-            "filter_keywords": [],
-            "search_keywords": [],
-            "reasoning": "不適切な表現を検出、検索は不要"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="greeting",
+            summary="不適切な表現",
+            confidence=0.9,
+            search_keywords=[],
+            filter_keywords=[]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -165,16 +159,14 @@ class TestClassificationEdgeCases:
         monkeypatch
     ):
         """ゲーム以外の話題の分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "greeting",
-            "summary": "ゲーム外の話題",
-            "confidence": 0.8,
-            "filter_keywords": [],
-            "search_keywords": [],
-            "reasoning": "ゲーム以外の話題のため検索不要"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="greeting",
+            summary="ゲーム外の話題",
+            confidence=0.8,
+            search_keywords=[],
+            filter_keywords=[]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -202,16 +194,14 @@ class TestClassificationEdgeCases:
         monkeypatch
     ):
         """空または無効なクエリの分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "greeting",
-            "summary": "無効なクエリ",
-            "confidence": 0.1,
-            "filter_keywords": [],
-            "search_keywords": [],
-            "reasoning": "無効なクエリのため処理不可"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="greeting",
+            summary="無効なクエリ",
+            confidence=0.1,
+            search_keywords=[],
+            filter_keywords=[]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -239,16 +229,14 @@ class TestClassificationEdgeCases:
         monkeypatch
     ):
         """非常に長いクエリの分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "semantic",
-            "summary": "長いクエリの要約",
-            "confidence": 0.7,
-            "filter_keywords": ["ポケモン"],
-            "search_keywords": ["ポケモン", "バトル", "戦略"],
-            "reasoning": "長いクエリから重要なキーワードを抽出"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="semantic",
+            summary="長いクエリの要約",
+            confidence=0.7,
+            search_keywords=["ポケモン", "バトル", "戦略"],
+            filter_keywords=["ポケモン"]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -271,16 +259,14 @@ class TestClassificationEdgeCases:
         monkeypatch
     ):
         """多言語クエリの分類テスト"""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "semantic",
-            "summary": "英語でのポケモン検索",
-            "confidence": 0.8,
-            "filter_keywords": ["Pokemon"],
-            "search_keywords": ["Pokemon", "electric", "type"],
-            "reasoning": "英語での検索クエリ"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="semantic",
+            summary="英語でのポケモン検索",
+            confidence=0.8,
+            search_keywords=["Pokemon", "electric", "type"],
+            filter_keywords=["Pokemon"]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -313,16 +299,14 @@ class TestClassificationPerformance:
         """分類レスポンス時間テスト"""
         import time
         
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "semantic",
-            "summary": "パフォーマンステスト",
-            "confidence": 0.8,
-            "filter_keywords": [],
-            "search_keywords": ["テスト"],
-            "reasoning": "パフォーマンステスト"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="semantic",
+            summary="パフォーマンステスト",
+            confidence=0.8,
+            search_keywords=["テスト"],
+            filter_keywords=[]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
@@ -349,16 +333,14 @@ class TestClassificationPerformance:
         """バッチ分類パフォーマンステスト"""
         import time
         
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "query_type": "semantic",
-            "summary": "バッチテスト",
-            "confidence": 0.8,
-            "filter_keywords": [],
-            "search_keywords": ["バッチ"],
-            "reasoning": "バッチ処理テスト"
-        }"""
+        # 新しいモックシステムを使用
+        mock_response = MockOpenAIResponse.create_classification_response(
+            query_type="semantic",
+            summary="バッチテスト",
+            confidence=0.8,
+            search_keywords=["バッチ"],
+            filter_keywords=[]
+        )
         
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
