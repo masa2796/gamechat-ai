@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 from ..models.rag_models import ContextItem
 from ..core.config import settings
@@ -9,11 +9,11 @@ from ..core.logging import GameChatLogger
 class DatabaseService:
     """通常のデータベース検索サービス（構造化データのフィルタリング）"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # 設定ファイルからデータファイルのパスを取得
         self.data_path = settings.DATA_FILE_PATH
         self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
-        self.cache = None
+        self.cache: Optional[List[Dict[str, Any]]] = None
     
     def _load_data(self) -> List[Dict[str, Any]]:
         """データファイルを読み込む"""
@@ -23,14 +23,20 @@ class DatabaseService:
         try:
             # data.jsonを優先して使用（構造化データ）
             with open(self.data_path, 'r', encoding='utf-8') as f:
-                self.cache = json.load(f)
+                loaded_data = json.load(f)
+                if not isinstance(loaded_data, list):
+                    raise ValueError("Data file must contain a list")
+                self.cache = loaded_data
                 GameChatLogger.log_success("database_service", f"データファイルを読み込みました: {self.data_path}")
                 return self.cache
         except FileNotFoundError:
             try:
                 # フォールバックでconvert_data.jsonを使用
                 with open(self.converted_data_path, 'r', encoding='utf-8') as f:
-                    self.cache = json.load(f)
+                    loaded_data = json.load(f)
+                    if not isinstance(loaded_data, list):
+                        raise ValueError("Converted data file must contain a list")
+                    self.cache = loaded_data
                     GameChatLogger.log_info("database_service", f"フォールバックファイルを使用: {self.converted_data_path}")
                     return self.cache
             except FileNotFoundError:
@@ -75,7 +81,7 @@ class DatabaseService:
                 })
         
         # スコアでソートして上位を返す
-        filtered_results.sort(key=lambda x: x["score"], reverse=True)
+        filtered_results.sort(key=lambda x: float(x["score"]) if isinstance(x["score"], (str, int, float)) else 0.0, reverse=True)
         
         GameChatLogger.log_success("database_service", "フィルター検索完了", {
             "results_count": len(filtered_results),
@@ -84,9 +90,9 @@ class DatabaseService:
         
         return [
             ContextItem(
-                title=result["title"],
-                text=result["text"],
-                score=result["score"]
+                title=str(result["title"]),
+                text=str(result["text"]),
+                score=float(result["score"]) if isinstance(result["score"], (str, int, float)) else 0.0
             )
             for result in filtered_results[:top_k]
         ]

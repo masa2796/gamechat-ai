@@ -5,7 +5,7 @@ from backend.app.models.classification_models import (
     ClassificationResult, 
     QueryType
 )
-from backend.app.tests.mocks import MockOpenAIResponse, MockClassificationResult
+from backend.app.tests.mocks import MockOpenAIResponse
 
 
 class TestClassificationService:

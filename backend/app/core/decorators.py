@@ -13,7 +13,7 @@ def handle_exceptions(
     fallback_return: Any = None,
     logger_name: Optional[str] = None,
     http_status_code: int = 500
-):
+) -> Callable:
     """
     例外処理デコレータ
     
@@ -25,7 +25,7 @@ def handle_exceptions(
     """
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
             except GameChatException as e:
@@ -72,7 +72,7 @@ def handle_exceptions(
 def handle_service_exceptions(
     service_name: str,
     fallback_return: Any = None
-):
+) -> Callable:
     """
     サービス層専用の例外処理デコレータ
     """
@@ -86,7 +86,7 @@ def handle_service_exceptions(
 
 def handle_api_exceptions(
     fallback_status: int = 500
-):
+) -> Callable:
     """
     API層専用の例外処理デコレータ（必ずHTTPExceptionを発生）
     """

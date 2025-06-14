@@ -3,13 +3,13 @@
 """
 import logging
 import sys
-from typing import Optional
+from typing import Optional, Dict
 
 
 class GameChatLogger:
     """ゲームチャットAI統一ログ設定"""
     
-    _loggers = {}
+    _loggers: Dict[str, logging.Logger] = {}
     
     @classmethod
     def get_logger(cls, name: str) -> logging.Logger:
@@ -41,7 +41,7 @@ class GameChatLogger:
         return cls._loggers[name]
     
     @classmethod
-    def log_error(cls, logger_name: str, message: str, error: Exception, details: Optional[dict] = None):
+    def log_error(cls, logger_name: str, message: str, error: Exception, details: Optional[dict] = None) -> None:
         """エラーログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
         error_msg = f"🔴 {message}: {str(error)}"
@@ -50,7 +50,7 @@ class GameChatLogger:
         logger.error(error_msg, exc_info=True)
     
     @classmethod
-    def log_warning(cls, logger_name: str, message: str, details: Optional[dict] = None):
+    def log_warning(cls, logger_name: str, message: str, details: Optional[dict] = None) -> None:
         """警告ログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
         warning_msg = f"🟡 {message}"
@@ -59,7 +59,7 @@ class GameChatLogger:
         logger.warning(warning_msg)
     
     @classmethod
-    def log_info(cls, logger_name: str, message: str, details: Optional[dict] = None):
+    def log_info(cls, logger_name: str, message: str, details: Optional[dict] = None) -> None:
         """情報ログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
         info_msg = f"🔵 {message}"
@@ -68,7 +68,7 @@ class GameChatLogger:
         logger.info(info_msg)
     
     @classmethod
-    def log_success(cls, logger_name: str, message: str, details: Optional[dict] = None):
+    def log_success(cls, logger_name: str, message: str, details: Optional[dict] = None) -> None:
         """成功ログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
         success_msg = f"✅ {message}"

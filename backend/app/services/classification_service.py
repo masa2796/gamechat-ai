@@ -1,6 +1,7 @@
 import openai
 import json
 import os
+from typing import Optional
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
 from ..core.exceptions import ClassificationException
@@ -10,13 +11,10 @@ from ..core.logging import GameChatLogger
 class ClassificationService:
     """LLMによるクエリ分類・要約サービス"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        if api_key:
-            self.client = openai.OpenAI(api_key=api_key)
-        else:
-            self.client = None
+        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -87,7 +85,13 @@ class ClassificationService:
             response_format={"type": "json_object"}  # JSON形式を強制
         )
         
-        result_text = response.choices[0].message.content.strip()
+        result_text = response.choices[0].message.content
+        if result_text is None:
+            raise ClassificationException(
+                message="OpenAI APIからの応答が空です",
+                code="EMPTY_RESPONSE"
+            )
+        result_text = result_text.strip()
         GameChatLogger.log_info("classification_service", "LLM応答取得完了", {
             "response_length": len(result_text)
         })
@@ -99,8 +103,8 @@ class ClassificationService:
             GameChatLogger.log_success("classification_service", "クエリ分類完了", {
                 "query_type": classification.query_type,
                 "confidence": classification.confidence,
-                "filter_keywords_count": len(classification.filter_keywords),
-                "search_keywords_count": len(classification.search_keywords)
+                "filter_keywords_count": len(classification.filter_keywords or []),
+                "search_keywords_count": len(classification.search_keywords or [])
             })
             
             return classification
@@ -122,9 +126,7 @@ class ClassificationService:
             )
                 
         except Exception as e:
-            GameChatLogger.log_error("classification_service", "予期しないエラー", {
-                "error_message": str(e)
-            })
+            GameChatLogger.log_error("classification_service", "予期しないエラー", e)
             # エラー時のフォールバック
             return ClassificationResult(
                 query_type=QueryType.SEMANTIC,
