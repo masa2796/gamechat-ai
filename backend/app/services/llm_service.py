@@ -9,13 +9,10 @@ from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
 
 class LLMService:
-    def __init__(self):
+    def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        if api_key:
-            self.client = openai.OpenAI(api_key=api_key)
-        else:
-            self.client = None
+        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
 
     @handle_service_exceptions("llm", fallback_return=None)
     async def generate_answer(
@@ -124,6 +121,12 @@ class LLMService:
 
     async def _request_llm_response(self, system_prompt: str, user_prompt: str) -> str:
         """LLMにリクエストを送信して回答を取得"""
+        if not self.client:
+            raise LLMException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
+            )
+            
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -136,7 +139,13 @@ class LLMService:
             frequency_penalty=0.1  # 繰り返しを減らす
         )
         
-        return response.choices[0].message.content.strip()
+        # レスポンス内容の取得と検証
+        response_content = response.choices[0].message.content
+        if response_content is None:
+            GameChatLogger.log_warning("llm_service", "OpenAI APIからの応答が空です")
+            return "申し訳ありませんが、回答の生成中にエラーが発生しました。"
+        
+        return response_content.strip()
 
     def _generate_greeting_response(self, query: str, classification: ClassificationResult) -> str:
         """挨拶専用の応答を生成"""
@@ -336,4 +345,7 @@ class LLMService:
     # 下位互換性のための旧メソッド
     async def generate_answer_legacy(self, query: str, context_items: List[ContextItem]) -> str:
         """下位互換性のための旧generate_answerメソッド"""
-        return await self.generate_answer(query, context_items)
+        result = await self.generate_answer(query, context_items)
+        if isinstance(result, str):
+            return result
+        return str(result)

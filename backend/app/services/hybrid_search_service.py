@@ -10,7 +10,7 @@ from .embedding_service import EmbeddingService
 class HybridSearchService:
     """分類に基づく統合検索サービス（最適化対応）"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.classification_service = ClassificationService()
         self.database_service = DatabaseService()
         self.vector_service = VectorService()
@@ -83,6 +83,10 @@ class HybridSearchService:
         print(f"要約: {classification.summary}")
         print(f"信頼度: {classification.confidence}")
         
+        # ClassificationResultオブジェクトであることを確認
+        if not isinstance(classification, ClassificationResult):
+            raise ValueError("Classification service returned unexpected type")
+        
         return classification
 
     def _is_greeting(self, classification: ClassificationResult) -> bool:
@@ -152,10 +156,15 @@ class HybridSearchService:
         
         config = settings.VECTOR_SEARCH_CONFIG["search_limits"]
         
-        if classification.query_type in config:
-            limits = config[classification.query_type]
-            vector_limit = limits["vector"]
-            db_limit = limits["db"]
+        # 型安全なconfig辞書アクセス
+        if isinstance(config, dict) and classification.query_type.value in config:
+            limits = config[classification.query_type.value]
+            if isinstance(limits, dict):
+                vector_limit = limits.get("vector", 15)
+                db_limit = limits.get("db", 5)
+            else:
+                vector_limit = 15
+                db_limit = 5
         else:
             # デフォルト設定
             vector_limit = 10
@@ -317,9 +326,13 @@ class HybridSearchService:
     ) -> List[ContextItem]:
         """最適化された重み付きマージ"""
         
-        config = settings.VECTOR_SEARCH_CONFIG["merge_weights"]
-        db_weight = config["db_weight"]
-        vector_weight = config["vector_weight"]
+        config_merge = settings.VECTOR_SEARCH_CONFIG.get("merge_weights", {})
+        if isinstance(config_merge, dict):
+            db_weight = config_merge.get("db_weight", 0.4)
+            vector_weight = config_merge.get("vector_weight", 0.6)
+        else:
+            db_weight = 0.4
+            vector_weight = 0.6
         
         all_results = []
         
@@ -353,7 +366,11 @@ class HybridSearchService:
     ) -> List[ContextItem]:
         """品質に基づく結果フィルタリング"""
         
-        min_score = settings.VECTOR_SEARCH_CONFIG["minimum_score"]
+        config_min_score = settings.VECTOR_SEARCH_CONFIG.get("minimum_score", 0.5)
+        if isinstance(config_min_score, (int, float)):
+            min_score = float(config_min_score)
+        else:
+            min_score = 0.5
         
         # 最小スコア以上の結果のみ保持
         filtered_results = [
