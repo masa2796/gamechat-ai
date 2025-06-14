@@ -3,7 +3,6 @@ from upstash_vector import Index
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
-from ..core.exceptions import VectorSearchException
 from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
 import os
@@ -17,13 +16,16 @@ class VectorService:
         upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
         
+        # 本番環境では設定が必須
         if not upstash_url or not upstash_token:
-            raise VectorSearchException(
-                message="Upstash Vector設定が不完全です",
-                code="UPSTASH_CONFIG_MISSING"
+            GameChatLogger.log_warning(
+                "vector_service", 
+                "Upstash Vector設定が不完全です。一部機能が制限されます。",
+                {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
             )
-        
-        self.vector_index = Index(url=upstash_url, token=upstash_token)
+            self.vector_index = None
+        else:
+            self.vector_index = Index(url=upstash_url, token=upstash_token)
     
     @handle_service_exceptions("vector", fallback_return=[])
     async def search(
@@ -47,6 +49,11 @@ class VectorService:
         Returns:
             検索結果のリスト
         """
+        # 設定がない場合は空の結果を返す
+        if self.vector_index is None:
+            GameChatLogger.log_warning("vector_service", "Upstash Vector未設定のため空の結果を返します")
+            return []
+        
         # 分類結果に基づく最適化
         if classification:
             top_k, min_score, namespaces = self._optimize_search_params(
