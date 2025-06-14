@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Response, Body, Cookie, HTTPException
-from typing import Optional
+from typing import Optional, Dict, Any
 from ..models.rag_models import RagRequest
 from ..services.rag_service import RagService
 from ..services.auth_service import AuthService
@@ -16,7 +16,7 @@ async def rag_query(
     response: Response,
     rag_req: RagRequest = Body(...),
     recaptcha_passed: Optional[str] = Cookie(None)
-):
+) -> Dict[str, Any]:
     recaptcha_status = await auth_service.verify_request(
         request, response, rag_req.recaptchaToken, recaptcha_passed
     )
@@ -31,9 +31,9 @@ async def rag_query(
 async def search_test(
     request: Request,
     response: Response,
-    query_data: dict = Body(...),
+    query_data: Dict[str, Any] = Body(...),
     recaptcha_passed: Optional[str] = Cookie(None)
-):
+) -> Dict[str, Any]:
     """ハイブリッド検索のテスト用エンドポイント"""
     recaptcha_status = await auth_service.verify_request(
         request, response, query_data.get("recaptchaToken"), recaptcha_passed

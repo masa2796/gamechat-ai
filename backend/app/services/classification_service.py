@@ -1,19 +1,44 @@
 import openai
 import json
 import os
+from typing import Optional
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
+from ..core.exceptions import ClassificationException
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 
 class ClassificationService:
-    """LLMによるクエリ分類・要約サービス"""
+    """
+    LLMによるクエリ分類・要約サービス。
     
-    def __init__(self):
+    OpenAI GPT-4oを使用してユーザーのクエリを分析し、
+    最適な検索戦略を決定するための分類を行います。
+    
+    分類タイプ:
+        - GREETING: 挨拶・雑談（検索不要）
+        - FILTERABLE: 具体的な条件での絞り込み検索
+        - SEMANTIC: 意味的な検索
+        - HYBRID: 両方の組み合わせ
+        
+    Attributes:
+        client: OpenAI APIクライアント
+        system_prompt: 分類用のシステムプロンプト
+        
+    Examples:
+        >>> service = ClassificationService()
+        >>> request = ClassificationRequest(query="HP100以上のカード")
+        >>> result = await service.classify_query(request)
+        >>> print(result.query_type)
+        QueryType.FILTERABLE
+        >>> print(result.confidence)
+        0.9
+    """
+    
+    def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        if api_key:
-            self.client = openai.OpenAI(api_key=api_key)
-        else:
-            self.client = None
+        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -22,13 +47,13 @@ class ClassificationService:
    例：「こんにちは」「おはよう」「ありがとう」「よろしく」「お疲れ様」
    例：「元気？」「調子はどう？」「今日は暑いね」
 2. "filterable" - 具体的な条件での絞り込み検索
-   例：「HPが100以上のポケモン」「炎タイプのカード」「レアリティがRRのカード」
-   例：「ダメージが40以上の技を持つポケモン」「水タイプのポケモン」
-   例：「ダメージが40以上の技を持つ、水タイプポケモン」（複合条件）
+   例：「HPが100以上のカード」「炎タイプのカード」「レアリティがRRのカード」
+   例：「ダメージが40以上の技を持つカード」「水タイプのカード」
+   例：「ダメージが40以上の技を持つ、水タイプカード」（複合条件）
 3. "semantic" - 意味的な検索
-   例：「強いポケモンを教えて」「おすすめの戦略」「初心者向けのデッキ」
+   例：「強いカードを教えて」「おすすめの戦略」「初心者向けのデッキ」
 4. "hybrid" - 両方の組み合わせ
-   例：「炎タイプで強いポケモン」「HPが高くて使いやすいポケモン」
+   例：「炎タイプで強いカード」「HPが高くて使いやすいカード」
 
 重要: 挨拶や一般的な会話は「greeting」として分類し、検索キーワードは空にしてください。
 
@@ -44,7 +69,7 @@ class ClassificationService:
 - 戦略: "攻撃的", "守備的", "サポート", "コンボ"
 
 重要: 複合条件の場合は、すべての条件をfilter_keywordsに含めてください。
-例：「ダメージが40以上の技を持つ、水タイプポケモン」
+例：「ダメージが40以上の技を持つ、水タイプカード」
 → filter_keywords: ["ダメージ", "40以上", "技", "水", "タイプ"]
 
 **必ず以下のJSON形式のみで回答してください。他の文章は含めず、JSONのみを出力してください:**
@@ -57,54 +82,116 @@ class ClassificationService:
     "reasoning": "分類理由"
 }"""
 
+    @handle_service_exceptions("classification", fallback_return=None)
     async def classify_query(self, request: ClassificationRequest) -> ClassificationResult:
-        """クエリを分類・要約する"""
-        try:
-            if not self.client:
-                print("OpenAI APIキーが設定されていません - フォールバック分類を使用")
-                return ClassificationResult(
-                    query_type=QueryType.SEMANTIC,
-                    summary=request.query,
-                    confidence=0.3,
-                    search_keywords=[request.query],
-                    reasoning="APIキー未設定 - フォールバック分類"
-                )
+        """
+        クエリを分類・要約します。
+        
+        GPT-4oを使用してユーザーのクエリを分析し、適切な検索戦略を決定するための
+        分類結果を返します。JSON形式での回答を強制し、一貫性を保ちます。
+        
+        Args:
+            request: 分類リクエスト
+                - query: 分類対象のクエリ文字列
+                
+        Returns:
+            分類結果:
+                - query_type: クエリタイプ（GREETING, FILTERABLE, SEMANTIC, HYBRID）
+                - summary: LLMが生成した要約
+                - confidence: 分類の信頼度（0.0-1.0）
+                - filter_keywords: フィルター検索用キーワード
+                - search_keywords: セマンティック検索用キーワード
+                - reasoning: 分類理由
+                
+        Raises:
+            ClassificationException: OpenAI APIキーが設定されていない場合
+            ClassificationException: OpenAI APIからの応答が空の場合
             
-            user_prompt = f"質問: {request.query}"
+        Examples:
+            >>> service = ClassificationService()
+            >>> request = ClassificationRequest(query="HP100以上のカード")
+            >>> result = await service.classify_query(request)
+            >>> print(result.query_type)
+            QueryType.FILTERABLE
+            >>> print(result.filter_keywords)
+            ['HP', '100以上']
             
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,
-                temperature=0.0,  # 一貫性のために0に設定
-                response_format={"type": "json_object"}  # JSON形式を強制
+            >>> # 挨拶の場合
+            >>> request = ClassificationRequest(query="こんにちは")
+            >>> result = await service.classify_query(request)
+            >>> print(result.query_type)
+            QueryType.GREETING
+            
+        Note:
+            JSON解析に失敗した場合やAPI呼び出しでエラーが発生した場合は、
+            フォールバック戦略により適切なデフォルト値で分類結果を返します。
+        """
+        if not self.client:
+            raise ClassificationException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
             )
+        
+        GameChatLogger.log_info("classification_service", "クエリ分類開始", {
+            "query_length": len(request.query),
+            "query_preview": request.query[:50]
+        })
+        
+        user_prompt = f"質問: {request.query}"
+        
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=300,
+            temperature=0.0,  # 一貫性のために0に設定
+            response_format={"type": "json_object"}  # JSON形式を強制
+        )
+        
+        result_text = response.choices[0].message.content
+        if result_text is None:
+            raise ClassificationException(
+                message="OpenAI APIからの応答が空です",
+                code="EMPTY_RESPONSE"
+            )
+        result_text = result_text.strip()
+        GameChatLogger.log_info("classification_service", "LLM応答取得完了", {
+            "response_length": len(result_text)
+        })
+        
+        try:
+            result_data = json.loads(result_text)
+            classification = ClassificationResult(**result_data)
             
-            result_text = response.choices[0].message.content.strip()
-            print(f"LLM応答: {result_text}")  # デバッグ情報
+            GameChatLogger.log_success("classification_service", "クエリ分類完了", {
+                "query_type": classification.query_type,
+                "confidence": classification.confidence,
+                "filter_keywords_count": len(classification.filter_keywords or []),
+                "search_keywords_count": len(classification.search_keywords or [])
+            })
             
-            # JSONパースを試行
-            try:
-                result_data = json.loads(result_text)
-                return ClassificationResult(**result_data)
-            except json.JSONDecodeError as json_error:
-                print(f"JSON解析エラー: {json_error}")
-                print(f"応答内容: {result_text}")
-                # JSONパースに失敗した場合のフォールバック
-                return ClassificationResult(
-                    query_type=QueryType.FILTERABLE,  # 複合クエリなのでfilterableを推定
-                    summary=request.query,
-                    confidence=0.5,
-                    filter_keywords=["ダメージ", "40以上", "技", "水", "タイプ"],  # 手動でキーワード抽出
-                    search_keywords=[request.query],
-                    reasoning="JSON解析エラー - 手動キーワード抽出で対応"
-                )
+            return classification
+            
+        except json.JSONDecodeError as json_error:
+            GameChatLogger.log_warning("classification_service", "JSON解析エラー - フォールバック実行", {
+                "json_error": str(json_error),
+                "response_text": result_text[:100]
+            })
+            
+            # JSONパースに失敗した場合のフォールバック
+            return ClassificationResult(
+                query_type=QueryType.FILTERABLE,  # 複合クエリなのでfilterableを推定
+                summary=request.query,
+                confidence=0.5,
+                filter_keywords=["ダメージ", "40以上", "技", "水", "タイプ"],  # 手動でキーワード抽出
+                search_keywords=[request.query],
+                reasoning="JSON解析エラー - 手動キーワード抽出で対応"
+            )
                 
         except Exception as e:
-            print(f"分類エラー: {e}")
+            GameChatLogger.log_error("classification_service", "予期しないエラー", e)
             # エラー時のフォールバック
             return ClassificationResult(
                 query_type=QueryType.SEMANTIC,

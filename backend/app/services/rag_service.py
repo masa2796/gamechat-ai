@@ -1,3 +1,4 @@
+from typing import Dict, Any
 from ..models.rag_models import RagRequest
 from .embedding_service import EmbeddingService
 from .vector_service import VectorService
@@ -6,13 +7,13 @@ from .hybrid_search_service import HybridSearchService
 from ..config.ng_words import NG_WORDS
 
 class RagService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.embedding_service = EmbeddingService()
         self.vector_service = VectorService()
         self.llm_service = LLMService()
         self.hybrid_search_service = HybridSearchService()
     
-    async def process_query(self, rag_req: RagRequest) -> dict:
+    async def process_query(self, rag_req: RagRequest) -> Dict[str, Any]:
         if any(ng_word in rag_req.question for ng_word in NG_WORDS):
             return {
                 "answer": "申し訳ありませんが、そのような内容にはお答えできません。"
@@ -20,7 +21,7 @@ class RagService:
 
         # 新しいハイブリッド検索フローを使用
         search_result = await self.hybrid_search_service.search(
-            rag_req.question, rag_req.top_k
+            rag_req.question, rag_req.top_k or 50
         )
         
         context_items = search_result["merged_results"]

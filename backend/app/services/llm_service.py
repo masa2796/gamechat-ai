@@ -4,16 +4,17 @@ import os
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
+from ..core.exceptions import LLMException
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 
 class LLMService:
-    def __init__(self):
+    def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        if api_key:
-            self.client = openai.OpenAI(api_key=api_key)
-        else:
-            self.client = None
+        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
 
+    @handle_service_exceptions("llm", fallback_return=None)
     async def generate_answer(
         self, 
         query: str, 
@@ -21,64 +22,185 @@ class LLMService:
         classification: Optional[ClassificationResult] = None,
         search_info: Optional[Dict[str, Any]] = None
     ) -> str:
-        """検索結果と元の質問、分類結果を元にLLMで回答を生成"""
+        """
+        検索結果と元の質問、分類結果を元にLLMで回答を生成します。
+        
+        コンテキスト品質の動的分析と関連度に基づく応答戦略により、
+        簡潔で実用的な回答を生成します。挨拶の場合は専用の応答を返します。
+        
+        Args:
+            query: ユーザーの質問文
+                例: "HP100以上のカードを教えて"
+            context_items: 検索で取得されたコンテキストアイテムのリスト
+                各アイテムには title, text, score が含まれます
+            classification: LLMによる分類結果 (オプション)
+                query_type, confidence, summary などを含む
+            search_info: 検索品質情報 (オプション)
+                検索戦略や品質スコアなどの情報
+                
+        Returns:
+            生成された回答文字列 (100-200文字程度に最適化)
+            
+        Raises:
+            LLMException: OpenAI APIキーが設定されていない場合
+            LLMException: API呼び出しでエラーが発生した場合
+            
+        Examples:
+            >>> service = LLMService()
+            >>> context_items = [
+            ...     ContextItem(title="リザードン", text="HP180の炎タイプ", score=0.9)
+            ... ]
+            >>> classification = ClassificationResult(
+            ...     query_type=QueryType.FILTERABLE, confidence=0.8
+            ... )
+            >>> answer = await service.generate_answer(
+            ...     "HP100以上のカード", context_items, classification
+            ... )
+            >>> print(answer)
+            # "HP100以上の条件に合うカードとして、リザードン（HP180）があります..."
+            
+        Note:
+            動的応答戦略:
+            - 高関連度(0.8+): 詳細で具体的な回答
+            - 中関連度(0.6-0.8): 要点を絞った回答
+            - 低関連度(0.4-0.6): 一般的な案内＋追加質問の促し
+            - 極低関連度(0.4未満): 代替提案や検索改善案
+        """
         if not self.client:
-            return "申し訳ありませんが、現在回答生成サービスが利用できません。"
+            raise LLMException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
+            )
+        
+        GameChatLogger.log_info("llm_service", "回答生成開始", {
+            "query_length": len(query),
+            "context_count": len(context_items),
+            "classification_type": classification.query_type if classification else None
+        })
         
         # 挨拶の場合は専用の応答を生成
         if classification and classification.query_type == QueryType.GREETING:
             return self._generate_greeting_response(query, classification)
         
-        try:
-            # コンテキストテキストを結合（より構造化された形式で）
-            context_text = self._format_context_items(context_items)
-            
-            # コンテキスト品質を分析
-            context_quality = self._analyze_context_quality(context_items)
-            
-            # 分類結果の要約テキスト生成
-            classification_summary = self._format_classification_info(classification)
-            
-            # 検索情報の要約（品質分析結果を含む）
-            search_summary = self._format_search_info(search_info, context_quality)
-            
-            # 改良されたシステムプロンプト
-            system_prompt = self._get_optimized_system_prompt()
-            
-            # より文脈に沿ったユーザープロンプト構成
-            user_prompt = self._build_enhanced_user_prompt(
-                query, context_text, classification_summary, search_summary, context_quality
-            )
+        # 回答生成のためのコンテキスト準備
+        context_data = self._prepare_context_data(context_items, classification, search_info)
+        
+        # プロンプトの構築
+        system_prompt = self._get_optimized_system_prompt()
+        user_prompt = self._build_enhanced_user_prompt(query, context_data)
 
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,  # 簡潔な回答を促すため削減
-                temperature=0.3,  # より一貫性のある回答のため下げる
-                presence_penalty=0.1,  # 冗長性を減らす
-                frequency_penalty=0.1  # 繰り返しを減らす
+        # LLMに回答生成を依頼
+        response = await self._request_llm_response(system_prompt, user_prompt)
+        
+        GameChatLogger.log_success("llm_service", "回答生成完了", {
+            "response_length": len(response) if response else 0
+        })
+        
+        # フォールバック値を返す場合の処理
+        if not response or not response.strip():
+            fallback_message = f"申し訳ありませんが、「{query}」に関する回答の生成中にエラーが発生しました。"
+            GameChatLogger.log_warning("llm_service", "空の回答、フォールバック実行")
+            return fallback_message
+            
+        return response
+
+    def _prepare_context_data(
+        self, 
+        context_items: List[ContextItem],
+        classification: Optional[ClassificationResult] = None,
+        search_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """回答生成のためのコンテキストデータを準備"""
+        # コンテキストテキストを結合（より構造化された形式で）
+        context_text = self._format_context_items(context_items)
+        
+        # コンテキスト品質を分析
+        context_quality = self._analyze_context_quality(context_items)
+        
+        # 分類結果の要約テキスト生成
+        classification_summary = self._format_classification_info(classification)
+        
+        # 検索情報の要約（品質分析結果を含む）
+        search_summary = self._format_search_info(search_info, context_quality)
+        
+        return {
+            "context_text": context_text,
+            "context_quality": context_quality,
+            "classification_summary": classification_summary,
+            "search_summary": search_summary
+        }
+
+    def _build_enhanced_user_prompt(self, query: str, context_data: Dict[str, Any]) -> str:
+        """強化されたユーザープロンプトを構築"""
+        prompt_parts = [f"【ユーザーの質問】\n{query}"]
+        
+        if context_data["classification_summary"]:
+            prompt_parts.append(context_data["classification_summary"])
+        
+        if context_data["search_summary"]:
+            prompt_parts.append(context_data["search_summary"])
+        
+        prompt_parts.append(f"【検索結果】\n{context_data['context_text']}")
+        
+        # 回答戦略に基づく具体的な指示
+        strategy_instructions = self._get_strategy_instructions(context_data["context_quality"])
+        
+        prompt_parts.append(f"""
+【回答指示】
+上記の質問分析結果と検索結果を参考に、以下の条件を満たす回答を生成してください：
+
+{strategy_instructions}
+
+1. **簡潔性重視**: 100-200文字程度で要点を明確に
+2. **文脈活用**: 分類結果で示された質問の意図を正確に理解
+3. **関連度考慮**: 検索結果の関連度スコアに基づいて回答の詳細度を調整
+4. **実用性**: ユーザーの判断や行動に直接役立つ情報を優先
+5. **自然な口調**: 親しみやすく、専門的すぎない表現
+
+前置きや冗長な説明は省略し、核心となる情報を中心に構成してください。
+""")
+        
+        return "\n".join(prompt_parts)
+
+    async def _request_llm_response(self, system_prompt: str, user_prompt: str) -> str:
+        """LLMにリクエストを送信して回答を取得"""
+        if not self.client:
+            raise LLMException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
             )
             
-            return response.choices[0].message.content.strip()
-            
-        except Exception as e:
-            print(f"LLM回答生成エラー: {e}")
-            return f"申し訳ありませんが、「{query}」に関する回答の生成中にエラーが発生しました。"
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=300,  # 簡潔な回答を促すため削減
+            temperature=0.3,  # より一貫性のある回答のため下げる
+            presence_penalty=0.1,  # 冗長性を減らす
+            frequency_penalty=0.1  # 繰り返しを減らす
+        )
+        
+        # レスポンス内容の取得と検証
+        response_content = response.choices[0].message.content
+        if response_content is None:
+            GameChatLogger.log_warning("llm_service", "OpenAI APIからの応答が空です")
+            return "申し訳ありませんが、回答の生成中にエラーが発生しました。"
+        
+        return response_content.strip()
 
     def _generate_greeting_response(self, query: str, classification: ClassificationResult) -> str:
         """挨拶専用の応答を生成"""
         # 一般的な挨拶パターンに対する定型応答
         greeting_responses = {
-            "こんにちは": "こんにちは！今日はどんなポケモンカードについて知りたいですか？",
-            "おはよう": "おはようございます！何かポケモンカードで調べたいことはありますか？",
-            "こんばんは": "こんばんは！ポケモンカードについて何でもお聞きください。",
-            "はじめまして": "はじめまして！ポケモンカードの情報なら何でもお任せください。",
-            "ありがとう": "どういたしまして！他にもポケモンカードについて知りたいことがあればお気軽にどうぞ。",
-            "お疲れさま": "お疲れさまです！ポケモンカードで何か調べたいことはありますか？",
-            "よろしく": "こちらこそよろしくお願いします！ポケモンカードについて何でもお聞きください。"
+            "こんにちは": "こんにちは！今日はどんなゲームカードについて知りたいですか？",
+            "おはよう": "おはようございます！何かゲームカードで調べたいことはありますか？",
+            "こんばんは": "こんばんは！ゲームカードについて何でもお聞きください。",
+            "はじめまして": "はじめまして！ゲームカードの情報なら何でもお任せください。",
+            "ありがとう": "どういたしまして！他にもゲームカードについて知りたいことがあればお気軽にどうぞ。",
+            "お疲れさま": "お疲れさまです！ゲームカードで何か調べたいことはありますか？",
+            "よろしく": "こちらこそよろしくお願いします！ゲームカードについて何でもお聞きください。"
         }
         
         # クエリを正規化（ひらがな・カタカナ・漢字の違いを吸収）
@@ -90,7 +212,7 @@ class LLMService:
                 return response
         
         # デフォルトの挨拶応答
-        return "こんにちは！ポケモンカードについて何でもお聞きください。どんなカードについて知りたいですか？"
+        return "こんにちは！ゲームカードについて何でもお聞きください。どんなカードについて知りたいですか？"
 
     def _analyze_context_quality(self, context_items: List[ContextItem]) -> Dict[str, Any]:
         """コンテキストの品質を分析し、回答戦略を決定"""
@@ -245,44 +367,7 @@ class LLMService:
 
 必ず上記の方針に従い、質問の文脈を考慮した適切で簡潔な回答を生成してください。"""
     
-    def _build_enhanced_user_prompt(
-        self, 
-        query: str, 
-        context_text: str, 
-        classification_summary: str, 
-        search_summary: str,
-        context_quality: Optional[Dict[str, Any]] = None
-    ) -> str:
-        """強化されたユーザープロンプトを構築"""
-        prompt_parts = [f"【ユーザーの質問】\n{query}"]
-        
-        if classification_summary:
-            prompt_parts.append(classification_summary)
-        
-        if search_summary:
-            prompt_parts.append(search_summary)
-        
-        prompt_parts.append(f"【検索結果】\n{context_text}")
-        
-        # 回答戦略に基づく具体的な指示
-        strategy_instructions = self._get_strategy_instructions(context_quality)
-        
-        prompt_parts.append(f"""
-【回答指示】
-上記の質問分析結果と検索結果を参考に、以下の条件を満たす回答を生成してください：
-
-{strategy_instructions}
-
-1. **簡潔性重視**: 100-200文字程度で要点を明確に
-2. **文脈活用**: 分類結果で示された質問の意図を正確に理解
-3. **関連度考慮**: 検索結果の関連度スコアに基づいて回答の詳細度を調整
-4. **実用性**: ユーザーの判断や行動に直接役立つ情報を優先
-5. **自然な口調**: 親しみやすく、専門的すぎない表現
-
-前置きや冗長な説明は省略し、核心となる情報を中心に構成してください。
-""")
-        
-        return "\n".join(prompt_parts)
+    # レガシーメソッドを削除（新しい実装に統合されたため）
     
     def _get_strategy_instructions(self, context_quality: Optional[Dict[str, Any]]) -> str:
         """回答戦略に基づく具体的な指示を生成"""
@@ -303,4 +388,7 @@ class LLMService:
     # 下位互換性のための旧メソッド
     async def generate_answer_legacy(self, query: str, context_items: List[ContextItem]) -> str:
         """下位互換性のための旧generate_answerメソッド"""
-        return await self.generate_answer(query, context_items)
+        result = await self.generate_answer(query, context_items)
+        if isinstance(result, str):
+            return result
+        return str(result)

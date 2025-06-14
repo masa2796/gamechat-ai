@@ -21,7 +21,7 @@ test_cases = [
     },
     {
         "name": "複雑なフィルター検索",
-        "question": "HP100以上の炎タイプのポケモンを教えて",
+        "question": "HP100以上の炎タイプのカードを教えて",
         "expected_skip": False
     },
     {
