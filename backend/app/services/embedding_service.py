@@ -1,9 +1,11 @@
 from typing import List, Dict, Any
 import openai
-from fastapi import HTTPException
 import os
 from dotenv import load_dotenv
 from ..models.classification_models import ClassificationResult, QueryType
+from ..core.exceptions import EmbeddingException
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 
 load_dotenv()
 
@@ -16,26 +18,32 @@ class EmbeddingService:
         else:
             self.client = None
 
+    @handle_service_exceptions("embedding")
     async def get_embedding(self, query: str) -> List[float]:
         """質問文をOpenAI APIでエンベディングに変換"""
         if not self.client:
-            raise HTTPException(status_code=500, detail={
-                "message": "OpenAI APIキーが設定されていません",
-                "code": "API_KEY_NOT_SET"
-            })
-        
-        try:
-            response = self.client.embeddings.create(
-                input=query,
-                model="text-embedding-3-small"
+            raise EmbeddingException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
             )
-            return response.data[0].embedding
-        except Exception as e:
-            raise HTTPException(status_code=500, detail={
-                "message": f"エンベディング生成に失敗: {str(e)}",
-                "code": "EMBEDDING_ERROR"
-            })
+        
+        GameChatLogger.log_info("embedding_service", "埋め込み生成開始", {
+            "query_length": len(query),
+            "query_preview": query[:50]
+        })
+        
+        response = self.client.embeddings.create(
+            input=query,
+            model="text-embedding-3-small"
+        )
+        
+        GameChatLogger.log_success("embedding_service", "埋め込み生成完了", {
+            "embedding_dimension": len(response.data[0].embedding)
+        })
+        
+        return response.data[0].embedding
 
+    @handle_service_exceptions("embedding", fallback_return=None)
     async def get_embedding_from_classification(
         self, 
         original_query: str, 
@@ -52,27 +60,34 @@ class EmbeddingService:
             埋め込みベクトル
         """
         if not self.client:
-            raise HTTPException(status_code=500, detail={
-                "message": "OpenAI APIキーが設定されていません",
-                "code": "API_KEY_NOT_SET"
-            })
+            raise EmbeddingException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
+            )
 
         # 埋め込み対象テキストを決定
         embedding_text = self._determine_embedding_text(original_query, classification)
         
-        print(f"[EmbeddingService] 埋め込み対象テキスト: {embedding_text}")
-        print(f"[EmbeddingService] 分類タイプ: {classification.query_type}, 信頼度: {classification.confidence}")
+        GameChatLogger.log_info("embedding_service", "分類ベース埋め込み生成", {
+            "original_query": original_query[:50],
+            "embedding_text": embedding_text[:50],
+            "classification_type": classification.query_type,
+            "confidence": classification.confidence
+        })
         
-        try:
-            response = self.client.embeddings.create(
-                input=embedding_text,
-                model="text-embedding-3-small"
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            print(f"[EmbeddingService] 埋め込み生成エラー: {e}")
-            # フォールバック: 元の質問文で埋め込み生成
+        response = self.client.embeddings.create(
+            input=embedding_text,
+            model="text-embedding-3-small"
+        )
+        
+        result = response.data[0].embedding
+        
+        # フォールバック処理
+        if not result:
+            GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
             return await self.get_embedding(original_query)
+            
+        return result
 
     def _determine_embedding_text(
         self, 
@@ -113,7 +128,9 @@ class EmbeddingService:
                     return f"{keywords_text} {original_query}"
                     
         # フォールバック: 元質問を使用
-        print(f"[EmbeddingService] フォールバック: 元質問を使用 (信頼度: {classification.confidence})")
+        GameChatLogger.log_info("embedding_service", "フォールバック: 元質問を使用", {
+            "confidence": classification.confidence
+        })
         return original_query
 
     def _is_summary_quality_good(self, summary: str, original_query: str) -> bool:
@@ -128,11 +145,16 @@ class EmbeddingService:
         
         # 長さチェック
         if len(summary) < 5:
-            print(f"[EmbeddingService] 要約が短すぎます: {len(summary)}文字")
+            GameChatLogger.log_warning("embedding_service", "要約が短すぎます", {
+                "summary_length": len(summary)
+            })
             return False
             
         if len(summary) > len(original_query) * 1.5:
-            print(f"[EmbeddingService] 要約が長すぎます: {len(summary)} > {len(original_query) * 1.5}")
+            GameChatLogger.log_warning("embedding_service", "要約が長すぎます", {
+                "summary_length": len(summary),
+                "threshold": len(original_query) * 1.5
+            })
             return False
         
         # 基本的な品質チェック（重要なキーワードの保持）
@@ -142,7 +164,7 @@ class EmbeddingService:
         summary_has_keywords = any(keyword in summary for keyword in important_keywords)
         
         if original_has_keywords and not summary_has_keywords:
-            print("[EmbeddingService] 要約に重要なキーワードが含まれていません")
+            GameChatLogger.log_warning("embedding_service", "要約に重要なキーワードが含まれていません")
             return False
             
         return True
@@ -154,28 +176,16 @@ class EmbeddingService:
         
         return {
             "strategy": self._get_embedding_strategy(classification),
-            "text_length": len(embedding_text),
-            "confidence_level": "high" if classification.confidence >= 0.8 else (
-                "medium" if classification.confidence >= 0.5 else "low"
-            ),
-            "query_type": classification.query_type,
-            "has_summary": bool(classification.summary and len(classification.summary.strip()) > 5),
-            "has_search_keywords": bool(classification.search_keywords),
-            "has_filter_keywords": bool(classification.filter_keywords)
+            "embedding_text_length": len(embedding_text),
+            "confidence": classification.confidence,
+            "query_type": classification.query_type
         }
-    
+
     def _get_embedding_strategy(self, classification: ClassificationResult) -> str:
-        """使用される埋め込み戦略を取得"""
-        
-        if classification.confidence >= 0.8:
-            if classification.summary and len(classification.summary.strip()) > 5:
-                if self._is_summary_quality_good(classification.summary, "sample"):
-                    return "summary_based"
-        
-        if classification.confidence >= 0.5:
-            if classification.query_type == QueryType.SEMANTIC and classification.search_keywords:
-                return "keywords_enhanced"
-            elif classification.query_type == QueryType.HYBRID:
-                return "hybrid_keywords"
-        
-        return "fallback_original"
+        """現在の埋め込み戦略を取得"""
+        if classification.confidence >= 0.8 and classification.summary:
+            return "high_confidence_summary"
+        elif classification.confidence >= 0.5 and (classification.search_keywords or classification.filter_keywords):
+            return "medium_confidence_keywords"
+        else:
+            return "fallback_original"

@@ -2,6 +2,9 @@ from typing import List, Dict, Any
 import json
 from ..models.rag_models import ContextItem
 from ..core.config import settings
+from ..core.exceptions import DatabaseException
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 
 class DatabaseService:
     """通常のデータベース検索サービス（構造化データのフィルタリング）"""
@@ -21,63 +24,72 @@ class DatabaseService:
             # data.jsonを優先して使用（構造化データ）
             with open(self.data_path, 'r', encoding='utf-8') as f:
                 self.cache = json.load(f)
+                GameChatLogger.log_success("database_service", f"データファイルを読み込みました: {self.data_path}")
                 return self.cache
         except FileNotFoundError:
             try:
                 # フォールバックでconvert_data.jsonを使用
                 with open(self.converted_data_path, 'r', encoding='utf-8') as f:
                     self.cache = json.load(f)
+                    GameChatLogger.log_info("database_service", f"フォールバックファイルを使用: {self.converted_data_path}")
                     return self.cache
             except FileNotFoundError:
-                print("データファイルが見つかりません")
-                return []
+                raise DatabaseException(
+                    message="データファイルが見つかりません",
+                    code="DATA_FILE_NOT_FOUND",
+                    details={"data_path": self.data_path, "converted_path": self.converted_data_path}
+                )
         except Exception as e:
-            print(f"データ読み込みエラー: {e}")
-            return []
+            raise DatabaseException(
+                message="データ読み込みエラー",
+                code="DATA_LOAD_ERROR",
+                details={"original_error": str(e), "file_path": self.data_path}
+            )
     
+    @handle_service_exceptions("database", fallback_return=[])
     async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[ContextItem]:
         """フィルターキーワードに基づいて構造化検索を実行"""
-        try:
-            data = self._load_data()
-            if not data:
-                return self._get_fallback_results()
-            
-            print("=== データベースフィルター検索 ===")
-            print(f"検索キーワード: {filter_keywords}")
-            print(f"総データ件数: {len(data)}")
-            
-            filtered_results = []
-            
-            for item in data:
-                score = self._calculate_filter_score(item, filter_keywords)
-                if score > 0:
-                    title = self._extract_title(item)
-                    text = self._extract_text(item)
-                    
-                    filtered_results.append({
-                        "title": title,
-                        "text": text,
-                        "score": score,
-                        "item": item
-                    })
-            
-            # スコアでソートして上位を返す
-            filtered_results.sort(key=lambda x: x["score"], reverse=True)
-            
-            print(f"フィルター結果: {len(filtered_results)}件")
-            
-            return [
-                ContextItem(
-                    title=result["title"],
-                    text=result["text"],
-                    score=result["score"]
-                )
-                for result in filtered_results[:top_k]
-            ]
-            
-        except Exception as e:
-            print(f"データベース検索エラー: {e}")
+        data = self._load_data()
+        if not data:
             return self._get_fallback_results()
+        
+        GameChatLogger.log_info("database_service", "データベースフィルター検索を開始", {
+            "keywords": filter_keywords,
+            "data_count": len(data),
+            "top_k": top_k
+        })
+        
+        filtered_results = []
+        
+        for item in data:
+            score = self._calculate_filter_score(item, filter_keywords)
+            if score > 0:
+                title = self._extract_title(item)
+                text = self._extract_text(item)
+                
+                filtered_results.append({
+                    "title": title,
+                    "text": text,
+                    "score": score,
+                    "item": item
+                })
+        
+        # スコアでソートして上位を返す
+        filtered_results.sort(key=lambda x: x["score"], reverse=True)
+        
+        GameChatLogger.log_success("database_service", "フィルター検索完了", {
+            "results_count": len(filtered_results),
+            "returned_count": min(len(filtered_results), top_k)
+        })
+        
+        return [
+            ContextItem(
+                title=result["title"],
+                text=result["text"],
+                score=result["score"]
+            )
+            for result in filtered_results[:top_k]
+        ]
 
     def _calculate_filter_score(self, item: Dict[str, Any], keywords: List[str]) -> float:
         """アイテムとキーワードのマッチスコアを計算"""
