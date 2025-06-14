@@ -16,6 +16,63 @@ from backend.app.models.classification_models import ClassificationResult, Query
 from backend.app.tests.fixtures.mock_factory import TestDataFactory, MockResponseFactory
 from backend.app.tests.fixtures.test_helpers import TestAssertions
 
+# 新しいモックシステムのインポート
+from backend.app.tests.mocks import (
+    MockUpstashResult,
+    MockClassificationResult,
+    MockOpenAIResponse,
+    MockDatabaseConnection,
+    ContextItemFactory,
+    ClassificationResultFactory,
+    TestScenarioFactory
+)
+
+
+# ==============================================================================
+# 新しいモックシステム用フィクスチャ
+# ==============================================================================
+
+@pytest.fixture
+def context_item_factory():
+    """ContextItemファクトリーのインスタンス"""
+    return ContextItemFactory()
+
+
+@pytest.fixture
+def classification_result_factory():
+    """ClassificationResultファクトリーのインスタンス"""
+    return ClassificationResultFactory()
+
+
+@pytest.fixture
+def mock_upstash_result():
+    """MockUpstashResultのインスタンス"""
+    return MockUpstashResult
+
+
+@pytest.fixture
+def mock_classification_result():
+    """MockClassificationResultのインスタンス"""
+    return MockClassificationResult
+
+
+@pytest.fixture
+def mock_openai_response():
+    """MockOpenAIResponseのインスタンス"""
+    return MockOpenAIResponse
+
+
+@pytest.fixture
+def mock_database_connection():
+    """MockDatabaseConnectionのインスタンス"""
+    return MockDatabaseConnection
+
+
+@pytest.fixture
+def test_scenario_factory():
+    """TestScenarioFactoryのインスタンス"""
+    return TestScenarioFactory
+
 
 # ==============================================================================
 # 共通フィクスチャ
