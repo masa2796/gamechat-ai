@@ -21,7 +21,7 @@ class TestClassificationService:
         # OpenAIクライアントをモックに置き換え
         classification_service.client = mock_openai_client
         
-        request = ClassificationRequest(query="HPが100以上のポケモン")
+        request = ClassificationRequest(query="HPが100以上のカード")
         result = await classification_service.classify_query(request)
         
         assert isinstance(result, ClassificationResult)
@@ -41,9 +41,9 @@ class TestClassificationService:
         # 新しいモックシステムを使用
         mock_response = MockOpenAIResponse.create_classification_response(
             query_type="semantic",
-            summary="強いポケモンの検索",
+            summary="強いカードの検索",
             confidence=0.8,
-            search_keywords=["強い", "ポケモン"],
+            search_keywords=["強い", "カード"],
             filter_keywords=[]
         )
         
@@ -51,12 +51,12 @@ class TestClassificationService:
         mock_client.chat.completions.create.return_value = mock_response
         classification_service.client = mock_client
         
-        request = ClassificationRequest(query="強いポケモンを教えて")
+        request = ClassificationRequest(query="強いカードを教えて")
         result = await classification_service.classify_query(request)
         
         assert result.query_type == QueryType.SEMANTIC
         assert "強い" in result.search_keywords
-        assert "ポケモン" in result.search_keywords
+        assert "カード" in result.search_keywords
 
     @pytest.mark.asyncio
     async def test_classify_greeting_query(
@@ -97,7 +97,7 @@ class TestClassificationService:
             query_type="filterable",
             summary="ピカチュウの特定検索",
             confidence=0.95,
-            search_keywords=["ピカチュウ", "でんき", "ポケモン"],
+            search_keywords=["ピカチュウ", "でんき", "カード"],
             filter_keywords=["ピカチュウ"]
         )
         
@@ -234,8 +234,8 @@ class TestClassificationEdgeCases:
             query_type="semantic",
             summary="長いクエリの要約",
             confidence=0.7,
-            search_keywords=["ポケモン", "バトル", "戦略"],
-            filter_keywords=["ポケモン"]
+            search_keywords=["カード", "バトル", "戦略"],
+            filter_keywords=["カード"]
         )
         
         mock_client = MagicMock()
@@ -243,7 +243,7 @@ class TestClassificationEdgeCases:
         monkeypatch.setattr(classification_service, "client", mock_client)
         
         # 非常に長いクエリ
-        long_query = "ポケモンバトルにおいて" + "効果的な戦略について" * 50 + "教えてください"
+        long_query = "カードバトルにおいて" + "効果的な戦略について" * 50 + "教えてください"
         
         request = ClassificationRequest(query=long_query)
         result = await classification_service.classify_query(request)
@@ -262,10 +262,10 @@ class TestClassificationEdgeCases:
         # 新しいモックシステムを使用
         mock_response = MockOpenAIResponse.create_classification_response(
             query_type="semantic",
-            summary="英語でのポケモン検索",
+            summary="英語でのカード検索",
             confidence=0.8,
-            search_keywords=["Pokemon", "electric", "type"],
-            filter_keywords=["Pokemon"]
+            search_keywords=["Card", "electric", "type"],
+            filter_keywords=["Card"]
         )
         
         mock_client = MagicMock()
@@ -273,9 +273,9 @@ class TestClassificationEdgeCases:
         monkeypatch.setattr(classification_service, "client", mock_client)
         
         multilingual_queries = [
-            "Tell me about Pokemon",
-            "Pokemon电气类型",
-            "포켓몬에 대해 알려주세요"
+            "Tell me about Card",
+            "Card electric type",
+            "カードについて教えて"
         ]
         
         for query in multilingual_queries:

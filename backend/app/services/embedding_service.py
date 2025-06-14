@@ -47,14 +47,46 @@ class EmbeddingService:
         classification: ClassificationResult
     ) -> List[float]:
         """
-        分類結果に基づいて最適化された埋め込みを生成
+        分類結果に基づいて最適化された埋め込みを生成します。
+        
+        LLMによる分類結果の信頼度とクエリタイプに応じて、
+        最適な埋め込み用テキストを決定し、ベクトル検索の精度を向上させます。
         
         Args:
             original_query: 元の質問文
+                例: "HP100以上の強いカード"
             classification: LLMによる分類結果
-            
+                - query_type: SEMANTIC, FILTERABLE, HYBRID, GREETING
+                - confidence: 0.0-1.0の信頼度
+                - summary: LLMが生成した要約
+                - search_keywords: セマンティック検索用キーワード
+                - filter_keywords: フィルター検索用キーワード
+                
         Returns:
-            埋め込みベクトル
+            1536次元の埋め込みベクトル (text-embedding-3-small使用)
+            
+        Raises:
+            EmbeddingException: OpenAI APIキーが設定されていない場合
+            EmbeddingException: API呼び出しでエラーが発生した場合
+            
+        Examples:
+            >>> service = EmbeddingService()
+            >>> classification = ClassificationResult(
+            ...     query_type=QueryType.SEMANTIC,
+            ...     confidence=0.9,
+            ...     summary="強いカードの情報を検索",
+            ...     search_keywords=["強い", "カード"]
+            ... )
+            >>> embedding = await service.get_embedding_from_classification(
+            ...     "強いカードを教えて", classification
+            ... )
+            >>> print(len(embedding))  # 1536
+            
+        Note:
+            信頼度に基づくフォールバック戦略:
+            - 高信頼度(0.8+): LLMの要約を使用
+            - 中信頼度(0.5+): キーワード + 元質問
+            - 低信頼度(0.5未満): 元質問をそのまま使用
         """
         if not self.client:
             raise EmbeddingException(
@@ -93,12 +125,57 @@ class EmbeddingService:
         classification: ClassificationResult
     ) -> str:
         """
-        分類結果に基づいて埋め込み用のテキストを決定
+        分類結果に基づいて埋め込み用のテキストを決定します。
         
-        フォールバック戦略:
-        1. 高信頼度の要約がある場合 → 要約を使用
-        2. 中信頼度で検索キーワードがある場合 → キーワード + 元質問
-        3. 低信頼度またはエラー → 元質問を使用
+        LLMによる分類の信頼度とクエリタイプに応じて、最適な埋め込み用テキストを選択します。
+        高信頼度の場合はLLMの要約を使用し、中～低信頼度の場合は段階的にフォールバックします。
+        
+        Args:
+            original_query: 元の質問文
+                例: "HP100以上の強いカード"
+            classification: LLMによる分類結果
+                - confidence: 分類の信頼度（0.0-1.0）
+                - summary: LLMが生成した要約
+                - search_keywords: セマンティック検索用キーワード
+                - filter_keywords: フィルター検索用キーワード
+                - query_type: クエリタイプ（SEMANTIC, FILTERABLE, HYBRID, GREETING）
+                
+        Returns:
+            埋め込み生成に使用するテキスト
+            
+        Raises:
+            なし（フォールバック戦略により常に文字列を返す）
+            
+        Examples:
+            >>> service = EmbeddingService()
+            >>> classification = ClassificationResult(
+            ...     confidence=0.9,
+            ...     summary="HP100以上のカードの検索",
+            ...     query_type=QueryType.FILTERABLE
+            ... )
+            >>> text = service._determine_embedding_text(
+            ...     "HP100以上のカード", classification
+            ... )
+            >>> print(text)
+            "HP100以上のカードの検索"
+            
+            >>> # 中信頼度の場合
+            >>> classification = ClassificationResult(
+            ...     confidence=0.7,
+            ...     search_keywords=["強い", "カード"],
+            ...     query_type=QueryType.SEMANTIC
+            ... )
+            >>> text = service._determine_embedding_text(
+            ...     "強いカードを教えて", classification
+            ... )
+            >>> print(text)
+            "強い カード 強いカードを教えて"
+            
+        Note:
+            フォールバック戦略:
+            1. 高信頼度（0.8以上）: 要約を優先使用
+            2. 中信頼度（0.5以上）: キーワード + 元質問
+            3. 低信頼度（0.5未満）: 元質問をそのまま使用
         """
         
         # 信頼度による戦略選択
@@ -156,8 +233,8 @@ class EmbeddingService:
             return False
         
         # 基本的な品質チェック（重要なキーワードの保持）
-        # ポケモンカード特有のキーワードが保持されているかチェック
-        important_keywords = ["ポケモン", "カード", "HP", "ダメージ", "技", "タイプ", "進化", "レアリティ"]
+        # ゲームカード特有のキーワードが保持されているかチェック
+        important_keywords = ["カード", "カード", "HP", "ダメージ", "技", "タイプ", "進化", "レアリティ"]
         original_has_keywords = any(keyword in original_query for keyword in important_keywords)
         summary_has_keywords = any(keyword in summary for keyword in important_keywords)
         

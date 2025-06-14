@@ -35,7 +35,7 @@ class TestRagAPI:
         async def test_process_query_without_ng_word(self, monkeypatch):
             """NGワードなしでのクエリ処理テスト"""
             service = RagService()
-            rag_req = RagRequest(question="ポケモンの進化について教えて！", top_k=3, with_context=False)
+            rag_req = RagRequest(question="カードの進化について教えて！", top_k=3, with_context=False)
 
             async def mock_get_embedding(query):
                 return [0.1, 0.2, 0.3]
@@ -44,7 +44,7 @@ class TestRagAPI:
                 return []
 
             async def mock_generate_answer(query, context_items, classification=None, search_info=None):
-                return "ポケモンの進化についての回答です。"
+                return "カードの進化についての回答です。"
 
             # ハイブリッド検索サービス全体をモック
             async def mock_hybrid_search(query, top_k):
@@ -67,7 +67,7 @@ class TestRagAPI:
             monkeypatch.setattr(service.llm_service, "generate_answer", mock_generate_answer)
 
             result = await service.process_query(rag_req)
-            assert result["answer"] == "ポケモンの進化についての回答です。"
+            assert result["answer"] == "カードの進化についての回答です。"
 
     # === 異常系テスト ===
     class TestErrorCases:

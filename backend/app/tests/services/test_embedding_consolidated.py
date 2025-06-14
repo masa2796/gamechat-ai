@@ -40,7 +40,7 @@ class TestEmbeddingService:
         # OpenAIクライアントをモックに置き換え
         embedding_service.client = mock_openai_client
         
-        query = "強いポケモンを教えて"
+        query = "強いカードを教えて"
         embedding = await embedding_service.get_embedding_from_classification(
             query, semantic_classification
         )

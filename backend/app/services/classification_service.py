@@ -9,7 +9,31 @@ from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
 
 class ClassificationService:
-    """LLMによるクエリ分類・要約サービス"""
+    """
+    LLMによるクエリ分類・要約サービス。
+    
+    OpenAI GPT-4oを使用してユーザーのクエリを分析し、
+    最適な検索戦略を決定するための分類を行います。
+    
+    分類タイプ:
+        - GREETING: 挨拶・雑談（検索不要）
+        - FILTERABLE: 具体的な条件での絞り込み検索
+        - SEMANTIC: 意味的な検索
+        - HYBRID: 両方の組み合わせ
+        
+    Attributes:
+        client: OpenAI APIクライアント
+        system_prompt: 分類用のシステムプロンプト
+        
+    Examples:
+        >>> service = ClassificationService()
+        >>> request = ClassificationRequest(query="HP100以上のカード")
+        >>> result = await service.classify_query(request)
+        >>> print(result.query_type)
+        QueryType.FILTERABLE
+        >>> print(result.confidence)
+        0.9
+    """
     
     def __init__(self) -> None:
         # OpenAI クライアントを初期化
@@ -23,13 +47,13 @@ class ClassificationService:
    例：「こんにちは」「おはよう」「ありがとう」「よろしく」「お疲れ様」
    例：「元気？」「調子はどう？」「今日は暑いね」
 2. "filterable" - 具体的な条件での絞り込み検索
-   例：「HPが100以上のポケモン」「炎タイプのカード」「レアリティがRRのカード」
-   例：「ダメージが40以上の技を持つポケモン」「水タイプのポケモン」
-   例：「ダメージが40以上の技を持つ、水タイプポケモン」（複合条件）
+   例：「HPが100以上のカード」「炎タイプのカード」「レアリティがRRのカード」
+   例：「ダメージが40以上の技を持つカード」「水タイプのカード」
+   例：「ダメージが40以上の技を持つ、水タイプカード」（複合条件）
 3. "semantic" - 意味的な検索
-   例：「強いポケモンを教えて」「おすすめの戦略」「初心者向けのデッキ」
+   例：「強いカードを教えて」「おすすめの戦略」「初心者向けのデッキ」
 4. "hybrid" - 両方の組み合わせ
-   例：「炎タイプで強いポケモン」「HPが高くて使いやすいポケモン」
+   例：「炎タイプで強いカード」「HPが高くて使いやすいカード」
 
 重要: 挨拶や一般的な会話は「greeting」として分類し、検索キーワードは空にしてください。
 
@@ -45,7 +69,7 @@ class ClassificationService:
 - 戦略: "攻撃的", "守備的", "サポート", "コンボ"
 
 重要: 複合条件の場合は、すべての条件をfilter_keywordsに含めてください。
-例：「ダメージが40以上の技を持つ、水タイプポケモン」
+例：「ダメージが40以上の技を持つ、水タイプカード」
 → filter_keywords: ["ダメージ", "40以上", "技", "水", "タイプ"]
 
 **必ず以下のJSON形式のみで回答してください。他の文章は含めず、JSONのみを出力してください:**
@@ -60,7 +84,48 @@ class ClassificationService:
 
     @handle_service_exceptions("classification", fallback_return=None)
     async def classify_query(self, request: ClassificationRequest) -> ClassificationResult:
-        """クエリを分類・要約する"""
+        """
+        クエリを分類・要約します。
+        
+        GPT-4oを使用してユーザーのクエリを分析し、適切な検索戦略を決定するための
+        分類結果を返します。JSON形式での回答を強制し、一貫性を保ちます。
+        
+        Args:
+            request: 分類リクエスト
+                - query: 分類対象のクエリ文字列
+                
+        Returns:
+            分類結果:
+                - query_type: クエリタイプ（GREETING, FILTERABLE, SEMANTIC, HYBRID）
+                - summary: LLMが生成した要約
+                - confidence: 分類の信頼度（0.0-1.0）
+                - filter_keywords: フィルター検索用キーワード
+                - search_keywords: セマンティック検索用キーワード
+                - reasoning: 分類理由
+                
+        Raises:
+            ClassificationException: OpenAI APIキーが設定されていない場合
+            ClassificationException: OpenAI APIからの応答が空の場合
+            
+        Examples:
+            >>> service = ClassificationService()
+            >>> request = ClassificationRequest(query="HP100以上のカード")
+            >>> result = await service.classify_query(request)
+            >>> print(result.query_type)
+            QueryType.FILTERABLE
+            >>> print(result.filter_keywords)
+            ['HP', '100以上']
+            
+            >>> # 挨拶の場合
+            >>> request = ClassificationRequest(query="こんにちは")
+            >>> result = await service.classify_query(request)
+            >>> print(result.query_type)
+            QueryType.GREETING
+            
+        Note:
+            JSON解析に失敗した場合やAPI呼び出しでエラーが発生した場合は、
+            フォールバック戦略により適切なデフォルト値で分類結果を返します。
+        """
         if not self.client:
             raise ClassificationException(
                 message="OpenAI APIキーが設定されていません",
