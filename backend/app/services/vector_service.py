@@ -3,21 +3,36 @@ from upstash_vector import Index
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
 class VectorService:
-    def __init__(self):
+    """Upstash Vector を使用した類似検索サービス（最適化対応）"""
+    
+    def __init__(self) -> None:
         upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
-        self.vector_index = Index(url=upstash_url, token=upstash_token)
+        
+        # 本番環境では設定が必須
+        if not upstash_url or not upstash_token:
+            GameChatLogger.log_warning(
+                "vector_service", 
+                "Upstash Vector設定が不完全です。一部機能が制限されます。",
+                {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
+            )
+            self.vector_index = None
+        else:
+            self.vector_index = Index(url=upstash_url, token=upstash_token)
     
+    @handle_service_exceptions("vector", fallback_return=[])
     async def search(
         self, 
         query_embedding: List[float], 
         top_k: int = 50, 
-        namespaces: List[str] = None,
+        namespaces: Optional[List[str]] = None,
         classification: Optional[ClassificationResult] = None,
         min_score: Optional[float] = None
     ) -> List[ContextItem]:
@@ -34,100 +49,118 @@ class VectorService:
         Returns:
             検索結果のリスト
         """
-        try:
-            # 分類結果に基づく最適化
-            if classification:
-                top_k, min_score, namespaces = self._optimize_search_params(
-                    classification, top_k, min_score, namespaces
-                )
-            
-            # デフォルト値の設定
-            if namespaces is None:
-                namespaces = self._get_default_namespaces(classification)
-            
-            if min_score is None:
-                min_score = settings.VECTOR_SEARCH_CONFIG["minimum_score"]
-            
-            all_results = []
-            print("=== 最適化されたベクトル検索開始 ===")
-            print(f"検索対象ネームスペース: {namespaces}")
-            print(f"最大取得件数: {top_k}")
-            print(f"最小スコア閾値: {min_score}")
-            print(f"分類タイプ: {classification.query_type if classification else 'N/A'}")
-            print(f"信頼度: {classification.confidence if classification else 'N/A'}")
-            
-            for namespace in namespaces:
-                try:
-                    print(f"\n--- Namespace: {namespace} での検索中 ---")
-                    results = self.vector_index.query(
-                        vector=query_embedding,
-                        top_k=top_k,
-                        namespace=namespace,
-                        include_metadata=True,
-                        include_vectors=True
-                    )
-                    
-                    matches = results.matches if hasattr(results, "matches") else results
-                    print(f"  検索結果件数: {len(matches)}")
-                    
-                    for i, match in enumerate(matches):
-                        score = getattr(match, 'score', None) or float(match.score) if hasattr(match, 'score') else 0
-                        
-                        # スコア閾値による除外
-                        if score < min_score:
-                            print(f"    [{i+1}] スコア不足により除外: {score:.4f} < {min_score}")
-                            continue
-                            
-                        meta = getattr(match, 'metadata', None)
-                        text = meta.get('text') if meta else getattr(match, 'text', None)
-                        title = meta.get('title', f"{namespace} - 情報") if meta else f"{namespace} - 情報"
-                        
-                        print(f"    [{i+1}] ID: {getattr(match, 'id', 'N/A')}")
-                        print(f"        Score: {score:.4f}")
-                        print(f"        Title: {title}")
-                        print(f"        Text: {text[:100] if text else 'N/A'}{'...' if text and len(text) > 100 else ''}")
-                        
-                        if text:
-                            all_results.append({
-                                "title": title,
-                                "text": text,
-                                "score": score,
-                                "namespace": namespace,
-                                "id": getattr(match, 'id', None)
-                            })
-                            
-                except Exception as ns_error:
-                    print(f"  ❌ Namespace {namespace} での検索エラー: {ns_error}")
-                    continue
-            
-            print("\n=== 全体検索結果サマリー ===")
-            print(f"閾値通過件数: {len(all_results)}")
-            
-            if all_results:
-                all_results.sort(key=lambda x: x["score"] or 0, reverse=True)
-                
-                print(f"トップ{min(top_k, len(all_results))}件:")
-                for i, result in enumerate(all_results[:top_k]):
-                    print(f"  {i+1}. [{result['namespace']}] {result['title']} (Score: {result['score']:.4f})")                
-                best_match = max(all_results, key=lambda x: x["score"] or 0)
-                print(f"\n最高スコア: {best_match['score']:.4f} (namespace: {best_match['namespace']})")
-                
-                return [
-                    ContextItem(
-                        title=result["title"],
-                        text=result["text"],
-                        score=result["score"]
-                    )
-                    for result in all_results[:top_k]
-                ]
+        # 設定がない場合は空の結果を返す
+        if self.vector_index is None:
+            GameChatLogger.log_warning("vector_service", "Upstash Vector未設定のため空の結果を返します")
+            return []
+        
+        # 分類結果に基づく最適化
+        if classification:
+            top_k, min_score, namespaces = self._optimize_search_params(
+                classification, top_k, min_score, namespaces
+            )
+        
+        # デフォルト値の設定
+        if namespaces is None:
+            namespaces = self._get_default_namespaces(classification)
+        
+        if min_score is None:
+            config = settings.VECTOR_SEARCH_CONFIG
+            min_score_value = config.get("minimum_score")
+            if isinstance(min_score_value, (int, float)):
+                min_score = float(min_score_value)
             else:
-                print("❌ 閾値を通過した検索結果なし")
-                # フォールバック処理
-                return self._handle_no_results(classification)
+                min_score = 0.5
+        
+        GameChatLogger.log_info("vector_service", "ベクトル検索を開始", {
+            "namespaces": namespaces,
+            "top_k": top_k,
+            "min_score": min_score,
+            "classification_type": classification.query_type if classification else None,
+            "confidence": classification.confidence if classification else None
+        })
+        
+        all_results = []
+        
+        for namespace in namespaces:
+            try:
+                GameChatLogger.log_info("vector_service", f"Namespace {namespace} で検索中")
+                results = self.vector_index.query(
+                    vector=query_embedding,
+                    top_k=top_k,
+                    namespace=namespace,
+                    include_metadata=True,
+                    include_vectors=True
+                )
+                
+                matches = results.matches if hasattr(results, "matches") else results
+                GameChatLogger.log_info("vector_service", "検索結果取得", {
+                    "namespace": namespace,
+                    "results_count": len(matches)
+                })
+                
+                for i, match in enumerate(matches):
+                    # scoreの型安全な取得
+                    score_value = getattr(match, 'score', None)
+                    if score_value is not None:
+                        score = float(score_value)
+                    else:
+                        score = 0.0
+                    
+                    # スコア閾値による除外
+                    if min_score is not None and score < min_score:
+                        continue
+                        
+                    meta = getattr(match, 'metadata', None)
+                    if meta and hasattr(meta, 'get'):
+                        text = meta.get('text')
+                        title = meta.get('title', f"{namespace} - 情報")
+                    else:
+                        text = getattr(match, 'text', None)
+                        title = f"{namespace} - 情報"
+                    
+                    if text:
+                        all_results.append({
+                            "title": title,
+                            "text": text,
+                            "score": score,
+                            "namespace": namespace,
+                            "id": getattr(match, 'id', None)
+                        })
+                        
+            except Exception as ns_error:
+                GameChatLogger.log_error("vector_service", f"Namespace {namespace} での検索エラー", ns_error, {
+                    "namespace": namespace
+                })
+                continue
+        
+        GameChatLogger.log_success("vector_service", "ベクトル検索完了", {
+            "total_results": len(all_results),
+            "threshold_passed": len(all_results)
+        })
+        
+        if all_results:
+            all_results.sort(key=lambda x: x["score"] or 0, reverse=True)
             
-        except Exception as e:
-            print(f"❌ ベクトル検索エラー: {e}")
-            return self._handle_search_error(classification, e)
+            best_match = max(all_results, key=lambda x: x["score"] or 0)
+            GameChatLogger.log_info("vector_service", "最高スコア結果", {
+                "score": best_match['score'],
+                "namespace": best_match['namespace'],
+                "title": best_match['title'][:50]
+            })
+            
+            return [
+                ContextItem(
+                    title=result["title"],
+                    text=result["text"],
+                    score=result["score"]
+                )
+                for result in all_results[:top_k]
+            ]
+        else:
+            GameChatLogger.log_warning("vector_service", "閾値を通過した検索結果なし")
+            # フォールバック処理
+            return self._handle_no_results(classification)
     
     def _optimize_search_params(
         self, 
@@ -140,10 +173,13 @@ class VectorService:
         
         config = settings.VECTOR_SEARCH_CONFIG
         
-        # 分類タイプ別の検索件数調整
-        if classification.query_type in config["search_limits"]:
-            vector_limit = config["search_limits"][classification.query_type]["vector"]
-            top_k = min(top_k, vector_limit)
+        # 分類タイプ別の検索件数調整 (型安全)
+        search_limits = config.get("search_limits", {})
+        if isinstance(search_limits, dict) and classification.query_type.value in search_limits:
+            type_limits = search_limits[classification.query_type.value]
+            if isinstance(type_limits, dict):
+                vector_limit = type_limits.get("vector", 15)
+                top_k = min(top_k, vector_limit)
         
         # 信頼度による類似度閾値調整
         confidence_level = "high" if classification.confidence >= 0.8 else (
@@ -151,17 +187,30 @@ class VectorService:
         )
         
         if min_score is None:
-            base_threshold = config["similarity_thresholds"].get(
-                classification.query_type, config["minimum_score"]
-            )
-            confidence_adjustment = config["confidence_adjustments"][confidence_level]
+            # 型安全なconfig辞書アクセス
+            similarity_thresholds = config.get("similarity_thresholds", {})
+            if isinstance(similarity_thresholds, dict):
+                base_threshold = similarity_thresholds.get(classification.query_type.value, 0.7)
+            else:
+                minimum_score = config.get("minimum_score", 0.5)
+                if isinstance(minimum_score, (int, float)):
+                    base_threshold = float(minimum_score)
+                else:
+                    base_threshold = 0.7
+                
+            confidence_adjustments = config.get("confidence_adjustments", {})
+            if isinstance(confidence_adjustments, dict):
+                confidence_adjustment = confidence_adjustments.get(confidence_level, 0.7)
+            else:
+                confidence_adjustment = 0.7
+                
             min_score = base_threshold * confidence_adjustment
         
         # ネームスペース最適化
         if namespaces is None:
             namespaces = self._get_optimized_namespaces(classification)
         
-        print(f"[VectorService] パラメータ最適化完了:")
+        print("[VectorService] パラメータ最適化完了:")
         print(f"  top_k: {top_k}, min_score: {min_score:.3f}")
         print(f"  信頼度レベル: {confidence_level}")
         
@@ -247,7 +296,7 @@ class VectorService:
         if classification.query_type == QueryType.SEMANTIC:
             return (
                 f"「{classification.summary or '検索内容'}」に関する情報が見つかりませんでした。"
-                "より具体的なポケモン名やカード名で検索してみてください。"
+                "より具体的なカード名やカード名で検索してみてください。"
             )
         
         elif classification.query_type == QueryType.FILTERABLE:

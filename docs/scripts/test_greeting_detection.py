@@ -90,7 +90,7 @@ async def test_greeting_detection():
     # 対照群として検索が必要な質問もテスト
     search_test_cases = [
         "リザードンexについて教えて",
-        "HPが100以上のポケモンを教えて",
+        "HPが100以上のカードを教えて",
         "強いカードを教えて"
     ]
     

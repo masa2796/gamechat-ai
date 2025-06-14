@@ -2,8 +2,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import rag
+from .core.exception_handlers import setup_exception_handlers
 
 app = FastAPI()
+
+# 統一例外ハンドラーをセットアップ
+setup_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,

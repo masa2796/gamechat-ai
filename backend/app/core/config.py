@@ -1,13 +1,25 @@
 import os
+from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Settings:
-    RECAPTCHA_SECRET: str = os.getenv("RECAPTCHA_SECRET_TEST")
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY")
-    UPSTASH_VECTOR_REST_URL: str = os.getenv("UPSTASH_VECTOR_REST_URL")
-    UPSTASH_VECTOR_REST_TOKEN: str = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
+    RECAPTCHA_SECRET: Optional[str] = os.getenv("RECAPTCHA_SECRET_TEST")
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
+    UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
+    
+    # プロジェクトルートディレクトリの取得
+    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent
+    
+    # データファイルパス設定
+    DATA_DIR: Path = PROJECT_ROOT / "data"
+    DATA_FILE_PATH: str = os.getenv("DATA_FILE_PATH", str(DATA_DIR / "data.json"))
+    CONVERTED_DATA_FILE_PATH: str = os.getenv("CONVERTED_DATA_FILE_PATH", str(DATA_DIR / "convert_data.json"))
+    EMBEDDING_FILE_PATH: str = os.getenv("EMBEDDING_FILE_PATH", str(DATA_DIR / "embedding_list.jsonl"))
+    QUERY_DATA_FILE_PATH: str = os.getenv("QUERY_DATA_FILE_PATH", str(DATA_DIR / "query_data.json"))
     
     # ベクトル検索設定
     VECTOR_SEARCH_CONFIG = {

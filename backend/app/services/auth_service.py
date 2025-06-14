@@ -18,8 +18,9 @@ class AuthService:
             resp = await client.post(url, data=data, timeout=5)
             if resp.status_code != 200:
                 return False
-            result = resp.json()
-            return result.get("success", False)
+            result: dict = resp.json()
+            success: bool = result.get("success", False)
+            return success
 
     def is_suspicious(self, request: Request, user_ip: str) -> bool:
         return False
@@ -31,7 +32,7 @@ class AuthService:
         recaptcha_token: Optional[str], 
         recaptcha_passed: Optional[str]
     ) -> bool:
-        user_ip = request.client.host
+        user_ip = request.client.host if request.client else "unknown"
         
         if not recaptcha_passed:
             if not recaptcha_token:
@@ -52,7 +53,7 @@ class AuthService:
                 return False
             return True
     
-    def _set_auth_cookie(self, response: Response):
+    def _set_auth_cookie(self, response: Response) -> None:
         response.set_cookie(
             key="recaptcha_passed",
             value="true",
