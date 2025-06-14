@@ -230,9 +230,15 @@ class TestDatabaseService:
             """ファイルが見つからない場合のテスト"""
             mock_open = patch("builtins.open", side_effect=FileNotFoundError)
             
+            # DatabaseExceptionが発生することを確認
+            from backend.app.core.exceptions import DatabaseException
+            
             with mock_open:
-                data = database_service._load_data()
-                assert data == []
+                with pytest.raises(DatabaseException) as exc_info:
+                    database_service._load_data()
+                
+                assert exc_info.value.code == "DATA_FILE_NOT_FOUND"
+                assert "データファイルが見つかりません" in str(exc_info.value)
 
         @pytest.mark.asyncio
         async def test_filter_search_with_empty_keywords(self, database_service, sample_data, monkeypatch):

@@ -3,6 +3,9 @@ import json
 import os
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
+from ..core.exceptions import ClassificationException
+from ..core.decorators import handle_service_exceptions
+from ..core.logging import GameChatLogger
 
 class ClassificationService:
     """LLMによるクエリ分類・要約サービス"""
@@ -57,54 +60,71 @@ class ClassificationService:
     "reasoning": "分類理由"
 }"""
 
+    @handle_service_exceptions("classification", fallback_return=None)
     async def classify_query(self, request: ClassificationRequest) -> ClassificationResult:
         """クエリを分類・要約する"""
-        try:
-            if not self.client:
-                print("OpenAI APIキーが設定されていません - フォールバック分類を使用")
-                return ClassificationResult(
-                    query_type=QueryType.SEMANTIC,
-                    summary=request.query,
-                    confidence=0.3,
-                    search_keywords=[request.query],
-                    reasoning="APIキー未設定 - フォールバック分類"
-                )
-            
-            user_prompt = f"質問: {request.query}"
-            
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,
-                temperature=0.0,  # 一貫性のために0に設定
-                response_format={"type": "json_object"}  # JSON形式を強制
+        if not self.client:
+            raise ClassificationException(
+                message="OpenAI APIキーが設定されていません",
+                code="API_KEY_NOT_SET"
             )
+        
+        GameChatLogger.log_info("classification_service", "クエリ分類開始", {
+            "query_length": len(request.query),
+            "query_preview": request.query[:50]
+        })
+        
+        user_prompt = f"質問: {request.query}"
+        
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=300,
+            temperature=0.0,  # 一貫性のために0に設定
+            response_format={"type": "json_object"}  # JSON形式を強制
+        )
+        
+        result_text = response.choices[0].message.content.strip()
+        GameChatLogger.log_info("classification_service", "LLM応答取得完了", {
+            "response_length": len(result_text)
+        })
+        
+        try:
+            result_data = json.loads(result_text)
+            classification = ClassificationResult(**result_data)
             
-            result_text = response.choices[0].message.content.strip()
-            print(f"LLM応答: {result_text}")  # デバッグ情報
+            GameChatLogger.log_success("classification_service", "クエリ分類完了", {
+                "query_type": classification.query_type,
+                "confidence": classification.confidence,
+                "filter_keywords_count": len(classification.filter_keywords),
+                "search_keywords_count": len(classification.search_keywords)
+            })
             
-            # JSONパースを試行
-            try:
-                result_data = json.loads(result_text)
-                return ClassificationResult(**result_data)
-            except json.JSONDecodeError as json_error:
-                print(f"JSON解析エラー: {json_error}")
-                print(f"応答内容: {result_text}")
-                # JSONパースに失敗した場合のフォールバック
-                return ClassificationResult(
-                    query_type=QueryType.FILTERABLE,  # 複合クエリなのでfilterableを推定
-                    summary=request.query,
-                    confidence=0.5,
-                    filter_keywords=["ダメージ", "40以上", "技", "水", "タイプ"],  # 手動でキーワード抽出
-                    search_keywords=[request.query],
-                    reasoning="JSON解析エラー - 手動キーワード抽出で対応"
-                )
+            return classification
+            
+        except json.JSONDecodeError as json_error:
+            GameChatLogger.log_warning("classification_service", "JSON解析エラー - フォールバック実行", {
+                "json_error": str(json_error),
+                "response_text": result_text[:100]
+            })
+            
+            # JSONパースに失敗した場合のフォールバック
+            return ClassificationResult(
+                query_type=QueryType.FILTERABLE,  # 複合クエリなのでfilterableを推定
+                summary=request.query,
+                confidence=0.5,
+                filter_keywords=["ダメージ", "40以上", "技", "水", "タイプ"],  # 手動でキーワード抽出
+                search_keywords=[request.query],
+                reasoning="JSON解析エラー - 手動キーワード抽出で対応"
+            )
                 
         except Exception as e:
-            print(f"分類エラー: {e}")
+            GameChatLogger.log_error("classification_service", "予期しないエラー", {
+                "error_message": str(e)
+            })
             # エラー時のフォールバック
             return ClassificationResult(
                 query_type=QueryType.SEMANTIC,
