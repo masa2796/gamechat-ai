@@ -1,3 +1,6 @@
+# GameChat AI Backend Dependencies
+# This file is used for both development and production environments
+
 # Core dependencies
 annotated-types==0.7.0
 anyio==4.9.0
@@ -21,15 +24,33 @@ upstash-vector==0.8.0
 # FastAPI and server dependencies
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+gunicorn>=21.2.0
+
+# Authentication and Security (required for production)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Rate limiting and caching
+redis>=5.0.0
+slowapi>=0.1.9
+
+# Development utilities
+python-multipart>=0.0.6
 
 # Testing dependencies
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 
-# Type checking
+# Code quality and type checking
 mypy>=1.16.0
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
 
 # Documentation generation
 sphinx>=7.1.0
 sphinx-rtd-theme>=2.0.0
 myst-parser>=2.0.0
+
+# Production monitoring (optional - uncomment if needed)
+# sentry-sdk[fastapi]>=1.38.0

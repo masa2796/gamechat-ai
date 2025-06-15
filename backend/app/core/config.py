@@ -40,6 +40,36 @@ class Settings:
     # CORS設定
     CORS_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:3000"]
     
+    # Security Settings
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+    BCRYPT_ROUNDS: int = int(os.getenv("BCRYPT_ROUNDS", "12"))
+    
+    # Rate Limiting Settings
+    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    
+    # API Authentication Settings
+    API_KEY_HEADER: str = "X-API-Key"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
+    
+    # Redis Settings (for rate limiting and caching)
+    REDIS_URL: Optional[str] = os.getenv("REDIS_URL")
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
+    REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
+    REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD")
+    
+    # Database Settings
+    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_PORT: int = int(os.getenv("DB_PORT", "5432"))
+    DB_NAME: str = os.getenv("DB_NAME", "gamechat_ai")
+    DB_USER: str = os.getenv("DB_USER", "postgres")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    
+    # Monitoring and Observability
+    SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
+    MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
+    
     # データファイルパス設定
     DATA_DIR: Path = PROJECT_ROOT / "data"
     DATA_FILE_PATH: str = os.getenv("DATA_FILE_PATH", str(DATA_DIR / "data.json"))
