@@ -528,113 +528,38 @@ cp .env.example backend/.env
 
 # Docker サービスをビルド・起動
 docker-compose up --build -d
-
-# サービス状況確認
-docker-compose ps
 ```
 
-**アクセス先**:
-- フロントエンド: http://localhost:3000
-- バックエンド API: http://localhost:8000
-- API ドキュメント: http://localhost:8000/docs
+#### 🔐 環境変数の設定
 
-#### 本番環境デプロイ
+**⚠️ 重要**: 実際のAPIキーは絶対にGitにコミットしないでください。
 
+**開発環境用**:
 ```bash
-# 本番環境用設定ファイルを作成
+# テンプレートから環境変数ファイルを作成
+cp .env.example backend/.env
+```
+- 必須項目: `OPENAI_API_KEY`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
+- `backend/.env`を編集して実際のAPIキーを設定
+
+**本番環境用**:
+```bash
+# 本番環境用テンプレートから作成
 cp .env.production.example backend/.env.production
-cp .env.production.example frontend/.env.production
-# 各ファイルを編集して本番環境の設定を入力
-
-# 本番環境デプロイスクリプトを実行
-./scripts/prod-deploy.sh
 ```
+- セキュリティ設定も含めて適切に設定
+- `CORS_ORIGINS`, `ALLOWED_HOSTS`等の本番環境固有設定を追加
 
-#### Docker 操作コマンド
+**Gitignore**: `.env*`ファイル（テンプレート以外）は自動的に除外されます。
+
+#### 開発サーバーの起動
 
 ```bash
-# ログ確認
-docker-compose logs -f
-
-# サービス停止
-docker-compose down
-
-# イメージ再ビルド
-docker-compose build --no-cache
-
-# 特定サービスの再起動
-docker-compose restart backend
-docker-compose restart frontend
-```
-
-#### 開発用Dockerfileの使用
-
-開発環境では専用のDockerfileを使用可能です:
-
-```bash
-# 開発用イメージでフロントエンドを起動
-docker build -f frontend/Dockerfile.dev -t gamechat-ai-frontend-dev frontend/
-docker run -p 3000:3000 -v $(pwd)/frontend:/app gamechat-ai-frontend-dev
-```
-
-**Dockerfile構成**:
-- `frontend/Dockerfile`: 本番用（マルチステージビルド、Alpine Linux）
-- `frontend/Dockerfile.dev`: 開発用（ホットリロード対応、Alpine Linux）
-
-### ローカル開発環境（Docker未使用）
-
-### 1. リポジトリをクローン
-
-```bash
-git clone https://github.com/yourname/gamechat-ai.git
-cd gamechat-ai
-```
-
-### 2. 依存パッケージのインストール
-
-- Python環境（バックエンド・スクリプト共通）
-
-```bash
-# ルートディレクトリで仮想環境を作成・アクティベート
-python -m venv .venv
-source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-- フロントエンド
-
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-- ルートディレクトリ（開発スクリプト用）
-
-```bash
-npm install
-```
-
-**注意**: プロジェクト全体で統一された仮想環境（`.venv`）を使用しています。バックエンド、スクリプト、テストはすべてルートディレクトリの仮想環境で実行してください。
-
-### 3. 環境変数ファイルの作成
-
-- ルートディレクトリの `.env` に OpenAI APIキー等を設定してください。
-```bash
-cp .env.example .env
-# .envファイルを編集して適切な値を設定
-```
-
-### 4. 開発サーバーの起動
-
-- フロントエンド（Next.js）:  
-```bash
+# フロントエンド（Next.js）:  
 cd frontend
 npm run dev
-```
-→ http://localhost:3000
 
-- バックエンド（FastAPI）:  
+# バックエンド（FastAPI）:  
   
 ```bash
 # ルートディレクトリで仮想環境をアクティベート
@@ -745,7 +670,7 @@ gamechat-ai/
 │   │   ├── upstash_connection.py # Upstash Vector接続
 │   │   ├── test_greeting_detection.py  # 挨拶検出テスト
 │   │   └── test_performance.py   # パフォーマンステスト
-│   └── sphinx/                   # Sphinxドキュメント生成
+│   ├── sphinx/                   # Sphinxドキュメント生成
 │       ├── conf.py               # Sphinx設定ファイル
 │       ├── index.rst             # メインドキュメント
 │       ├── Makefile              # ビルド用Makefile
