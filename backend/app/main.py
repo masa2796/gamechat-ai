@@ -11,6 +11,10 @@ from .core.config import settings
 from .core.security import SecurityHeadersMiddleware
 from .core.rate_limit import RateLimitMiddleware
 from .core.database import initialize_database, close_database, database_health_check
+from .core.logging import GameChatLogger
+
+# ログ設定を初期化
+GameChatLogger.configure_logging()
 
 app = FastAPI(
     title="GameChat AI API",
