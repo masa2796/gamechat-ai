@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Static export用の設定
+export const dynamic = 'force-static'
+export const revalidate = false
+
 export async function GET(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') || ''
   

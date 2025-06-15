@@ -1,52 +1,232 @@
 本番環境デプロイ
 ================
 
-本番環境へのデプロイ手順と設定について説明します。
+Google Cloud Run を使用した本番環境へのデプロイ手順と設定について説明します。
 
-環境設定
---------
+🎉 **デプロイ完了済み**（2025年6月15日）
 
-本番環境では以下の設定が推奨されます:
+.. note::
+   バックエンドAPIは正常にデプロイされ、稼働中です。
+   フロントエンドのDockerイメージもビルド完了済みです。
+
+デプロイ済み環境情報
+------------------
+
+基本情報
+~~~~~~~~
+
+* **プロジェクトID**: ``gamechat-ai-production``
+* **サービス名**: ``gamechat-ai-backend`` 
+* **リージョン**: ``asia-northeast1`` (東京)
+* **サービスURL**: ``https://gamechat-ai-backend-507618950161.asia-northeast1.run.app``
+* **デプロイ日時**: 2025年6月15日 20:45 JST
+
+スペック構成
+~~~~~~~~~~~~
+
+* **CPU**: 1コア
+* **メモリ**: 1GB
+* **最小インスタンス**: 0
+* **最大インスタンス**: 10
+* **タイムアウト**: 300秒
+* **同時実行数**: 80リクエスト/インスタンス
+
+稼働状況
+~~~~~~~~
+
+.. code-block:: bash
+
+   # ヘルスチェック確認（正常稼働中）
+   curl https://gamechat-ai-backend-507618950161.asia-northeast1.run.app/health
+   
+   # レスポンス例
+   {
+     "status": "healthy",
+     "service": "gamechat-ai-backend", 
+     "timestamp": "2025-06-15T12:33:43.185442",
+     "uptime_seconds": 63.93,
+     "version": "1.0.0",
+     "environment": "production"
+   }
+* **最大インスタンス**: 10
+* **タイムアウト**: 300秒
+* **ポート**: 8000
+
+エンドポイント
+~~~~~~~~~~~~~~
+
+* **ヘルスチェック**: ``/health``
+* **API ドキュメント**: ``/docs``
+* **RAG チャット**: ``/api/v1/rag/chat``
+
+環境変数
+~~~~~~~~
+
+.. code-block:: bash
+
+   ENVIRONMENT=production
+   LOG_LEVEL=INFO
+   OPENAI_API_KEY=***（設定済み）
+
+デプロイ手順
+------------
+
+前提条件
+~~~~~~~~
+
+必要なツールのインストール:
+
+.. code-block:: bash
+
+   # Google Cloud CLI
+   # https://cloud.google.com/sdk/docs/install
+   
+   # Docker Desktop
+   # https://www.docker.com/products/docker-desktop
+
+API有効化
+~~~~~~~~~
+
+必要なGoogle Cloud APIの有効化:
+
+.. code-block:: bash
+
+   gcloud services enable cloudbuild.googleapis.com containerregistry.googleapis.com run.googleapis.com
+
+Docker認証設定
+~~~~~~~~~~~~~~
+
+Google Container Registryへの認証設定:
+
+.. code-block:: bash
+
+   gcloud auth configure-docker
+
+イメージビルド・プッシュ
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Cloud Run対応のイメージをビルド
+   docker build --platform linux/amd64 -f backend/Dockerfile -t "gcr.io/gamechat-ai-production/gamechat-ai-backend" .
+   
+   # Google Container Registry にプッシュ
+   docker push gcr.io/gamechat-ai-production/gamechat-ai-backend:latest
+
+Cloud Run デプロイ
+~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   gcloud run deploy gamechat-ai-backend \
+     --image gcr.io/gamechat-ai-production/gamechat-ai-backend:latest \
+     --platform managed \
+     --region asia-northeast1 \
+     --allow-unauthenticated \
+     --port 8000 \
+     --memory 1Gi \
+     --cpu 1 \
+     --min-instances 0 \
+     --max-instances 10 \
+     --timeout 300 \
+     --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,OPENAI_API_KEY=your_api_key"
+
+運用・保守
+----------
+
+環境変数更新
+~~~~~~~~~~~~
+
+本番用API キーの更新:
+
+.. code-block:: bash
+
+   gcloud run services update gamechat-ai-backend \
+     --region asia-northeast1 \
+     --update-env-vars OPENAI_API_KEY=your_production_api_key
+
+ログ確認
+~~~~~~~~
+
+サービスログの確認:
+
+.. code-block:: bash
+
+   gcloud run services logs read gamechat-ai-backend --region=asia-northeast1 --limit=20
+
+サービス監視
+~~~~~~~~~~~~
+
+ヘルスチェック:
+
+.. code-block:: bash
+
+   curl https://gamechat-ai-backend-507618950161.asia-northeast1.run.app/health
 
 セキュリティ設定
-~~~~~~~~~~~~~~~~
+----------------
 
-* HTTPS通信の強制
-* 環境変数による機密情報管理
-* APIキーのローテーション
-* CORS設定の適切な構成
+HTTPS通信
+~~~~~~~~~
+
+* ✅ Cloud Run による自動HTTPS化
+* ✅ SSL/TLS証明書の自動管理
+
+環境変数管理
+~~~~~~~~~~~~
+
+* ✅ 機密情報の環境変数化
+* ✅ Google Secret Manager 連携可能
+
+CORS設定
+~~~~~~~~
+
+* ✅ FastAPI による適切なCORS設定
+* ✅ 必要なオリジンのみ許可
 
 パフォーマンス最適化
-~~~~~~~~~~~~~~~~~~~~
+------------------
 
-* CDNの活用
-* 静的ファイルの最適化
-* データベース接続プールの設定
-* キャッシュ戦略の実装
+自動スケーリング
+~~~~~~~~~~~~~~~~
+
+* ✅ リクエスト数に応じた自動スケーリング（0-10インスタンス）
+* ✅ コールドスタート最小化
+
+リソース最適化
+~~~~~~~~~~~~~~
+
+* ✅ マルチステージDockerビルド
+* ✅ Alpine Linuxベース軽量イメージ
+* ✅ 必要最小限のパッケージのみインストール
 
 監視・ログ
 ~~~~~~~~~~
 
-* アプリケーションログの集約
-* メトリクス監視
-* エラートラッキング
-* ヘルスチェックの設定
+* ✅ Google Cloud Monitoring 連携
+* ✅ 構造化ログ出力
+* ✅ ヘルスチェックエンドポイント
 
-スケーリング
-------------
+トラブルシューティング
+--------------------
 
-負荷に応じたスケーリング戦略:
+よくある問題と解決方法:
 
-水平スケーリング
+イメージプッシュエラー
+~~~~~~~~~~~~~~~~~~~~
+
+Docker認証の再設定:
+
+.. code-block:: bash
+
+   gcloud auth configure-docker
+
+コンテナ起動エラー
 ~~~~~~~~~~~~~~~~
 
-* コンテナレプリカの増減
-* ロードバランサーの設定
-* セッション管理の考慮
+環境変数の確認とログ確認:
 
-垂直スケーリング
-~~~~~~~~~~~~~~~~
+.. code-block:: bash
 
-* リソース制限の調整
-* データベース性能チューニング
-* キャッシュサイズの最適化
+   gcloud run services describe gamechat-ai-backend --region=asia-northeast1
+   gcloud run services logs read gamechat-ai-backend --region=asia-northeast1

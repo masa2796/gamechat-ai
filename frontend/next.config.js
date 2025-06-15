@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Docker最適化設定
-  output: 'standalone',
+  // Firebase Hosting用設定（静的エクスポート + Cloud Run連携）
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
   
   // パフォーマンス最適化
   experimental: {

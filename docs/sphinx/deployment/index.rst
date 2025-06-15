@@ -7,5 +7,6 @@ GameChat AIのデプロイメント手順とコンテナ環境について説明
    :maxdepth: 2
    :caption: デプロイメント:
 
-   docker
+   cloud-run
    production
+   docker

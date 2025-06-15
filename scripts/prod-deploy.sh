@@ -93,6 +93,16 @@ check_environment_files() {
         fi
     fi
     
+    # Check for required API keys
+    if [ -f "$BACKEND_ENV_FILE" ]; then
+        if ! grep -q "OPENAI_API_KEY=.*[^dummy]" "$BACKEND_ENV_FILE" || grep -q "OPENAI_API_KEY=dummy" "$BACKEND_ENV_FILE"; then
+            print_error "OPENAI_API_KEY is not properly configured in $BACKEND_ENV_FILE"
+            print_status "Please set a valid OpenAI API key in the environment file."
+            exit 1
+        fi
+        print_success "OpenAI API key configuration verified"
+    fi
+    
     print_success "Environment files check passed"
 }
 
