@@ -14,6 +14,7 @@
 
 - **`test-pipeline.sh`** - CI/CDパイプライン用テストスクリプト
 - **`test-pipeline-local.sh`** - ローカル環境でのパイプライン検証スクリプト
+- **`lighthouse-audit.sh`** - Lighthouseパフォーマンス監査スクリプト
 
 ### 🔒 セキュリティ
 

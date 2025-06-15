@@ -5,8 +5,10 @@ const nextConfig = {
   
   // パフォーマンス最適化
   experimental: {
-    // optimizeCss: true, // 一時的に無効化
-    optimizePackageImports: ['@mui/material', '@mui/icons-material'],
+    // optimizeCss: true, // 一時的に無効化 
+    optimizePackageImports: ['@radix-ui/react-dialog', '@radix-ui/react-separator', '@radix-ui/react-slot', '@radix-ui/react-tooltip'],
+    webVitalsAttribution: ['CLS', 'LCP'],
+    // esmExternals: 'loose', // 外部ESMパッケージの最適化
   },
   
   // 画像最適化設定
@@ -93,6 +95,22 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    GOOGLE_SITE_VERIFICATION: process.env.GOOGLE_SITE_VERIFICATION,
+  },
+
+  // PWA対応設定
+  async rewrites() {
+    return [
+      {
+        source: '/sw.js',
+        destination: '/sw.js',
+      },
+      {
+        source: '/manifest.json',
+        destination: '/manifest.json',
+      },
+    ];
   },
 }
 
