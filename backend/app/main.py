@@ -17,4 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ヘルスチェックエンドポイント
+@app.get("/health")
+async def health_check() -> dict[str, str]:
+    """ヘルスチェック用エンドポイント"""
+    return {"status": "healthy", "service": "gamechat-ai-backend"}
+
 app.include_router(rag.router, prefix="/api")
