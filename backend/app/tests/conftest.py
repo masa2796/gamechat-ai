@@ -3,7 +3,11 @@
 """
 import pytest
 import os
-from unittest.mock import MagicMock
+import json
+from pathlib import Path
+from dotenv import load_dotenv
+from unittest.mock import MagicMock, patch
+
 from backend.app.services.classification_service import ClassificationService
 from backend.app.services.embedding_service import EmbeddingService
 from backend.app.services.database_service import DatabaseService
@@ -12,9 +16,6 @@ from backend.app.services.rag_service import RagService
 from backend.app.services.llm_service import LLMService
 from backend.app.models.classification_models import ClassificationResult, QueryType
 from backend.app.tests.mocks.vector_service_mock import MockVectorService
-
-# テスト環境変数を設定
-os.environ["TESTING"] = "true"
 
 # ヘルパークラスのインポート
 from backend.app.tests.fixtures.mock_factory import TestDataFactory, MockResponseFactory
@@ -30,6 +31,17 @@ from backend.app.tests.mocks import (
     ClassificationResultFactory,
     TestScenarioFactory
 )
+
+# テスト実行時に環境変数を読み込み
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+load_dotenv(PROJECT_ROOT / "backend" / ".env", override=True)
+
+# テスト環境変数を設定
+os.environ["TESTING"] = "true"
+# テスト用のダミーAPIキーを設定（実際のAPIコールは発生しない）
+os.environ["OPENAI_API_KEY"] = "test-api-key-for-testing"
+os.environ["UPSTASH_VECTOR_REST_URL"] = "https://test-vector-db.upstash.io"
+os.environ["UPSTASH_VECTOR_REST_TOKEN"] = "test-vector-token"
 
 
 # ==============================================================================
@@ -308,28 +320,131 @@ def mock_openai_api_key(monkeypatch):
     monkeypatch.setattr("backend.app.core.config.settings.OPENAI_API_KEY", None)
 
 
+# ==============================================================================
+# OpenAI APIモック用フィクスチャ
+# ==============================================================================
+
 @pytest.fixture
 def mock_openai_client():
-    """モックOpenAIクライアントを提供"""
-    mock_client = MagicMock()
+    """OpenAI APIクライアントのモック"""
     
-    # 埋め込みレスポンスのモック
-    mock_embedding_response = MagicMock()
-    mock_embedding_response.data = [MagicMock()]
-    mock_embedding_response.data[0].embedding = [0.1, 0.2, 0.3] * 512  # 1536次元
-    mock_client.embeddings.create.return_value = mock_embedding_response
+    with patch('openai.OpenAI') as mock_openai:
+        # モッククライアントのインスタンスを作成
+        mock_client = MagicMock()
+        mock_openai.return_value = mock_client
+        
+        # ChatCompletion のモック設定
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = json.dumps({
+            "query_type": "semantic",
+            "summary": "テスト用セマンティック検索",
+            "confidence": 0.8,
+            "search_keywords": ["テスト"],
+            "filter_keywords": [],
+            "reasoning": "テスト用分類"
+        })
+        
+        mock_client.chat.completions.create.return_value = mock_response
+        
+        # Embedding のモック設定
+        mock_embedding_response = MagicMock()
+        mock_embedding_response.data = [MagicMock()]
+        mock_embedding_response.data[0].embedding = [0.1] * 1536  # 1536次元のベクトル
+        
+        mock_client.embeddings.create.return_value = mock_embedding_response
+        
+        yield mock_client
+
+
+@pytest.fixture
+def mock_classification_service(mock_openai_client):
+    """モック化されたClassificationServiceのフィクスチャ"""
     
-    # チャットレスポンスのモック
-    mock_chat_response = MagicMock()
-    mock_chat_response.choices = [MagicMock()]
-    mock_chat_response.choices[0].message.content = """{
-        "query_type": "semantic",
-        "summary": "テスト分類結果",
-        "confidence": 0.8,
-        "filter_keywords": [],
-        "search_keywords": ["テスト"],
-        "reasoning": "テスト用の分類"
-    }"""
-    mock_client.chat.completions.create.return_value = mock_chat_response
+    with patch('backend.app.services.classification_service.ClassificationService') as mock_cls:
+        # モックインスタンスを作成
+        mock_instance = MagicMock()
+        mock_cls.return_value = mock_instance
+        
+        # classify_query メソッドのモック設定
+        async def mock_classify_query(request):
+            return MockClassificationResult.create_semantic(
+                confidence=0.8,
+                summary="モック分類結果"
+            )
+        
+        mock_instance.classify_query = mock_classify_query
+        
+        yield mock_instance
+
+
+@pytest.fixture
+def mock_embedding_service(mock_openai_client):
+    """モック化されたEmbeddingServiceのフィクスチャ"""
     
-    return mock_client
+    with patch('backend.app.services.embedding_service.EmbeddingService') as mock_cls:
+        mock_instance = MagicMock()
+        mock_cls.return_value = mock_instance
+        
+        # generate_embedding メソッドのモック設定
+        async def mock_generate_embedding(text):
+            return [0.1] * 1536  # 1536次元のベクトル
+        
+        mock_instance.generate_embedding = mock_generate_embedding
+        
+        yield mock_instance
+
+
+@pytest.fixture
+def mock_llm_service(mock_openai_client):
+    """モック化されたLLMServiceのフィクスチャ"""
+    
+    with patch('backend.app.services.llm_service.LLMService') as mock_cls:
+        mock_instance = MagicMock()
+        mock_cls.return_value = mock_instance
+        
+        # generate_response メソッドのモック設定
+        async def mock_generate_response(context_items, original_query, summary=None):
+            return "これはモックからの応答です。テスト用の回答を提供します。"
+        
+        mock_instance.generate_response = mock_generate_response
+        
+        yield mock_instance
+
+
+@pytest.fixture
+def mock_all_services(mock_classification_service, mock_embedding_service, mock_llm_service):
+    """すべてのサービスをモック化するフィクスチャ"""
+    return {
+        'classification': mock_classification_service,
+        'embedding': mock_embedding_service,
+        'llm': mock_llm_service
+    }
+
+
+@pytest.fixture
+def mock_rag_service(mock_all_services):
+    """モック化されたRagServiceのフィクスチャ"""
+    
+    with patch('backend.app.services.rag_service.RagService') as mock_cls:
+        mock_instance = MagicMock()
+        mock_cls.return_value = mock_instance
+        
+        # process_query メソッドのモック設定
+        async def mock_process_query(query, top_k=10):
+            return {
+                "response": "これはモックからのRAG応答です。",
+                "context_items": [
+                    {
+                        "title": "テストカード1",
+                        "text": "テスト用のカード情報",
+                        "score": 0.9
+                    }
+                ],
+                "query_type": "semantic",
+                "confidence": 0.8
+            }
+        
+        mock_instance.process_query = mock_process_query
+        
+        yield mock_instance
