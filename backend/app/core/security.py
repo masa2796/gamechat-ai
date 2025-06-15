@@ -1,12 +1,12 @@
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable
+from typing import Callable, Any, Awaitable
 from .config import settings
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """本番環境用セキュリティヘッダーミドルウェア"""
     
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Any]]) -> Any:
         response = await call_next(request)
         
         # 本番環境でセキュリティヘッダーを追加

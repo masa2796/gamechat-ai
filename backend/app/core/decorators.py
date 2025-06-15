@@ -13,7 +13,7 @@ def handle_exceptions(
     fallback_return: Any = None,
     logger_name: Optional[str] = None,
     http_status_code: int = 500
-) -> Callable:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     例外処理デコレータ
     
@@ -23,7 +23,7 @@ def handle_exceptions(
         logger_name: ログ出力に使用するロガー名
         http_status_code: HTTPExceptionに変換する際のステータスコード
     """
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
@@ -72,7 +72,7 @@ def handle_exceptions(
 def handle_service_exceptions(
     service_name: str,
     fallback_return: Any = None
-) -> Callable:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     サービス層専用の例外処理デコレータ
     """
@@ -86,7 +86,7 @@ def handle_service_exceptions(
 
 def handle_api_exceptions(
     fallback_status: int = 500
-) -> Callable:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     API層専用の例外処理デコレータ（必ずHTTPExceptionを発生）
     """
