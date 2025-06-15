@@ -56,10 +56,18 @@ class GameChatLogger:
         # 環境変数から設定を取得
         log_level = os.getenv("LOG_LEVEL", "INFO").upper()
         environment = os.getenv("ENVIRONMENT", "development")
-        log_dir = Path(os.getenv("LOG_DIR", "/app/logs"))
         
-        # ログディレクトリを作成
-        log_dir.mkdir(parents=True, exist_ok=True)
+        # ログディレクトリの設定（CI環境対応）
+        default_log_dir = "/app/logs" if environment == "production" else "./logs"
+        log_dir = Path(os.getenv("LOG_DIR", default_log_dir))
+        
+        # ログディレクトリを作成（権限エラーの場合はスキップ）
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError) as e:
+            # CI環境や権限がない場合は標準出力のみ使用
+            log_dir = None
+            logging.warning(f"Cannot create log directory {log_dir}: {e}. Using stdout only.")
         
         # ルートロガーの設定
         root_logger = logging.getLogger()
@@ -84,40 +92,43 @@ class GameChatLogger:
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
         
-        # 本番環境のファイルハンドラー
-        if environment == "production":
-            # アプリケーションログ
-            app_handler = logging.handlers.RotatingFileHandler(
-                log_dir / "app.log",
-                maxBytes=100 * 1024 * 1024,  # 100MB
-                backupCount=10
-            )
-            app_handler.setLevel(logging.INFO)
-            app_handler.setFormatter(formatter)
-            root_logger.addHandler(app_handler)
-            
-            # エラーログ
-            error_handler = logging.handlers.RotatingFileHandler(
-                log_dir / "error.log",
-                maxBytes=50 * 1024 * 1024,  # 50MB
-                backupCount=10
-            )
-            error_handler.setLevel(logging.ERROR)
-            error_handler.setFormatter(formatter)
-            root_logger.addHandler(error_handler)
-            
-            # アクセスログ（Gunicornが使用）
-            access_handler = logging.handlers.RotatingFileHandler(
-                log_dir / "access.log",
-                maxBytes=100 * 1024 * 1024,  # 100MB
-                backupCount=10
-            )
-            access_handler.setLevel(logging.INFO)
-            access_handler.setFormatter(formatter)
-            
-            # Gunicornのアクセスログを設定
-            gunicorn_logger = logging.getLogger("gunicorn.access")
-            gunicorn_logger.addHandler(access_handler)
+        # 本番環境のファイルハンドラー（ログディレクトリが利用可能な場合のみ）
+        if environment == "production" and log_dir is not None:
+            try:
+                # アプリケーションログ
+                app_handler = logging.handlers.RotatingFileHandler(
+                    log_dir / "app.log",
+                    maxBytes=100 * 1024 * 1024,  # 100MB
+                    backupCount=10
+                )
+                app_handler.setLevel(logging.INFO)
+                app_handler.setFormatter(formatter)
+                root_logger.addHandler(app_handler)
+                
+                # エラーログ
+                error_handler = logging.handlers.RotatingFileHandler(
+                    log_dir / "error.log",
+                    maxBytes=50 * 1024 * 1024,  # 50MB
+                    backupCount=10
+                )
+                error_handler.setLevel(logging.ERROR)
+                error_handler.setFormatter(formatter)
+                root_logger.addHandler(error_handler)
+                
+                # アクセスログ（Gunicornが使用）
+                access_handler = logging.handlers.RotatingFileHandler(
+                    log_dir / "access.log",
+                    maxBytes=100 * 1024 * 1024,  # 100MB
+                    backupCount=10
+                )
+                access_handler.setLevel(logging.INFO)
+                access_handler.setFormatter(formatter)
+                
+                # Gunicornのアクセスログを設定
+                gunicorn_logger = logging.getLogger("gunicorn.access")
+                gunicorn_logger.addHandler(access_handler)
+            except (PermissionError, OSError) as e:
+                logging.warning(f"Cannot create file handlers: {e}. Using console output only.")
         
         # 外部ライブラリのログレベル調整
         logging.getLogger("uvicorn").setLevel(logging.WARNING)
@@ -202,5 +213,7 @@ class GameChatLogger:
         
         logger.info(f"📋 AUDIT: {action} by {user_id}", extra={"extra_data": extra_data})
 
-# 初期化時にログ設定を適用
-GameChatLogger.configure_logging()
+# テスト環境など、必要に応じて手動で初期化する場合のみ呼び出し
+# 本番環境では main.py で明示的に初期化される
+if os.getenv("ENVIRONMENT") not in ["test", "testing"] and os.getenv("PYTEST_CURRENT_TEST") is None:
+    GameChatLogger.configure_logging()
