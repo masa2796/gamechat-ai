@@ -1,7 +1,6 @@
 from fastapi import Request, HTTPException, FastAPI
 from fastapi.responses import JSONResponse
-from fastapi.exception_handlers import RequestValidationError
-from fastapi.exceptions import RequestValidationError as FastAPIRequestValidationError
+from fastapi.exceptions import RequestValidationError
 from typing import Any, Dict
 
 from .exceptions import GameChatException
@@ -32,7 +31,7 @@ def setup_exception_handlers(app: FastAPI) -> None:
         )
     
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: FastAPIRequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=400,
             content={
