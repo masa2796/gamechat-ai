@@ -48,7 +48,7 @@ class GameChatLogger:
     _configured = False
     
     @classmethod
-    def configure_logging(cls):
+    def configure_logging(cls) -> None:
         """本番環境対応のログ設定を初期化"""
         if cls._configured:
             return
@@ -59,15 +59,16 @@ class GameChatLogger:
         
         # ログディレクトリの設定（CI環境対応）
         default_log_dir = "/app/logs" if environment == "production" else "./logs"
-        log_dir = Path(os.getenv("LOG_DIR", default_log_dir))
+        log_dir_path = Path(os.getenv("LOG_DIR", default_log_dir))
+        log_dir: Optional[Path] = log_dir_path
         
         # ログディレクトリを作成（権限エラーの場合はスキップ）
         try:
-            log_dir.mkdir(parents=True, exist_ok=True)
+            log_dir_path.mkdir(parents=True, exist_ok=True)
         except (PermissionError, OSError) as e:
             # CI環境や権限がない場合は標準出力のみ使用
             log_dir = None
-            logging.warning(f"Cannot create log directory {log_dir}: {e}. Using stdout only.")
+            logging.warning(f"Cannot create log directory {log_dir_path}: {e}. Using stdout only.")
         
         # ルートロガーの設定
         root_logger = logging.getLogger()
@@ -78,6 +79,7 @@ class GameChatLogger:
             root_logger.removeHandler(handler)
         
         # フォーマッターの選択
+        formatter: logging.Formatter
         if environment == "production":
             formatter = JSONFormatter()
         else:
