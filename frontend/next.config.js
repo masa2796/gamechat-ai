@@ -3,9 +3,47 @@ const nextConfig = {
   // Docker最適化設定
   output: 'standalone',
   
-  // パフォーマンス最適化（lightningcssの問題を回避）
+  // パフォーマンス最適化
   experimental: {
     // optimizeCss: true, // 一時的に無効化
+    optimizePackageImports: ['@mui/material', '@mui/icons-material'],
+  },
+  
+  // 画像最適化設定
+  images: {
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 31536000, // 1年
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+  },
+  
+  // 静的ファイル最適化
+  assetPrefix: process.env.CDN_URL || '',
+  
+  // バンドル分析（開発時のみ）
+  ...(process.env.ANALYZE === 'true' && {
+    experimental: {
+      bundlePagesRouterDependencies: true,
+    },
+  }),
+  
+  // Webpack最適化
+  webpack: (config, { dev }) => {
+    // プロダクションビルドの最適化
+    if (!dev) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+        },
+      };
+    }
+    
+    return config;
   },
   
   // セキュリティ設定
