@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-// Static export用の設定
-export const dynamic = 'force-static'
+// 静的エクスポートではAPIルートは動作しないため、
+// この設定は開発・本番サーバー用のみ
+export const dynamic = 'force-dynamic'
 export const revalidate = false
 
 export async function GET() {

@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Firebase Hosting用設定（静的エクスポート + Cloud Run連携）
-  output: 'export',
+  // CI環境では静的エクスポートを無効にして通常のNext.jsサーバーを使用
+  ...(process.env.CI ? {} : { output: 'export' }),
   trailingSlash: true,
   images: {
     unoptimized: true,
