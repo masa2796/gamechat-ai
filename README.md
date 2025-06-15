@@ -50,6 +50,10 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 - Firebase Hosting / Vercel（フロントエンド）
 - Firebase Firestore / Upstash Vector（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
+- Docker（ローカル開発環境）
+  - Alpine Linux ベースの軽量イメージ
+  - マルチステージビルドによる最適化
+  - 開発用・本番用Dockerfile分離
 
 ---
 
@@ -304,7 +308,7 @@ python test_local_compound.py
 ```
 
 ### ドキュメント
-詳細な実装ガイドは [`docs/hybrid_search_guide.md`](./docs/hybrid_search_guide.md) を参照してください。
+詳細な実装ガイドは [`hybrid_search_guide.md`](./docs/guides/hybrid_search_guide.md) を参照してください。
 
 ---
 
@@ -487,6 +491,92 @@ enhanced_prompt = f"""
 ---
 
 ## セットアップ手順
+
+### Docker を使用した環境構築（推奨）
+
+**前提条件**:
+- Docker Desktop がインストールされていること
+- Docker Compose が利用可能であること
+
+**特徴**:
+- **軽量化**: Alpine Linux ベースのイメージを使用
+- **最適化**: マルチステージビルドによる本番環境最適化
+- **セキュリティ**: 最小限のパッケージで攻撃面を削減
+- **一貫性**: 開発・本番環境でのイメージ統一
+
+#### 開発環境のセットアップ
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/yourname/gamechat-ai.git
+cd gamechat-ai
+
+# 自動セットアップスクリプトを実行
+./scripts/dev-setup.sh
+```
+
+または手動でセットアップ:
+
+```bash
+# 環境変数ファイルを作成
+cp .env.example .env
+# .envファイルを編集して適切な値を設定
+
+# Docker サービスをビルド・起動
+docker-compose up --build -d
+
+# サービス状況確認
+docker-compose ps
+```
+
+**アクセス先**:
+- フロントエンド: http://localhost:3000
+- バックエンド API: http://localhost:8000
+- API ドキュメント: http://localhost:8000/docs
+
+#### 本番環境デプロイ
+
+```bash
+# 本番環境用設定ファイルを作成
+cp .env.production.example .env.production
+# .env.productionファイルを編集
+
+# 本番環境デプロイスクリプトを実行
+./scripts/prod-deploy.sh
+```
+
+#### Docker 操作コマンド
+
+```bash
+# ログ確認
+docker-compose logs -f
+
+# サービス停止
+docker-compose down
+
+# イメージ再ビルド
+docker-compose build --no-cache
+
+# 特定サービスの再起動
+docker-compose restart backend
+docker-compose restart frontend
+```
+
+#### 開発用Dockerfileの使用
+
+開発環境では専用のDockerfileを使用可能です:
+
+```bash
+# 開発用イメージでフロントエンドを起動
+docker build -f frontend/Dockerfile.dev -t gamechat-ai-frontend-dev frontend/
+docker run -p 3000:3000 -v $(pwd)/frontend:/app gamechat-ai-frontend-dev
+```
+
+**Dockerfile構成**:
+- `frontend/Dockerfile`: 本番用（マルチステージビルド、Alpine Linux）
+- `frontend/Dockerfile.dev`: 開発用（ホットリロード対応、Alpine Linux）
+
+### ローカル開発環境（Docker未使用）
 
 ### 1. リポジトリをクローン
 
@@ -785,7 +875,7 @@ backend/app/tests/
 - **パフォーマンス・品質測定テスト** (`test_performance_quality_metrics.py`): メモリ効率化・応答時間・検索品質・同時処理テスト
 
 **🔒 セキュリティテスト (`security/`)**
-- **API安全性テスト** (`test_api_safety.py`): OpenAI API呼び出し防止・モック確認・環境変数テスト
+- **API安全性テスト** (`test_api_safety.py`): OpenAI API呼び出し防ぎ・モック確認・環境変数テスト
 
 #### テスト結果（最新 - 統合・整理後）
 - **🎯 統合テスト**: **44/44 PASSED** (分類12 + 埋め込み11 + ハイブリッド12 + ベクトル9)
