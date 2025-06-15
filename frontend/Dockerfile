@@ -17,14 +17,19 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --no-audit
 
-# Copy source code
+# Copy source code and public directory
 COPY . .
+# Ensure public directory exists in builder stage and preserve any existing content
+RUN mkdir -p public
 
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
 RUN npm run build
+
+# Ensure public directory still exists after build
+RUN mkdir -p public
 
 # Production stage
 FROM node:20-alpine AS runner
@@ -40,6 +45,8 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy built application from builder stage
+# Create public directory and copy contents
+RUN mkdir -p ./public
 COPY --from=builder /app/public ./public
 
 # Set correct permissions and copy standalone app
