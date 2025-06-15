@@ -19,7 +19,7 @@ app.add_middleware(
 
 # ヘルスチェックエンドポイント
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """ヘルスチェック用エンドポイント"""
     return {"status": "healthy", "service": "gamechat-ai-backend"}
 
