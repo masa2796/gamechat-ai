@@ -2,25 +2,26 @@
 Rate limiting middleware for FastAPI application.
 """
 import time
-from typing import Dict, Tuple, Optional, Callable, Awaitable, Any
+import os
+import logging
+from typing import Dict, Tuple, Optional, Callable, Awaitable, Any, TYPE_CHECKING
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
-import os
-import logging
+
+if TYPE_CHECKING:
+    from redis import Redis
 
 logger = logging.getLogger(__name__)
 
 # Redis import with fallback
 try:
     import redis
-    from redis import Redis
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
     redis = None  # type: ignore
-    Redis = None  # type: ignore
     logger.warning("Redis not available, using in-memory rate limiting only")
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -32,7 +33,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: Any, redis_url: Optional[str] = None):
         super().__init__(app)
         self.redis_url = redis_url or os.getenv("REDIS_URL")
-        self.redis_client: Optional[Redis] = None
+        self.redis_client: Optional["Redis"] = None
         self.memory_store: Dict[str, Tuple[int, float]] = {}
         
         # Rate limiting rules

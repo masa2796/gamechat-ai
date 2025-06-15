@@ -1,3 +1,7 @@
+// Static export用の設定
+export const dynamic = 'force-static'
+export const revalidate = false
+
 export const runtime = "nodejs";
 export const maxDuration = 30;
 

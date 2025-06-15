@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:firebase": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
@@ -37,6 +38,9 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__template": "^7.4.4",
+    "@types/babel__traverse": "^7.20.7",
     "@types/json-schema": "^7.0.15",
     "@types/node": "^22",
     "@types/react": "^19",

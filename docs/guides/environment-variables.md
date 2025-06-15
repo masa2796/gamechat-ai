@@ -2,23 +2,25 @@
 
 ## 概要
 
-GameChat AIでは、シンプルで分かりやすい環境変数構成を採用しています。
-Firebase Hosting移行に合わせて設定ファイルを整理しました。
+GameChat AIでは、開発環境と本番環境で異なる環境変数ファイルを使用します。
+シンプルで分かりやすい構成に整理しました。
 
-## 📁 ファイル構成（整理後）
+## 📁 ファイル構成
 
 ```
 gamechat-ai/
-├── .env.example                      # 設定ガイド・テンプレート
+├── .env.example                      # 全体のテンプレート・ガイド
 ├── backend/
 │   ├── .env                         # 開発環境設定（実際のファイル）
 │   ├── .env.production              # 本番環境設定（実際のファイル）
 │   └── .env.production.template     # 本番環境テンプレート
 └── frontend/
-    ├── .env.local                   # 開発環境設定（オプション）
-    ├── .env.firebase                # Firebase Hosting用（実際のファイル）
-    ├── .env.local.template          # 開発環境テンプレート
-    └── .env.firebase.example        # Firebase Hosting用テンプレート
+    ├── .env.local                   # 開発環境設定（実際のファイル）
+    ├── .env.production              # 本番環境設定（実際のファイル）
+    ├── .env.firebase               # Firebase Hosting用（実際のファイル）
+    ├── .env.local.template         # 開発環境テンプレート
+    ├── .env.production.template    # 本番環境テンプレート
+    └── .env.firebase.example       # Firebase Hosting用テンプレート
 ```
 
 ## 🚀 セットアップ手順
@@ -31,15 +33,28 @@ cp .env.example backend/.env
 # backend/.env を編集して実際のAPIキーを設定
 
 # フロントエンド設定
-# 通常は設定不要（デフォルト設定で動作）
+cp frontend/.env.local.template frontend/.env.local
+# 通常はデフォルト設定で動作
 ```
 
-### 2. Firebase Hosting環境
+### 2. 本番環境（通常デプロイ）
+
+```bash
+# バックエンド設定
+cp backend/.env.production.template backend/.env.production
+# backend/.env.production を編集
+
+# フロントエンド設定
+cp frontend/.env.production.template frontend/.env.production
+# frontend/.env.production を編集
+```
+
+### 3. Firebase Hosting環境
 
 ```bash
 # Firebase Hosting専用設定
 cp frontend/.env.firebase.example frontend/.env.firebase
-# 必要に応じて firebase/.env.firebase を編集
+# frontend/.env.firebase を編集
 ```
 
 ## 🔧 主な設定項目
@@ -91,12 +106,20 @@ python scripts/diagnose_config.py
 
 ### 開発環境
 - [ ] `backend/.env` の作成・設定
+- [ ] `frontend/.env.local` の作成（オプション）
 - [ ] OpenAI APIキーの設定
 - [ ] Upstash Vector設定
 
+### 本番環境
+- [ ] `backend/.env.production` の作成・設定
+- [ ] `frontend/.env.production` の作成・設定
+- [ ] 本番用APIキーの設定
+- [ ] CORS設定の更新
+- [ ] セキュリティ設定の確認
+
 ### Firebase Hosting
 - [ ] `frontend/.env.firebase` の作成・設定
-- [ ] Cloud Run URLの設定確認
+- [ ] Cloud Run URLの設定
 - [ ] Firebase プロジェクトURLの設定
 
 ## 🛠️ トラブルシューティング

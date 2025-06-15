@@ -9,6 +9,8 @@
 - **`dev-setup.sh`** - 開発環境のセットアップスクリプト
 - **`prod-deploy.sh`** - 本番環境デプロイスクリプト
 - **`production-deploy.sh`** - 本番環境デプロイ（詳細版）
+- **`firebase-deploy.sh`** - Firebase Hosting デプロイスクリプト
+- **`migrate-to-firebase.sh`** - Firebase Hosting 移行スクリプト
 
 ### 🔍 テスト・検証
 
@@ -47,6 +49,15 @@
 ### 本番環境へのデプロイ
 ```bash
 ./scripts/prod-deploy.sh
+```
+
+### Firebase Hostingへの移行
+```bash
+# 自動移行スクリプト（推奨）
+./scripts/migrate-to-firebase.sh
+
+# 手動デプロイ
+./scripts/firebase-deploy.sh
 ```
 
 ## 📋 注意事項

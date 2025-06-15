@@ -8,13 +8,28 @@
 
 - **[`production-deployment.md`](./production-deployment.md)** - 本番環境デプロイメントの詳細ガイド
 - **[`build-deploy-pipeline-completion.md`](./build-deploy-pipeline-completion.md)** - ビルド・デプロイパイプライン完了報告書
+- **[`cloud-run-deployment-checklist.md`](./cloud-run-deployment-checklist.md)** - Cloud Runデプロイメント用チェックリスト
 
-### 📊 検証・レポート
+### � 設定ガイド
+
+- **[`cloud-run-openai-setup.md`](./cloud-run-openai-setup.md)** - Cloud RunでのOpenAI APIキー設定方法
+- **[`firebase-hosting-cloud-run.md`](./firebase-hosting-cloud-run.md)** - Firebase HostingとCloud Runの連携設定
+
+### 🛠️ トラブルシューティング
+
+- **[`cloud-run-troubleshooting.md`](./cloud-run-troubleshooting.md)** - Cloud Runデプロイメント時の問題と解決策
+  - API有効化エラー
+  - Secret Manager権限エラー
+  - 環境変数の特殊文字エラー
+  - ビルドアーカイブサイズ問題
+
+### �📊 検証・レポート
 
 - **[`pipeline-verification-report.md`](./pipeline-verification-report.md)** - GitHub Actionsパイプライン検証レポート
   - ローカル環境でのパイプライン動作確認結果
   - 型チェック、Dockerビルド、依存関係分析の検証結果
   - act（GitHub Actions ローカル実行）テスト結果
+- **[`cloud-run-deployment-report.md`](./cloud-run-deployment-report.md)** - Cloud Runデプロイメント成功報告書
 
 ## 🎯 クイックスタート
 
