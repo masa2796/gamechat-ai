@@ -3,6 +3,7 @@ Gunicorn configuration file for production deployment.
 """
 import multiprocessing
 import os
+from typing import Any
 
 # Server socket
 bind = "0.0.0.0:8000"
@@ -51,20 +52,20 @@ graceful_timeout = 30
 # Enable access log
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s %(p)s'
 
-def when_ready(server):
+def when_ready(server: Any) -> None:
     server.log.info("Server is ready. Spawning workers")
 
-def worker_int(worker):
+def worker_int(worker: Any) -> None:
     worker.log.info("worker received INT or QUIT signal")
 
-def pre_fork(server, worker):
+def pre_fork(server: Any, worker: Any) -> None:
     server.log.info("Worker spawned (pid: %s)", worker.pid)
 
-def post_fork(server, worker):
+def post_fork(server: Any, worker: Any) -> None:
     server.log.info("Worker spawned (pid: %s)", worker.pid)
 
-def pre_exec(server):
+def pre_exec(server: Any) -> None:
     server.log.info("Forked child, re-executing.")
 
-def worker_abort(worker):
+def worker_abort(worker: Any) -> None:
     worker.log.info("worker received SIGABRT signal")

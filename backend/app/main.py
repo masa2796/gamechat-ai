@@ -2,7 +2,8 @@
 import time
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, AsyncGenerator
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import rag
@@ -16,11 +17,46 @@ from .core.logging import GameChatLogger
 # ログ設定を初期化
 GameChatLogger.configure_logging()
 
+# ヘルスチェック用のアプリ開始時間
+app_start_time = time.time()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """アプリケーションのライフサイクル管理"""
+    # 起動時の処理
+    logger = logging.getLogger("startup")
+    logger.info("🚀 Starting GameChat AI backend...")
+    
+    # データベース接続プール初期化
+    try:
+        await initialize_database()
+        logger.info("✅ Database connections initialized")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize database connections: {e}")
+    
+    logger.info("🎉 GameChat AI backend started successfully")
+    
+    yield  # ここでアプリケーションが実行される
+    
+    # 終了時の処理
+    logger = logging.getLogger("shutdown")
+    logger.info("🛑 Shutting down GameChat AI backend...")
+    
+    # データベース接続プール終了
+    try:
+        await close_database()
+        logger.info("✅ Database connections closed")
+    except Exception as e:
+        logger.error(f"❌ Error closing database connections: {e}")
+    
+    logger.info("👋 GameChat AI backend shutdown complete")
+
 app = FastAPI(
     title="GameChat AI API",
     description="GameChat AI Backend API",
     version="1.0.0",
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan
 )
 
 # セキュリティヘッダーミドルウェアを追加
@@ -40,39 +76,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-
-# ヘルスチェックエンドポイント
-app_start_time = time.time()
-
-@app.on_event("startup")
-async def startup_event():
-    """アプリケーション起動時の処理"""
-    logger = logging.getLogger("startup")
-    logger.info("🚀 Starting GameChat AI backend...")
-    
-    # データベース接続プール初期化
-    try:
-        await initialize_database()
-        logger.info("✅ Database connections initialized")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize database connections: {e}")
-    
-    logger.info("🎉 GameChat AI backend started successfully")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """アプリケーション終了時の処理"""
-    logger = logging.getLogger("shutdown")
-    logger.info("🛑 Shutting down GameChat AI backend...")
-    
-    # データベース接続プール終了
-    try:
-        await close_database()
-        logger.info("✅ Database connections closed")
-    except Exception as e:
-        logger.error(f"❌ Error closing database connections: {e}")
-    
-    logger.info("👋 GameChat AI backend shutdown complete")
 
 @app.get("/health")
 async def health_check() -> dict[str, str | int | float]:

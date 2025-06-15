@@ -4,7 +4,7 @@ Enhanced API authentication and authorization module.
 import os
 import time
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable, List
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
@@ -34,9 +34,9 @@ except ImportError:
 class APIKeyAuth:
     """API Key based authentication."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_keys = self._load_api_keys()
-        self.api_key_usage = {}  # Track API key usage
+        self.api_key_usage: Dict[str, List[float]] = {}  # Track API key usage
     
     def _load_api_keys(self) -> Dict[str, Dict[str, Any]]:
         """Load API keys from environment variables."""
@@ -87,7 +87,7 @@ class APIKeyAuth:
             # Clean old usage records (older than 1 hour)
             self.api_key_usage[api_key] = [
                 timestamp for timestamp in self.api_key_usage[api_key]
-                if current_time - timestamp < 3600
+                if current_time - float(timestamp) < 3600
             ]
             
             # Check rate limit
@@ -105,7 +105,7 @@ class APIKeyAuth:
 class JWTAuth:
     """JWT based authentication."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.secret_key = os.getenv("JWT_SECRET_KEY", self._generate_secret_key())
         self.algorithm = "HS256"
         self.access_token_expire_minutes = 30
@@ -135,7 +135,7 @@ class JWTAuth:
             expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
         
         to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
+        encoded_jwt: str = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
         return encoded_jwt
     
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
@@ -144,7 +144,7 @@ class JWTAuth:
             return None
         
         try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            payload: Dict[str, Any] = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             return payload
         except JWTError as e:
             logger.warning(f"JWT verification failed: {e}")
@@ -153,7 +153,7 @@ class JWTAuth:
 class EnhancedAuth:
     """Enhanced authentication system combining multiple methods."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_key_auth = APIKeyAuth()
         self.jwt_auth = JWTAuth()
         self.security = HTTPBearer(auto_error=False)
@@ -183,8 +183,8 @@ class EnhancedAuth:
                 }
         
         # Check for basic authentication (for development)
-        if request.headers.get("Authorization"):
-            auth_header = request.headers.get("Authorization")
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
             if auth_header.startswith("Basic "):
                 # For development purposes only
                 if os.getenv("ENVIRONMENT") == "development":
@@ -201,9 +201,9 @@ class EnhancedAuth:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    def require_permission(self, required_permission: str):
+    def require_permission(self, required_permission: str) -> Callable:
         """Decorator to require specific permission."""
-        def permission_checker(auth_info: Dict[str, Any] = Depends(self.authenticate)):
+        def permission_checker(auth_info: Dict[str, Any] = Depends(self.authenticate)) -> Dict[str, Any]:
             if required_permission not in auth_info.get("permissions", []):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,

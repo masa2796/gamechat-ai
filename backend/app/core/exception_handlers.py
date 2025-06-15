@@ -113,16 +113,21 @@ def setup_exception_handlers(app: FastAPI) -> None:
         error_content: Dict[str, Any]
         detail = exc.detail
         
-        if hasattr(detail, 'items') and callable(getattr(detail, 'items')):
-            # Dict-like object
-            error_content = {
-                "error": {
-                    **detail,
-                    "error_id": error_id,
-                    "timestamp": datetime.now().isoformat()
+        # Handle detail as Any type to avoid mypy Union type issues
+        try:
+            # Try to treat as dict
+            if hasattr(detail, 'items') and callable(getattr(detail, 'items', None)):
+                detail_dict: Dict[str, Any] = detail  # type: ignore
+                error_content = {
+                    "error": {
+                        **detail_dict,
+                        "error_id": error_id,
+                        "timestamp": datetime.now().isoformat()
+                    }
                 }
-            }
-        else:
+            else:
+                raise TypeError("Not a dict-like object")
+        except (TypeError, AttributeError):
             # String or other type
             error_content = {
                 "error": {

@@ -2,7 +2,7 @@
 Rate limiting middleware for FastAPI application.
 """
 import time
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional, Callable, Awaitable, Any
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 
 # Redis import with fallback
 try:
-    import redis  
+    import redis
+    from redis import Redis
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    redis = None
+    redis = None  # type: ignore
+    Redis = None  # type: ignore
     logger.warning("Redis not available, using in-memory rate limiting only")
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -27,10 +29,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Falls back to in-memory storage if Redis is not available.
     """
     
-    def __init__(self, app, redis_url: str = None):
+    def __init__(self, app: Any, redis_url: Optional[str] = None):
         super().__init__(app)
         self.redis_url = redis_url or os.getenv("REDIS_URL")
-        self.redis_client = None
+        self.redis_client: Optional[Redis] = None
         self.memory_store: Dict[str, Tuple[int, float]] = {}
         
         # Rate limiting rules
@@ -43,7 +45,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Initialize Redis connection
         self._init_redis()
     
-    def _init_redis(self):
+    def _init_redis(self) -> None:
         """Initialize Redis connection if available."""
         if not REDIS_AVAILABLE or not redis:
             logger.info("Redis not available, using in-memory rate limiting")
@@ -51,15 +53,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             
         if self.redis_url:
             try:
-                self.redis_client = redis.from_url(
-                    self.redis_url,
-                    decode_responses=True,
-                    socket_connect_timeout=5,
-                    socket_timeout=5
-                )
-                # Test connection
-                self.redis_client.ping()
-                logger.info("Redis connection established for rate limiting")
+                if redis:
+                    self.redis_client = redis.from_url(
+                        self.redis_url,
+                        decode_responses=True,
+                        socket_connect_timeout=5,
+                        socket_timeout=5
+                    )
+                    # Test connection
+                    if self.redis_client:
+                        self.redis_client.ping()
+                    logger.info("Redis connection established for rate limiting")
             except Exception as e:
                 logger.warning(f"Redis connection failed, using in-memory storage: {e}")
                 self.redis_client = None
@@ -80,6 +84,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     def _check_rate_limit_redis(self, key: str, limit: int, window: int) -> Tuple[bool, int]:
         """Check rate limit using Redis."""
+        if not self.redis_client:
+            return self._check_rate_limit_memory(key, limit, window)
+        
         try:
             current_time = int(time.time())
             pipeline = self.redis_client.pipeline()
@@ -130,11 +137,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             self.memory_store[key] = (1, current_time)
             return True, 1
     
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Process request with rate limiting."""
         # Skip rate limiting for health checks and static files
         if request.url.path in ["/health", "/health/detailed"] or request.url.path.startswith("/static"):
-            return await call_next(request)
+            response = await call_next(request)
+            return response
         
         client_ip = self._get_client_ip(request)
         path = request.url.path

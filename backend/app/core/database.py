@@ -25,7 +25,7 @@ class ConnectionPoolConfig:
 class UpstashVectorPool:
     """Upstash Vector connection pool manager."""
     
-    def __init__(self, config: ConnectionPoolConfig = None):
+    def __init__(self, config: Optional[ConnectionPoolConfig] = None):
         self.config = config or ConnectionPoolConfig()
         self.url = os.getenv("UPSTASH_VECTOR_REST_URL")
         self.token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
@@ -37,11 +37,8 @@ class UpstashVectorPool:
         if not self.url or not self.token:
             logger.warning("Upstash Vector credentials not found")
     
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize the connection pool."""
-        if self._initialized:
-            return
-        
         async with self.pool_lock:
             if self._initialized:
                 return
@@ -150,7 +147,7 @@ class UpstashVectorPool:
                     if connection_id in self.pool:
                         self.pool[connection_id]["in_use"] = False
     
-    async def cleanup_idle_connections(self):
+    async def cleanup_idle_connections(self) -> None:
         """Clean up idle connections."""
         current_time = time.time()
         idle_threshold = current_time - self.config.idle_timeout
@@ -196,7 +193,7 @@ class UpstashVectorPool:
             "pool_utilization": f"{(total_connections / self.config.max_connections) * 100:.1f}%"
         }
     
-    async def close(self):
+    async def close(self) -> None:
         """Close all connections in the pool."""
         async with self.pool_lock:
             logger.info(f"Closing {len(self.pool)} connections")
@@ -208,11 +205,11 @@ class UpstashVectorPool:
 class DatabaseManager:
     """Centralized database connection manager."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.upstash_pool = UpstashVectorPool()
         self._cleanup_task: Optional[asyncio.Task] = None
     
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize all database connections."""
         await self.upstash_pool.initialize()
         
@@ -220,7 +217,7 @@ class DatabaseManager:
         self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
         logger.info("Database manager initialized")
     
-    async def _periodic_cleanup(self):
+    async def _periodic_cleanup(self) -> None:
         """Periodic cleanup task."""
         while True:
             try:
@@ -232,7 +229,7 @@ class DatabaseManager:
                 logger.error(f"Error in periodic cleanup: {e}")
     
     @asynccontextmanager
-    async def get_vector_connection(self):
+    async def get_vector_connection(self) -> AsyncGenerator[Any, None]:
         """Get Upstash Vector connection."""
         async with self.upstash_pool.get_connection() as connection:
             yield connection
@@ -246,7 +243,7 @@ class DatabaseManager:
         
         return health_data
     
-    async def close(self):
+    async def close(self) -> None:
         """Close all database connections."""
         if self._cleanup_task:
             self._cleanup_task.cancel()
@@ -262,19 +259,19 @@ class DatabaseManager:
 db_manager = DatabaseManager()
 
 # Convenience functions
-async def get_vector_db():
+async def get_vector_db() -> AsyncGenerator[Any, None]:
     """Get vector database connection."""
     async with db_manager.get_vector_connection() as connection:
         yield connection
 
-async def initialize_database():
+async def initialize_database() -> None:
     """Initialize database connections."""
     await db_manager.initialize()
 
-async def close_database():
+async def close_database() -> None:
     """Close database connections."""
     await db_manager.close()
 
-async def database_health_check():
+async def database_health_check() -> Dict[str, Any]:
     """Get database health status."""
     return await db_manager.health_check()
