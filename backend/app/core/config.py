@@ -1,18 +1,44 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from dotenv import load_dotenv
 
-load_dotenv()
+# プロジェクトルートディレクトリを先に定義
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+
+# 環境に応じて適切な.envファイルを読み込み（override=Trueで既存の環境変数を上書き）
+environment = os.getenv("ENVIRONMENT", "development")
+if environment == "production":
+    # 本番環境: プロジェクトルートの.env.productionファイル
+    load_dotenv(PROJECT_ROOT / ".env.production", override=True)
+    # backend/.env.productionファイルも読み込み（優先度高）
+    load_dotenv(PROJECT_ROOT / "backend" / ".env.production", override=True)
+else:
+    # 開発環境: プロジェクトルートの.envファイル
+    load_dotenv(PROJECT_ROOT / ".env", override=True)
+    # backend/.envファイルも読み込み（優先度高）
+    load_dotenv(PROJECT_ROOT / "backend" / ".env", override=True)
 
 class Settings:
-    RECAPTCHA_SECRET: Optional[str] = os.getenv("RECAPTCHA_SECRET_TEST")
+    # 環境設定
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    
+    # API Keys
+    # RECAPTCHAは環境に応じて適切なキーを選択
+    RECAPTCHA_SECRET: Optional[str] = os.getenv("RECAPTCHA_SECRET_TEST") if environment != "production" else os.getenv("RECAPTCHA_SECRET")
+    RECAPTCHA_SITE: Optional[str] = os.getenv("RECAPTCHA_SITE")
+    
+    # OpenAI APIキー（backend/.envから読み込み）
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    
+    # Upstash Vector設定（backend/.envから読み込み）
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
     UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     
-    # プロジェクトルートディレクトリの取得
-    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent
+    # CORS設定
+    CORS_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:3000"]
     
     # データファイルパス設定
     DATA_DIR: Path = PROJECT_ROOT / "data"
