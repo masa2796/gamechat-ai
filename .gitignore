@@ -1,4 +1,6 @@
 # .env files - 機密情報を含むファイル
+.env
+.env.production
 backend/.env
 backend/.env.production
 frontend/.env.local
