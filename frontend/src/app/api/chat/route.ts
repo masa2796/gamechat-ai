@@ -25,7 +25,6 @@ export async function POST(req: Request) {
     });
 
     if (!ragRes.ok) {
-      const errorText = await ragRes.text();
       return new Response(
         JSON.stringify({ error: `API Error: ${ragRes.status}` }),
         { status: ragRes.status, headers: { "Content-Type": "application/json" } }

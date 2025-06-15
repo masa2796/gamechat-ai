@@ -12,6 +12,12 @@ class LLMService:
     def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        is_testing = os.getenv("TESTING", "false").lower() == "true"
+        
+        # テスト環境では適当なキーでも許可
+        if is_testing and not api_key:
+            api_key = "test-api-key"
+            
         self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
 
     @handle_service_exceptions("llm", fallback_return=None)

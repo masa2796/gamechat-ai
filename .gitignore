@@ -1,9 +1,12 @@
-# .env files (root, frontend, backend)
+# .env files - 機密情報を含むファイル
 .env
+.env.production
+backend/.env
+backend/.env.production
+frontend/.env.local
+frontend/.env.production
 .env.local
 .env.*.local
-frontend/.env
-backend/.env
 
 # .venv
 .venv

@@ -1,7 +1,6 @@
 import openai
 import json
 import os
-from typing import Optional
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
 from ..core.exceptions import ClassificationException
@@ -38,7 +37,21 @@ class ClassificationService:
     def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
+        
+        # テスト環境では厳密なAPIキーチェックをスキップ
+        is_testing = os.getenv("TESTING", "false").lower() == "true"
+        
+        # APIキーの検証
+        if not is_testing and (not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here"]):
+            raise ClassificationException(
+                "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
+            )
+        
+        # テスト環境では適当なキーでも許可
+        if is_testing and not api_key:
+            api_key = "test-api-key"
+        
+        self.client = openai.OpenAI(api_key=api_key)
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -139,16 +152,43 @@ class ClassificationService:
         
         user_prompt = f"質問: {request.query}"
         
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_tokens=300,
-            temperature=0.0,  # 一貫性のために0に設定
-            response_format={"type": "json_object"}  # JSON形式を強制
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=300,
+                temperature=0.0,  # 一貫性のために0に設定
+                response_format={"type": "json_object"}  # JSON形式を強制
+            )
+        except openai.AuthenticationError as e:
+            GameChatLogger.log_error("classification_service", "OpenAI認証エラー", e, {
+                "api_key_prefix": getattr(settings, 'OPENAI_API_KEY', 'None')[:10] if getattr(settings, 'OPENAI_API_KEY', None) else 'None'
+            })
+            raise ClassificationException(
+                message="OpenAI APIキーが無効です。正しいAPIキーを設定してください。",
+                code="INVALID_API_KEY"
+            ) from e
+        except openai.RateLimitError as e:
+            GameChatLogger.log_error("classification_service", "OpenAI レート制限エラー", e)
+            raise ClassificationException(
+                message="OpenAI APIのレート制限に達しました。しばらく待ってから再試行してください。",
+                code="RATE_LIMIT_EXCEEDED"
+            ) from e
+        except openai.OpenAIError as e:
+            GameChatLogger.log_error("classification_service", "OpenAI APIエラー", e)
+            raise ClassificationException(
+                message=f"OpenAI APIでエラーが発生しました: {str(e)}",
+                code="OPENAI_API_ERROR"
+            ) from e
+        except Exception as e:
+            GameChatLogger.log_error("classification_service", "予期しないエラー", e)
+            raise ClassificationException(
+                message=f"分類処理中に予期しないエラーが発生しました: {str(e)}",
+                code="UNEXPECTED_ERROR"
+            ) from e
         
         result_text = response.choices[0].message.content
         if result_text is None:

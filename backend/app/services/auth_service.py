@@ -1,6 +1,6 @@
 import httpx
 from fastapi import Request, Response
-from typing import Optional
+from typing import Optional, Any
 import os
 from dotenv import load_dotenv
 
@@ -18,7 +18,7 @@ class AuthService:
             resp = await client.post(url, data=data, timeout=5)
             if resp.status_code != 200:
                 return False
-            result: dict = resp.json()
+            result: dict[str, Any] = resp.json()
             success: bool = result.get("success", False)
             return success
 
