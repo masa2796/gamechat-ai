@@ -164,8 +164,7 @@ class ClassificationService:
                 response_format={"type": "json_object"}  # JSON形式を強制
             )
         except openai.AuthenticationError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI認証エラー", {
-                "error": str(e),
+            GameChatLogger.log_error("classification_service", "OpenAI認証エラー", e, {
                 "api_key_prefix": getattr(settings, 'OPENAI_API_KEY', 'None')[:10] if getattr(settings, 'OPENAI_API_KEY', None) else 'None'
             })
             raise ClassificationException(
@@ -173,19 +172,19 @@ class ClassificationService:
                 code="INVALID_API_KEY"
             ) from e
         except openai.RateLimitError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI レート制限エラー", {"error": str(e)})
+            GameChatLogger.log_error("classification_service", "OpenAI レート制限エラー", e)
             raise ClassificationException(
                 message="OpenAI APIのレート制限に達しました。しばらく待ってから再試行してください。",
                 code="RATE_LIMIT_EXCEEDED"
             ) from e
         except openai.OpenAIError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI APIエラー", {"error": str(e)})
+            GameChatLogger.log_error("classification_service", "OpenAI APIエラー", e)
             raise ClassificationException(
                 message=f"OpenAI APIでエラーが発生しました: {str(e)}",
                 code="OPENAI_API_ERROR"
             ) from e
         except Exception as e:
-            GameChatLogger.log_error("classification_service", "予期しないエラー", {"error": str(e)})
+            GameChatLogger.log_error("classification_service", "予期しないエラー", e)
             raise ClassificationException(
                 message=f"分類処理中に予期しないエラーが発生しました: {str(e)}",
                 code="UNEXPECTED_ERROR"
