@@ -1,5 +1,5 @@
 # Multi-stage build for backend optimization
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -29,8 +29,9 @@ RUN apt-get update && apt-get install -y \
 # Copy installed packages from builder stage
 COPY --from=builder /root/.local /home/app/.local
 
-# Copy application code
+# Copy application code and configuration
 COPY backend/app/ ./app/
+COPY backend/gunicorn.conf.py ./
 COPY requirements.txt .
 
 # Change ownership of app directory
@@ -49,5 +50,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Start the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start command
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]

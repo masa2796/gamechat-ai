@@ -485,8 +485,19 @@ enhanced_prompt = f"""
 
 - `.nvmrc`: Node.js のバージョン指定
 - `.venv/`: Python 仮想環境ディレクトリ（`python -m venv .venv` で作成）
-- `requirements.txt`: Python の依存パッケージ一覧
-- `.env.example`: 環境変数のテンプレート
+- `requirements.txt`: Python の依存パッケージ一覧（開発・本番両用）
+- `.env.example`: 環境変数の統合テンプレート（開発・本番例を含む）
+- `backend/.env.production.template`: バックエンド本番環境用テンプレート
+- `frontend/.env.production.template`: フロントエンド本番環境用テンプレート  
+- `frontend/.env.local.template`: フロントエンド開発環境用テンプレート
+
+### 依存関係管理
+
+- **統一requirements.txt**: 開発環境と本番環境で同じ依存関係ファイルを使用
+- **全機能対応**: JWT認証、Redis、Gunicorn等の本番機能も含む
+- **堅牢な設計**: 必要なパッケージが不足している場合は適切にフォールバック
+
+**詳細**: [依存関係ガイド](docs/guides/dependencies.md) を参照
 
 ---
 
@@ -534,23 +545,28 @@ docker-compose up --build -d
 
 **⚠️ 重要**: 実際のAPIキーは絶対にGitにコミットしないでください。
 
-**開発環境用**:
+**開発環境セットアップ**:
 ```bash
-# テンプレートから環境変数ファイルを作成
-cp .env.example backend/.env
-```
-- 必須項目: `OPENAI_API_KEY`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
-- `backend/.env`を編集して実際のAPIキーを設定
+# バックエンド環境変数を作成
+cp backend/.env.production.template backend/.env
 
-**本番環境用**:
+# フロントエンド環境変数を作成（必要に応じて）
+cp frontend/.env.local.template frontend/.env.local
+```
+
+**本番環境セットアップ**:
 ```bash
-# 本番環境用テンプレートから作成
-cp .env.production.example backend/.env.production
+# 本番環境用テンプレートを使用
+cp backend/.env.production.template backend/.env.production
+cp frontend/.env.production.template frontend/.env.production
 ```
-- セキュリティ設定も含めて適切に設定
-- `CORS_ORIGINS`, `ALLOWED_HOSTS`等の本番環境固有設定を追加
 
-**Gitignore**: `.env*`ファイル（テンプレート以外）は自動的に除外されます。
+**設定項目**:
+- **必須**: `OPENAI_API_KEY`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
+- **セキュリティ**: `SECRET_KEY`, `RATE_LIMIT_*`設定
+- **本番環境**: `CORS_ORIGINS`, `DEBUG=false`, `LOG_LEVEL=WARNING`
+
+**参考**: `.env.example`に全体の設定例と詳細な説明があります。
 
 #### 開発サーバーの起動
 
@@ -655,6 +671,8 @@ gamechat-ai/
 │   │   └── rag_api_spec.md       # RAG API仕様書
 │   ├── guides/                   # 実装ガイド・チュートリアル
 │   │   ├── README.md             # ガイド使用方法・更新ルール
+│   │   ├── dependencies.md       # 依存関係と開発ガイド
+│   │   ├── environment-setup.md  # 環境セットアップガイド
 │   │   ├── hybrid_search_guide.md    # ハイブリッド検索実装ガイド
 │   │   ├── llm_response_enhancement.md  # LLM応答生成改修ドキュメント
 │   │   ├── vector_search_optimization_guide.md  # ベクトル検索最適化ガイド
