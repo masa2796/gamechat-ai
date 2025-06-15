@@ -64,15 +64,45 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: .
+          at: frontend
       - run:
           name: Build
           command: cd frontend && npm run build
       - run:
-          name: Start server and check health
+          name: Start server in background
           command: |
-            cd frontend && nohup npm start & sleep 10
-            curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
+            cd frontend
+            nohup npm start > server.log 2>&1 &
+            echo $! > server.pid
+      - run:
+          name: Wait for server to start
+          command: |
+            cd frontend
+            timeout=60
+            counter=0
+            while [ $counter -lt $timeout ]; do
+              # Check if server is responding
+              if curl -f -s http://localhost:3000 > /dev/null 2>&1; then
+                echo "Server is ready!"
+                # Try API health check if available
+                if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+                  echo "API health check passed"
+                  curl -s http://localhost:3000/api/health | head -5
+                else
+                  echo "API health check not available (static export mode)"
+                fi
+                exit 0
+              fi
+              echo "Waiting for server... ($counter/$timeout)"
+              sleep 2
+              counter=$((counter + 2))
+            done
+            echo "Server failed to start within $timeout seconds"
+            echo "Server logs:"
+            cat server.log || echo "No server logs found"
+            echo "Process status:"
+            ps aux | grep -v grep | grep node || echo "No node processes found"
+            exit 1
 
   test:
     executor: node-executor
