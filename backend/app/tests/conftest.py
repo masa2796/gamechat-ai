@@ -1,13 +1,20 @@
 """
 テスト用の共通フィクスチャ定義
 """
-import pytest
+# テスト環境での設定を最初に行う
 import os
+os.environ["ENVIRONMENT"] = "test"
+os.environ["LOG_LEVEL"] = "CRITICAL"
+
+import pytest
 import json
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from unittest.mock import MagicMock, patch
 
+
+# アプリケーションモジュールのインポート
 from backend.app.services.classification_service import ClassificationService
 from backend.app.services.embedding_service import EmbeddingService
 from backend.app.services.database_service import DatabaseService
@@ -31,6 +38,9 @@ from backend.app.tests.mocks import (
     ClassificationResultFactory,
     TestScenarioFactory
 )
+
+# 基本的なコンソール出力のみのログ設定
+logging.basicConfig(level=logging.CRITICAL, format='%(message)s')
 
 # テスト実行時に環境変数を読み込み
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent

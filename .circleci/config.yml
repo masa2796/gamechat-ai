@@ -89,6 +89,10 @@ jobs:
 
   backend-test:
     executor: python-executor
+    environment:
+      LOG_DIR: ./logs
+      ENVIRONMENT: test
+      LOG_LEVEL: WARNING
     steps:
       - checkout
       - restore_cache:
