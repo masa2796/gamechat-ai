@@ -519,8 +519,12 @@ cd gamechat-ai
 
 ```bash
 # 環境変数ファイルを作成
-cp .env.example .env
-# .envファイルを編集して適切な値を設定
+cp .env.example backend/.env
+# backend/.envファイルを編集して実際のAPIキーを設定
+
+# フロントエンド用環境変数ファイルを作成（必要に応じて）
+# cp .env.example frontend/.env.local
+# frontend/.env.localファイルを編集
 
 # Docker サービスをビルド・起動
 docker-compose up --build -d
@@ -538,8 +542,9 @@ docker-compose ps
 
 ```bash
 # 本番環境用設定ファイルを作成
-cp .env.production.example .env.production
-# .env.productionファイルを編集
+cp .env.production.example backend/.env.production
+cp .env.production.example frontend/.env.production
+# 各ファイルを編集して本番環境の設定を入力
 
 # 本番環境デプロイスクリプトを実行
 ./scripts/prod-deploy.sh

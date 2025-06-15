@@ -12,6 +12,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-https://yourdomain.com}
     env_file:
       - .env.production
+      - ./backend/.env.production
     networks:
       - gamechat-network
     restart: always
@@ -47,6 +48,8 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8000}
       - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - ./frontend/.env.production
     depends_on:
       backend:
         condition: service_healthy
