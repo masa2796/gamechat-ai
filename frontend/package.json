@@ -7,6 +7,7 @@
     "build": "next build",
     "build:firebase": "NODE_ENV=production next build",
     "start": "next start",
+    "start:ci": "NODE_ENV=production next start -p 3000",
     "lint": "next lint",
     "test": "vitest",
     "test:ui": "vitest --ui",
