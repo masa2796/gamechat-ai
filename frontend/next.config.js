@@ -2,7 +2,13 @@
 const nextConfig = {
   // Firebase Hosting用設定（静的エクスポート + Cloud Run連携）
   // CI環境では静的エクスポートを無効にして通常のNext.jsサーバーを使用
-  ...(process.env.CI ? {} : { output: 'export' }),
+  ...(process.env.CI ? { 
+    // CI環境では通常のNext.jsサーバーモードを使用
+    distDir: '.next',
+    generateEtags: false,
+  } : { 
+    output: 'export' 
+  }),
   trailingSlash: true,
   images: {
     unoptimized: true,
@@ -18,10 +24,16 @@ const nextConfig = {
   
   // 画像最適化設定
   images: {
-    formats: ['image/webp', 'image/avif'],
-    minimumCacheTTL: 31536000, // 1年
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    ...(process.env.CI ? { 
+      unoptimized: true,
+      domains: [],
+    } : {
+      formats: ['image/webp', 'image/avif'],
+      minimumCacheTTL: 31536000, // 1年
+      deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+      imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+      unoptimized: true,
+    }),
   },
   
   // 静的ファイル最適化

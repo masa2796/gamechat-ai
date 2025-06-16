@@ -67,20 +67,57 @@ jobs:
           at: frontend
       - run:
           name: Build
-          command: cd frontend && npm run build
+          command: |
+            cd frontend
+            echo "Node.js version: $(node --version)"
+            echo "npm version: $(npm --version)"
+            echo "Environment variables:"
+            env | grep -E "(CI|NODE_ENV|NEXT_)" || echo "No relevant env vars found"
+            echo "Building application..."
+            npm run build
+            echo "Build completed. Checking output..."
+            ls -la .next/ || echo ".next directory not created"
       - run:
           name: Start server in background
           command: |
             cd frontend
-            nohup npm start > server.log 2>&1 &
+            echo "Starting Next.js server..."
+            echo "Current directory: $(pwd)"
+            echo "Files in directory:"
+            ls -la
+            echo "Check if .next directory exists:"
+            ls -la .next/ || echo ".next directory not found"
+            echo "Starting server with verbose output..."
+            nohup npm run start:ci > server.log 2>&1 &
             echo $! > server.pid
+            echo "Server PID: $(cat server.pid)"
+            sleep 5
+            echo "Initial server log content:"
+            cat server.log || echo "No server logs yet"
       - run:
           name: Wait for server to start
           command: |
             cd frontend
             timeout=60
             counter=0
+            echo "Waiting for server to start..."
             while [ $counter -lt $timeout ]; do
+              # Check if process is still running
+              if [ -f server.pid ]; then
+                pid=$(cat server.pid)
+                if ps -p $pid > /dev/null 2>&1; then
+                  echo "Server process $pid is running"
+                else
+                  echo "Server process $pid has died"
+                  echo "Server logs:"
+                  cat server.log || echo "No server logs found"
+                  exit 1
+                fi
+              else
+                echo "No server.pid file found"
+                exit 1
+              fi
+              
               # Check if server is responding
               if curl -f -s http://localhost:3000 > /dev/null 2>&1; then
                 echo "Server is ready!"
@@ -89,19 +126,23 @@ jobs:
                   echo "API health check passed"
                   curl -s http://localhost:3000/api/health | head -5
                 else
-                  echo "API health check not available (static export mode)"
+                  echo "API health check not available (this may be normal for Next.js app)"
                 fi
                 exit 0
               fi
               echo "Waiting for server... ($counter/$timeout)"
+              echo "Current server log tail:"
+              tail -5 server.log || echo "No server logs available"
               sleep 2
               counter=$((counter + 2))
             done
             echo "Server failed to start within $timeout seconds"
-            echo "Server logs:"
+            echo "Full server logs:"
             cat server.log || echo "No server logs found"
             echo "Process status:"
             ps aux | grep -v grep | grep node || echo "No node processes found"
+            echo "Port 3000 status:"
+            netstat -an | grep :3000 || echo "Port 3000 not in use"
             exit 1
 
   test:
