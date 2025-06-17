@@ -25,8 +25,26 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Firebase初期化をクライアントサイドでのみ実行
+let app: ReturnType<typeof initializeApp> | null = null;
+let auth: ReturnType<typeof getAuth> | null = null;
+
+// Firebase初期化の安全なチェック
+const shouldInitializeFirebase = () => {
+  if (typeof window === "undefined") return false; // サーバーサイドでは初期化しない
+  if (process.env.CI) return false; // CI環境では初期化しない
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "dummy-api-key-for-ci") return false;
+  return true;
+};
+
+if (shouldInitializeFirebase()) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+  } catch (error) {
+    console.warn("Firebase initialization failed:", error);
+  }
+}
 
 declare global {
   interface Window {
@@ -66,8 +84,12 @@ export const Assistant = () => {
 
     try {
       let idToken = "";
-      if (auth.currentUser) {
-        idToken = await auth.currentUser.getIdToken();
+      if (auth && auth.currentUser) {
+        try {
+          idToken = await auth.currentUser.getIdToken();
+        } catch (error) {
+          console.warn("Failed to get auth token:", error);
+        }
       }
       let recaptchaToken = "";
       if (window.grecaptcha && recaptchaReady) {
