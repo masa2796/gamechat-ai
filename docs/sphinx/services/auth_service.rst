@@ -40,6 +40,7 @@ reCAPTCHA統合、レート制限、セキュリティ監視などの機能を�
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
    .. automethod:: __init__
       
@@ -70,6 +71,7 @@ reCAPTCHA統合、レート制限、セキュリティ監視などの機能を�
          }
 
    .. automethod:: verify_recaptcha
+      :no-index:
    
       reCAPTCHA検証を実行
       

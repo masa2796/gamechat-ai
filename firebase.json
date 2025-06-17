@@ -8,6 +8,22 @@
     ],
     "rewrites": [
       {
+        "source": "/health",
+        "run": {
+          "serviceId": "gamechat-ai-backend",
+          "region": "asia-northeast1",
+          "pinTag": false
+        }
+      },
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "gamechat-ai-backend",
+          "region": "asia-northeast1",
+          "pinTag": false
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -37,6 +53,27 @@
           {
             "key": "Cache-Control",
             "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "/api/**",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "https://gamechat-ai.web.app"
+          },
+          {
+            "key": "Access-Control-Allow-Credentials",
+            "value": "true"
+          },
+          {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Authorization,Content-Type"
+          },
+          {
+            "key": "Access-Control-Allow-Methods",
+            "value": "GET,POST,OPTIONS"
           }
         ]
       }

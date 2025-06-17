@@ -1,6 +1,0 @@
-ENVIRONMENT: "production"
-LOG_LEVEL: "INFO"
-OPENAI_API_KEY: "${OPENAI_API_KEY}"
-UPSTASH_VECTOR_REST_URL: "${UPSTASH_VECTOR_REST_URL}"
-UPSTASH_VECTOR_REST_TOKEN: "${UPSTASH_VECTOR_REST_TOKEN}"
-CORS_ORIGINS: "https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com,http://localhost:3000"

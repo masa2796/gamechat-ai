@@ -1,73 +1,108 @@
 # Scripts Directory
 
-このディレクトリには、GameChat AIプロジェクトの開発・運用・デプロイに使用するスクリプトが含まれています。
+GameChat AIプロジェクトの開発・運用・デプロイに使用するスクリプト集です。カテゴリ別にサブディレクトリで整理されています。
 
-## 📁 スクリプト一覧
+## 📁 ディレクトリ構成
 
-### 🚀 セットアップ・デプロイ
+### � [`data-processing/`](./data-processing/) - データ処理
+**ゲームデータの変換・埋め込み生成・DBアップロード**
+- `convert_to_format.py` - データ形式変換
+- `embedding.py` - 埋め込みベクトル生成
+- `upstash_connection.py` - Vector DBアップロード
 
-- **`dev-setup.sh`** - 開発環境のセットアップスクリプト
-- **`prod-deploy.sh`** - 本番環境デプロイスクリプト
-- **`production-deploy.sh`** - 本番環境デプロイ（詳細版）
-- **`firebase-deploy.sh`** - Firebase Hosting デプロイスクリプト
-- **`migrate-to-firebase.sh`** - Firebase Hosting 移行スクリプト
+### 🧪 [`testing/`](./testing/) - テスト・検証
+**システムの機能テスト・パフォーマンス測定・品質保証**
+- `test_greeting_detection.py` - 挨拶検出機能テスト
+- `test_performance.py` - API応答時間測定
+- `test-pipeline.sh` - CI/CDパイプラインテスト
+- `test-pipeline-local.sh` - ローカルテスト
+- `lighthouse-audit.sh` - フロントエンド監査
 
-### 🔍 テスト・検証
+### 🚀 [`deployment/`](./deployment/) - デプロイメント
+**本番・開発環境への自動デプロイ**
+- `prod-deploy.sh` - 本番環境デプロイ
+- `cloud-run-deploy.sh` - Google Cloud Runデプロイ
+- `firebase-deploy.sh` - Firebase Hostingデプロイ
+- `migrate-to-firebase.sh` - Firebase移行スクリプト
 
-- **`test-pipeline.sh`** - CI/CDパイプライン用テストスクリプト
-- **`test-pipeline-local.sh`** - ローカル環境でのパイプライン検証スクリプト
-- **`lighthouse-audit.sh`** - Lighthouseパフォーマンス監査スクリプト
+### �️ [`utilities/`](./utilities/) - ユーティリティ
+**開発環境セットアップ・設定診断・セキュリティチェック**
+- `dev-setup.sh` - 開発環境セットアップ
+- `diagnose-config.py` - 設定診断ツール
+- `check-env-security.sh` - 環境変数セキュリティチェック
+- `security-check.sh` - システムセキュリティ監査
+- `verify-api-keys.sh` - APIキー検証
 
-### 🔒 セキュリティ
+## 🎯 クイックスタート
 
-- **`security-check.sh`** - セキュリティチェックスクリプト
-- **`check-env-security.sh`** - 環境変数ファイルのセキュリティ検証
-- **`verify-api-keys.sh`** - APIキー設定の検証
-
-### 🛠️ ユーティリティ
-
-- **`diagnose-config.py`** - 設定診断スクリプト
-- **`diagnose_config.py`** - 設定診断スクリプト（代替版）
-
-## 🎯 使用方法
-
-### ローカル開発環境のセットアップ
+### 初回セットアップ
 ```bash
-./scripts/dev-setup.sh
+# 1. 開発環境セットアップ
+./utilities/dev-setup.sh
+
+# 2. 設定診断・確認
+python utilities/diagnose-config.py
+
+# 3. セキュリティチェック
+./utilities/security-check.sh
 ```
 
-### パイプラインのローカル検証
+### データ処理フロー
 ```bash
-./scripts/test-pipeline-local.sh
+# 1. データ変換
+python data-processing/convert_to_format.py
+
+# 2. 埋め込み生成
+python data-processing/embedding.py
+
+# 3. Vector DBアップロード
+python data-processing/upstash_connection.py
 ```
 
-### 環境変数のセキュリティチェック
+### テスト・検証
 ```bash
-./scripts/check-env-security.sh
+# ローカルテスト
+./testing/test-pipeline-local.sh
+
+# パフォーマンステスト
+python testing/test_performance.py
+
+# 機能テスト
+python testing/test_greeting_detection.py
 ```
 
-### 本番環境へのデプロイ
+### デプロイメント
 ```bash
-./scripts/prod-deploy.sh
+# 本番環境デプロイ
+./deployment/prod-deploy.sh
+
+# Firebase Hosting
+./deployment/firebase-deploy.sh
 ```
 
-### Firebase Hostingへの移行
-```bash
-# 自動移行スクリプト（推奨）
-./scripts/migrate-to-firebase.sh
+## 📋 使用時の注意事項
 
-# 手動デプロイ
-./scripts/firebase-deploy.sh
+### 権限設定
+```bash
+# スクリプトに実行権限を付与
+chmod +x utilities/*.sh deployment/*.sh testing/*.sh
 ```
 
-## 📋 注意事項
+### 環境変数
+- `.env`ファイルが適切に設定されていることを確認
+- APIキーやシークレットが正しく設定されているかチェック
+- `utilities/diagnose-config.py`で診断実行
 
-- 実行前にスクリプトに実行権限があることを確認してください（`chmod +x scriptname.sh`）
-- 本番環境関連のスクリプトは慎重に実行してください
-- 環境変数が適切に設定されていることを確認してください
+### セキュリティ
+- 本番環境関連のスクリプトは慎重に実行
+- `utilities/security-check.sh`で定期的にセキュリティチェック
+- APIキーの漏洩防止に注意
 
 ## 📚 関連ドキュメント
 
-- [デプロイメントガイド](../docs/deployment/)
-- [開発環境セットアップ](../docs/guides/environment-setup.md)
-- [パイプライン検証レポート](../docs/deployment/pipeline-verification-report.md)
+- **[デプロイメントガイド](../docs/deployment/)** - デプロイメント詳細手順
+- **[開発環境セットアップ](../docs/guides/)** - 開発環境構築ガイド
+- **[パフォーマンス結果](../docs/performance/)** - テスト結果とメトリクス
+
+---
+**最終更新**: 2025年6月17日

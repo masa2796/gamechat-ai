@@ -9,10 +9,16 @@ Google Cloud Run を使用したGameChat AI バックエンドのデプロイ手
 Google Cloud Run は、コンテナ化されたアプリケーションを実行するフルマネージドサーバレスプラットフォームです。
 GameChat AI バックエンドは、FastAPI + Python で構築されており、Cloud Run での実行に最適化されています。
 
-デプロイ済み環境
---------------
+.. note::
+   **現在のデプロイ環境**
 
-現在の本番環境情報:
+   * **プロジェクトID**: ``gamechat-ai``
+   * **サービスURL**: ``https://gamechat-ai-backend-905497046775.asia-northeast1.run.app``
+
+   最新のデプロイガイドは :doc:`../deployment/cloud-run-artifact-registry` を参照してください。
+
+現在のデプロイ環境
+-------------------------
 
 .. list-table:: 
    :header-rows: 1
@@ -20,15 +26,15 @@ GameChat AI バックエンドは、FastAPI + Python で構築されており、
    * - 項目
      - 値
    * - プロジェクトID
-     - ``gamechat-ai-production``
+     - ``gamechat-ai``
    * - サービス名
      - ``gamechat-ai-backend``
    * - リージョン
      - ``asia-northeast1`` (東京)
    * - サービスURL
-     - ``https://gamechat-ai-backend-507618950161.asia-northeast1.run.app``
-   * - デプロイ日
-     - 2025年6月15日
+     - ``https://gamechat-ai-backend-905497046775.asia-northeast1.run.app``
+   * - 稼働状況
+     - 稼働中
 
 システム構成
 ------------
@@ -78,7 +84,7 @@ GameChat AI バックエンドは、FastAPI + Python で構築されており、
 ------------
 
 Step 1: 前提条件確認
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 必要なツールとサービス:
 
@@ -94,7 +100,7 @@ Step 1: 前提条件確認
    gcloud config get-value project
 
 Step 2: APIサービス有効化
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -105,45 +111,56 @@ Step 2: APIサービス有効化
      run.googleapis.com
 
 Step 3: Docker設定
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
    # Google Container Registry への認証設定
    gcloud auth configure-docker
 
-Step 4: イメージビルド
-~~~~~~~~~~~~~~~~~~~~
+**旧環境でのイメージビルド（参考用）**
 
 Cloud Run 対応のDockerイメージをビルド:
 
 .. code-block:: bash
 
-   # プロジェクトルートで実行
+   # 現在のArtifact Registry用コマンド
    docker build \
      --platform linux/amd64 \
      -f backend/Dockerfile \
-     -t "gcr.io/gamechat-ai-production/gamechat-ai-backend" \
+     -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" \
      .
 
 .. note::
    ``--platform linux/amd64`` フラグは Cloud Run での互換性確保のために必要です。
 
-Step 5: イメージプッシュ
-~~~~~~~~~~~~~~~~~~~~~~
+**現在の推奨コマンド**
 
 .. code-block:: bash
 
-   # Google Container Registry にプッシュ
-   docker push gcr.io/gamechat-ai-production/gamechat-ai-backend:latest
+   # 現在のArtifact Registry用コマンド
+   docker build \
+     --platform linux/amd64 \
+     -f backend/Dockerfile \
+     -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" \
+     .
 
-Step 6: Cloud Run デプロイ
+Step 5: イメージプッシュ
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
+   # 現在のArtifact Registry用プッシュ
+   docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
+
+Step 6: Cloud Run デプロイ
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # 現在の推奨デプロイコマンド
    gcloud run deploy gamechat-ai-backend \
-     --image gcr.io/gamechat-ai-production/gamechat-ai-backend:latest \
+     --image asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest \
      --platform managed \
      --region asia-northeast1 \
      --allow-unauthenticated \
@@ -156,7 +173,7 @@ Step 6: Cloud Run デプロイ
      --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,OPENAI_API_KEY=your_api_key"
 
 Step 7: デプロイ確認
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -191,7 +208,7 @@ Step 7: デプロイ確認
      --follow
 
 サービス情報確認
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -205,10 +222,13 @@ Step 7: デプロイ確認
      --region=asia-northeast1
 
 パフォーマンス最適化
+====================
+
+設定とチューニング
 ------------------
 
 自動スケーリング
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 Cloud Run の自動スケーリング特性:
 
@@ -234,18 +254,21 @@ Cloud Run の自動スケーリング特性:
      --cpu 2
 
 トラブルシューティング
---------------------
+======================
+
+問題解決
+--------
 
 よくある問題と解決策
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 **問題**: イメージプッシュ失敗
 
 .. code-block:: bash
 
    # 解決策: Docker認証の再設定
-   gcloud auth configure-docker
-   docker push gcr.io/gamechat-ai-production/gamechat-ai-backend:latest
+   gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+   docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
 
 **問題**: コンテナ起動失敗
 
@@ -264,7 +287,7 @@ Cloud Run の自動スケーリング特性:
      --format="export" | grep ENVIRONMENT
 
 セキュリティ考慮事項
-------------------
+====================
 
 .. warning::
    本番環境では以下のセキュリティ対策を実装してください:

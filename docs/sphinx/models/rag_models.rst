@@ -31,3 +31,4 @@ RagResponse
 .. autoclass:: models.rag_models.RagResponse
    :members:
    :undoc-members:
+   :no-index:

@@ -61,8 +61,8 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
   - 自動HTTPS化
 - Firebase Firestore / Upstash Vector（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
-- **Google Container Registry**（Dockerイメージ管理）
-  - イメージ: `gcr.io/gamechat-ai-production/gamechat-ai-backend`
+- **Artifact Registry**（Dockerイメージ管理）
+  - イメージ: `asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend`
 - Docker（ローカル開発環境）
   - Alpine Linux ベースの軽量イメージ
   - マルチステージビルドによる最適化
@@ -1065,13 +1065,13 @@ MASAKI
 
 ### 🚀 本番環境（Google Cloud Run）
 
-#### ✅ デプロイ完了済み（2025年6月15日）
+#### ✅ デプロイ完了済み（2025年6月16日）
 
-**デプロイ済み環境情報**
-- **プロジェクトID**: `gamechat-ai-production`
+**現在のデプロイ済み環境情報**
+- **プロジェクトID**: `gamechat-ai`
 - **サービス名**: `gamechat-ai-backend`
 - **リージョン**: `asia-northeast1`（東京）
-- **サービスURL**: `https://gamechat-ai-backend-507618950161.asia-northeast1.run.app`
+- **サービスURL**: `https://gamechat-ai-backend-905497046775.asia-northeast1.run.app`
 - **スペック**: CPU 1コア、メモリ 1GB、自動スケーリング（0-10インスタンス）
 
 **稼働中のエンドポイント**
@@ -1082,36 +1082,44 @@ MASAKI
 - **RAG API**: `/api/v1/rag/chat`
 
 **デプロイ構成**
-- **Docker イメージ**: `gcr.io/gamechat-ai-production/gamechat-ai-backend`
+- **Docker イメージ**: `asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend`
 - **プラットフォーム**: linux/amd64
 - **セキュリティ**: HTTPS自動適用、CORS設定済み
 - **監視**: ヘルスチェック、構造化ログ、メトリクス収集
 
 #### デプロイ手順（更新時）
 
+**自動デプロイ（推奨）**
+```bash
+# 自動デプロイスクリプト使用
+./scripts/cloud-run-deploy.sh
+```
+
+**手動デプロイ**
+
 **1. 環境準備**
 ```bash
 # Google Cloud CLI認証確認
 gcloud auth list
-gcloud config set project gamechat-ai-production
+gcloud config set project gamechat-ai
 
 # Docker認証設定
-gcloud auth configure-docker
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 ```
 
 **2. イメージビルド・プッシュ**
 ```bash
 # Cloud Run対応のイメージをビルド
-docker build --platform linux/amd64 -f backend/Dockerfile -t "gcr.io/gamechat-ai-production/gamechat-ai-backend" .
+docker build --platform linux/amd64 -f backend/Dockerfile -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" .
 
-# Google Container Registry にプッシュ
-docker push gcr.io/gamechat-ai-production/gamechat-ai-backend:latest
+# Artifact Registry にプッシュ
+docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
 ```
 
 **3. Cloud Run デプロイ**
 ```bash
 gcloud run deploy gamechat-ai-backend \
-  --image gcr.io/gamechat-ai-production/gamechat-ai-backend:latest \
+  --image asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest \
   --platform managed \
   --region asia-northeast1 \
   --allow-unauthenticated \
@@ -1124,34 +1132,17 @@ gcloud run deploy gamechat-ai-backend \
   --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO"
 ```
 
-**4. 環境変数更新**
-```bash
-# 本番用環境変数の更新
-gcloud run services update gamechat-ai-backend \
-  --region asia-northeast1 \
-  --update-env-vars OPENAI_API_KEY=your_production_api_key
-```
-
 ### 📦 フロントエンド（Docker イメージ準備済み）
 
-#### ✅ Docker イメージビルド完了（2025年6月15日）
+#### ⚠️ 旧環境のDocker イメージ（使用停止）
 
-**ビルド済みイメージ情報**
-- **イメージタグ**: `gcr.io/gamechat-ai-production/gamechat-ai-frontend`
-- **プラットフォーム**: linux/amd64
-- **ベースイメージ**: Node.js 20 Alpine
-- **特徴**: マルチステージビルド、軽量化、セキュリティ最適化
+**現在のビルド・デプロイ環境**
+- **現在**: Artifact Registry使用（バックエンドのみ）、統一プロジェクト `gamechat-ai` で運用
 
-**Firebase Hosting 準備中**
-- Firebase Hostingサイト設定準備中
+**Firebase Hosting 運用中**
+- Firebase Hostingサイト設定完了
 - 静的エクスポート対応済み
 - Cloud Run バックエンドとの連携設定済み
-
-**ローカルでのフロントエンドテスト**
-```bash
-# Docker イメージを使用してローカルテスト
-docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=https://gamechat-ai-backend-507618950161.asia-northeast1.run.app gcr.io/gamechat-ai-production/gamechat-ai-frontend
-```
 
 ---
 

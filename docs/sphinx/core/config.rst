@@ -17,3 +17,4 @@ Settings
 .. autoclass:: core.config.Settings
    :members:
    :undoc-members:
+   :no-index:

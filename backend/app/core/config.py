@@ -38,7 +38,10 @@ class Settings:
     UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     
     # CORS設定
-    CORS_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = (
+        ["https://gamechat-ai.web.app", "https://gamechat-ai.firebaseapp.com"] if environment == "production" 
+        else os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    )
     
     # Security Settings
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")

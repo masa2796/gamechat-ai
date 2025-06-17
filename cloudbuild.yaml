@@ -7,41 +7,38 @@ steps:
       - |
         # backend用の環境変数ファイル作成
         echo "ENVIRONMENT=production" > backend/.env.production
-        echo "OPENAI_API_KEY=$$OPENAI_API_KEY" >> backend/.env.production
-        echo "UPSTASH_VECTOR_REST_URL=$$UPSTASH_VECTOR_REST_URL" >> backend/.env.production
-        echo "UPSTASH_VECTOR_REST_TOKEN=$$UPSTASH_VECTOR_REST_TOKEN" >> backend/.env.production
         echo "CORS_ORIGINS=https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com" >> backend/.env.production
-        
         # Cloud Run用の環境変数ファイル作成（YAML形式）
         cat > cloud-run-env.yaml << EOF
         ENVIRONMENT: production
         LOG_LEVEL: INFO
         CORS_ORIGINS: "https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com"
         EOF
-    secretEnv: ['OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN']
+    secretEnv: ['OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN', 'RECAPTCHA_SECRET']
 
   # バックエンドDockerイメージのビルド
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
+      '--platform', 'linux/amd64',
       '-f', 'backend/Dockerfile',
-      '-t', 'gcr.io/$PROJECT_ID/gamechat-ai-backend:$BUILD_ID',
-      '-t', 'gcr.io/$PROJECT_ID/gamechat-ai-backend:latest',
+      '-t', 'asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:$BUILD_ID',
+      '-t', 'asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest',
       '.'
     ]
 
-  # Container Registryにプッシュ
+  # Artifact Registryにプッシュ
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/gamechat-ai-backend:$BUILD_ID']
+    args: ['push', 'asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:$BUILD_ID']
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/gamechat-ai-backend:latest']
+    args: ['push', 'asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest']
 
   # Cloud Runにデプロイ
   - name: 'gcr.io/cloud-builders/gcloud'
     args: [
       'run', 'deploy', 'gamechat-ai-backend',
-      '--image', 'gcr.io/$PROJECT_ID/gamechat-ai-backend:$BUILD_ID',
+      '--image', 'asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:$BUILD_ID',
       '--region', 'asia-northeast1',
       '--platform', 'managed',
       '--allow-unauthenticated',
@@ -52,7 +49,8 @@ steps:
       '--env-vars-file', 'cloud-run-env.yaml',
       '--update-secrets', 'OPENAI_API_KEY=OPENAI_API_KEY:latest',
       '--update-secrets', 'UPSTASH_VECTOR_REST_URL=UPSTASH_VECTOR_REST_URL:latest',
-      '--update-secrets', 'UPSTASH_VECTOR_REST_TOKEN=UPSTASH_VECTOR_REST_TOKEN:latest'
+      '--update-secrets', 'UPSTASH_VECTOR_REST_TOKEN=UPSTASH_VECTOR_REST_TOKEN:latest',
+      '--update-secrets', 'RECAPTCHA_SECRET=RECAPTCHA_SECRET:latest'
     ]
     env:
       - 'CLOUDSDK_RUN_REGION=asia-northeast1'
@@ -69,6 +67,8 @@ availableSecrets:
       env: UPSTASH_VECTOR_REST_URL
     - versionName: projects/$PROJECT_ID/secrets/UPSTASH_VECTOR_REST_TOKEN/versions/latest
       env: UPSTASH_VECTOR_REST_TOKEN
+    - versionName: projects/$PROJECT_ID/secrets/RECAPTCHA_SECRET/versions/latest
+      env: RECAPTCHA_SECRET
 
 # ビルドオプション
 options:
