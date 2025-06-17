@@ -87,7 +87,7 @@ class LLMService:
             return response
             
         except Exception as e:
-            GameChatLogger.log_error("llm_service", f"回答生成エラー: {str(e)}")
+            GameChatLogger.log_error("llm_service", "回答生成エラー", e)
             return f"申し訳ありませんが、「{query}」に関する回答の生成中にエラーが発生しました。"
 
     def _prepare_context_data(
@@ -184,7 +184,7 @@ class LLMService:
             return response_content.strip()
             
         except Exception as e:
-            GameChatLogger.log_error("llm_service", f"OpenAI API呼び出しエラー: {str(e)}")
+            GameChatLogger.log_error("llm_service", "OpenAI API呼び出しエラー", e)
             # より詳細なエラー情報を含める
             error_message = f"OpenAI APIでエラーが発生しました: {str(e)}"
             raise LLMException(
@@ -200,8 +200,30 @@ class LLMService:
             if any(greeting in query.lower() for greeting in ["こんにちは", "hello", "hi", "はじめまして"]):
                 return "こんにちは！GameChat AIへようこそ。ゲームに関する質問をお気軽にどうぞ。"
             
+            # 一般的な挨拶パターンに対する定型応答
+            greeting_responses = {
+                "こんにちは": "こんにちは！今日はどんなゲームカードについて知りたいですか？",
+                "おはよう": "おはようございます！何かゲームカードで調べたいことはありますか？",
+                "こんばんは": "こんばんは！ゲームカードについて何でもお聞きください。",
+                "はじめまして": "はじめまして！ゲームカードの情報なら何でもお任せください。",
+                "ありがとう": "どういたしまして！他にもゲームカードについて知りたいことがあればお気軽にどうぞ。",
+                "お疲れさま": "お疲れさまです！ゲームカードで何か調べたいことはありますか？",
+                "よろしく": "こちらこそよろしくお願いします！ゲームカードについて何でもお聞きください。"
+            }
+            
+            # クエリを正規化（ひらがな・カタカナ・漢字の違いを吸収）
+            normalized_query = query.lower().strip()
+            
+            # 部分一致で挨拶を検出
+            for greeting, response in greeting_responses.items():
+                if greeting in normalized_query:
+                    return response
+            
+            # デフォルトの挨拶応答
+            return "こんにちは！ゲームカードについて何でもお聞きください。どんなカードについて知りたいですか？"
+            
         # 本来のLLMベースの挨拶生成
-        greeting_responses = [
+        llm_greeting_responses = [
             "こんにちは！GameChat AIです。ゲームに関する質問にお答えします。",
             "はじめまして！ゲームについて何でもお聞きください。",
             "こんにちは！どのようなゲームについて知りたいですか？"
@@ -210,32 +232,11 @@ class LLMService:
         # 分類の信頼度に基づいて応答を選択
         confidence = classification.confidence if classification else 0.5
         if confidence > 0.8:
-            return greeting_responses[0]
+            return llm_greeting_responses[0]
         elif confidence > 0.6:
-            return greeting_responses[1]
+            return llm_greeting_responses[1]
         else:
-            return greeting_responses[2]
-        # 一般的な挨拶パターンに対する定型応答
-        greeting_responses = {
-            "こんにちは": "こんにちは！今日はどんなゲームカードについて知りたいですか？",
-            "おはよう": "おはようございます！何かゲームカードで調べたいことはありますか？",
-            "こんばんは": "こんばんは！ゲームカードについて何でもお聞きください。",
-            "はじめまして": "はじめまして！ゲームカードの情報なら何でもお任せください。",
-            "ありがとう": "どういたしまして！他にもゲームカードについて知りたいことがあればお気軽にどうぞ。",
-            "お疲れさま": "お疲れさまです！ゲームカードで何か調べたいことはありますか？",
-            "よろしく": "こちらこそよろしくお願いします！ゲームカードについて何でもお聞きください。"
-        }
-        
-        # クエリを正規化（ひらがな・カタカナ・漢字の違いを吸収）
-        normalized_query = query.lower().strip()
-        
-        # 部分一致で挨拶を検出
-        for greeting, response in greeting_responses.items():
-            if greeting in normalized_query:
-                return response
-        
-        # デフォルトの挨拶応答
-        return "こんにちは！ゲームカードについて何でもお聞きください。どんなカードについて知りたいですか？"
+            return llm_greeting_responses[2]
 
     def _analyze_context_quality(self, context_items: List[ContextItem]) -> Dict[str, Any]:
         """コンテキストの品質を分析し、回答戦略を決定"""
@@ -412,6 +413,4 @@ class LLMService:
     async def generate_answer_legacy(self, query: str, context_items: List[ContextItem]) -> str:
         """下位互換性のための旧generate_answerメソッド"""
         result = await self.generate_answer(query, context_items)
-        if isinstance(result, str):
-            return result
-        return str(result)
+        return result
