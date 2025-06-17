@@ -12,9 +12,8 @@ GameChat AIのサービス層は、システムの核となるビジネスロジ
    classification_service
    database_service
    vector_service
-   embedding_service
-   llm_service
    auth_service
+   llm_service
 
 アーキテクチャ概要
 ------------------

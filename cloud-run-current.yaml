@@ -26,7 +26,7 @@ spec:
       - env:
         - name: CORS_ORIGINS
           value: https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com,http://localhost:3000
-        image: gcr.io/gamechat-ai-production/gamechat-ai-backend:latest
+        image: asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
         ports:
         - containerPort: 8000
           name: http1

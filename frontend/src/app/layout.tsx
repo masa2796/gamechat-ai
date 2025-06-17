@@ -88,6 +88,13 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0f172a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (
+          <script 
+            src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
+            async
+            defer
+          />
+        )}
         <StructuredData data={structuredData} />
       </head>
       <body

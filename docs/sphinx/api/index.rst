@@ -5,14 +5,11 @@ GameChat AI REST APIの包括的な仕様書です。
 高性能なFastAPIフレームワークを基盤とし、自動的なOpenAPI仕様生成とリアルタイムドキュメント更新を実現しています。
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    
    endpoints
    authentication
    error_handling
-   rate_limiting
-   webhooks
-   sdk_integration
 
 概要
 ----
@@ -23,10 +20,19 @@ GameChat AI APIは、以下の原則に基づいて設計されています：
 
 * **RESTful設計**: 直感的で一貫性のあるエンドポイント構造
 * **型安全性**: Pydanticモデルによる厳密な入出力検証
-* **高可用性**: 99.9%のアップタイム目標
-* **セキュリティ**: 多層防御によるセキュリティ確保
-* **パフォーマンス**: 平均応答時間1.5秒以下
-* **スケーラビリティ**: 水平スケーリング対応
+* **セキュリティ**: APIキー認証とreCAPTCHA検証による多層防御
+* **高可用性**: Cloud Runによる自動スケーリング
+* **パフォーマンス**: レスポンス最適化（現在改善中）
+
+**現在のサービス状況**
+
+.. note::
+   **部分稼働中** (2025年6月17日現在)
+   
+   - ✅ APIキー認証: 正常動作
+   - ✅ reCAPTCHA認証: 最適化済み
+   - ✅ OpenAI API接続: 修復済み
+   - 🔄 レスポンス時間: 最適化中
 
 技術スタック
 ------------
@@ -111,7 +117,7 @@ APIバージョニング
 
 **バージョン管理戦略**
 
-.. code-block:: http
+.. code-block:: text
 
    # 現在のバージョン
    GET /api/v1/rag/query
@@ -137,14 +143,14 @@ APIバージョニング
 
 **標準レスポンス構造**
 
-.. code-block:: json
+.. code-block:: javascript
 
    {
      "success": true,
      "data": {
        "answer": "回答内容",
        "confidence": 0.95,
-       "sources": [...]
+       "sources": []
      },
      "metadata": {
        "request_id": "req_123456789",
@@ -162,7 +168,7 @@ APIバージョニング
 
 **エラーレスポンス構造**
 
-.. code-block:: json
+.. code-block:: javascript
 
    {
      "success": false,
@@ -402,7 +408,7 @@ FastAPIの自動生成機能により、以下が提供されます：
 
 **v1.0からv2.0への移行**
 
-1. **新しいエンドポイント**: ``/api/v2/``プレフィックス
+1. **新しいエンドポイント**: ``/api/v2/`` プレフィックス
 2. **レスポンス形式変更**: ネストされたデータ構造
 3. **認証方式更新**: JWTトークンベース認証
 4. **移行期間**: 6ヶ月間のv1.0サポート継続

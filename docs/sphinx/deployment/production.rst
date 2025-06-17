@@ -1,25 +1,61 @@
 本番環境デプロイ
 ================
 
-Google Cloud Run を使用した本番環境へのデプロイ手順と設定について説明します。
-
-🎉 **デプロイ完了済み**（2025年6月15日）
+**現在のデプロイメント環境**
 
 .. note::
-   バックエンドAPIは正常にデプロイされ、稼働中です。
-   フロントエンドのDockerイメージもビルド完了済みです。
+   **現在のプロジェクト環境**
+   
+   * プロジェクトID: ``gamechat-ai``
+   * デプロイ方法: Artifact Registry使用
+   * サービスURL: ``https://gamechat-ai-backend-905497046775.asia-northeast1.run.app``
 
-デプロイ済み環境情報
-------------------
+Google Cloud Run を使用した本番環境へのデプロイ手順と設定について説明します。
+
+**現在のArtifact Registry用デプロイ**
+
+.. code-block:: bash
+
+   # 現在のArtifact Registry用コマンド
+   docker build --platform linux/amd64 -f backend/Dockerfile -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" .
+   docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
+
+**Cloud Run デプロイ（現在の環境）**
+
+.. code-block:: bash
+
+   # 現在のデプロイコマンド
+   gcloud run deploy gamechat-ai-backend \
+     --image asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest \
+     --platform managed \
+     --region asia-northeast1 \
+     --allow-unauthenticated \
+     --port 8000 \
+     --memory 1Gi \
+     --cpu 1 \
+     --max-instances 10 \
+     --timeout 300
+
+現在のデプロイ環境：
+
+   * **プロジェクトID**: ``gamechat-ai``
+   * **サービスURL**: ``https://gamechat-ai-backend-905497046775.asia-northeast1.run.app``
+
+   最新のデプロイガイドは以下を参照してください：
+
+   * :doc:`../deployment/cloud-run-artifact-registry`
+
+現在のデプロイ情報
+--------------------------
 
 基本情報
 ~~~~~~~~
 
-* **プロジェクトID**: ``gamechat-ai-production``
+* **プロジェクトID**: ``gamechat-ai``
 * **サービス名**: ``gamechat-ai-backend`` 
 * **リージョン**: ``asia-northeast1`` (東京)
-* **サービスURL**: ``https://gamechat-ai-backend-507618950161.asia-northeast1.run.app``
-* **デプロイ日時**: 2025年6月15日 20:45 JST
+* **サービスURL**: ``https://gamechat-ai-backend-905497046775.asia-northeast1.run.app``
+* **稼働状況**: 稼働中
 
 スペック構成
 ~~~~~~~~~~~~
@@ -48,6 +84,7 @@ Google Cloud Run を使用した本番環境へのデプロイ手順と設定に
      "version": "1.0.0",
      "environment": "production"
    }
+
 * **最大インスタンス**: 10
 * **タイムアウト**: 300秒
 * **ポート**: 8000
@@ -103,15 +140,15 @@ Google Container Registryへの認証設定:
    gcloud auth configure-docker
 
 イメージビルド・プッシュ
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
    # Cloud Run対応のイメージをビルド
-   docker build --platform linux/amd64 -f backend/Dockerfile -t "gcr.io/gamechat-ai-production/gamechat-ai-backend" .
+   docker build --platform linux/amd64 -f backend/Dockerfile -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" .
    
-   # Google Container Registry にプッシュ
-   docker push gcr.io/gamechat-ai-production/gamechat-ai-backend:latest
+   # Artifact Registry にプッシュ
+   docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
 
 Cloud Run デプロイ
 ~~~~~~~~~~~~~~~~~~
@@ -119,7 +156,7 @@ Cloud Run デプロイ
 .. code-block:: bash
 
    gcloud run deploy gamechat-ai-backend \
-     --image gcr.io/gamechat-ai-production/gamechat-ai-backend:latest \
+     --image asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest \
      --platform managed \
      --region asia-northeast1 \
      --allow-unauthenticated \
@@ -185,7 +222,7 @@ CORS設定
 * ✅ 必要なオリジンのみ許可
 
 パフォーマンス最適化
-------------------
+--------------------
 
 自動スケーリング
 ~~~~~~~~~~~~~~~~
@@ -208,12 +245,12 @@ CORS設定
 * ✅ ヘルスチェックエンドポイント
 
 トラブルシューティング
---------------------
+----------------------
 
 よくある問題と解決方法:
 
 イメージプッシュエラー
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 Docker認証の再設定:
 
@@ -222,7 +259,7 @@ Docker認証の再設定:
    gcloud auth configure-docker
 
 コンテナ起動エラー
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 環境変数の確認とログ確認:
 

@@ -8,18 +8,16 @@ AIチャット型ゲーム攻略アシスタントの包括的技術ドキュメ
    :caption: メインコンテンツ:
 
    services/index
+   api/index
    models/index
    core/index
-   api/index
-   deployment/index
 
 .. toctree::
    :maxdepth: 2
-   :caption: 開発者ガイド:
+   :caption: システム運用:
 
-   guides/development
-   guides/testing
-   guides/deployment
+   deployment/index
+   guides/index
 
 概要
 ----
@@ -29,10 +27,13 @@ GameChat AIは、カードゲームなどの戦略ゲーム攻略をサポート
 ユーザーの質問に対して正確で実用的な回答を提供します。
 
 .. note::
-   **🚀 本番環境稼働中** (2025年6月15日デプロイ完了)
+   **⚠️ 部分稼働中** (2025年6月17日現在)
    
-   バックエンドAPIはGoogle Cloud Runで正常稼働中です。
-   フロントエンドDockerイメージも本番環境用にビルド完了済みです。
+   - APIキー認証・OpenAI API接続: ✅ 解決済み
+   - reCAPTCHA認証: ✅ 最適化済み  
+   - レスポンス時間問題: 🔄 対応中
+   
+   詳細は `現在の問題点分析 <../current-issues-analysis.md>`_ を参照してください。
 
 技術的特徴
 ----------

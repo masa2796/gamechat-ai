@@ -6,7 +6,21 @@ backend/.env
 backend/.env.production
 frontend/.env.local
 frontend/.env.firebase
+frontend/.env.production
 # テンプレートファイルは除外しない（.env.example, .env.firebase.example等）
+
+# Cloud Run機密設定ファイル
+cloud-run-env.yaml
+cloud-run-current.yaml
+
+# その他の機密ファイル
+*.key
+*.pem
+*.p12
+*.pfx
+*secret*
+*credential*
+*private*
 
 # .venv
 .venv
@@ -17,6 +31,8 @@ __pycache__/
 *$py.class
 backend/.pytest_cache
 .pytest_chche/
+.mypy_cache
+.pytest_cache
 
 # Node modules
 node_modules/

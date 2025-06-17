@@ -68,38 +68,47 @@ Docker Compose使用
    docker-compose ps
 
 フロントエンドイメージ構築状況
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
-   **✅ ビルド完了済み**（2025年6月15日）
+   **✅ ビルド完了済み** （2025年6月15日）
    
    フロントエンド用Dockerイメージは本番環境用にビルド完了しています。
 
-**ビルド済みイメージ情報**
+**現在のビルド環境**
 
-* **イメージタグ**: ``gcr.io/gamechat-ai-production/gamechat-ai-frontend``
+* **現在のイメージタグ**: ``asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend``
 * **プラットフォーム**: linux/amd64
 * **ベースイメージ**: Node.js 20 Alpine
 * **ビルド方式**: マルチステージビルド
 * **サイズ最適化**: 軽量Alpine Linuxベース
 
-**本番イメージビルドコマンド**
+**現在のイメージビルドコマンド**
 
 .. code-block:: bash
 
-   # 本番環境用フロントエンドイメージビルド
+   # 現在のフロントエンドイメージビルド
    docker build --platform linux/amd64 \
-     -t "gcr.io/gamechat-ai-production/gamechat-ai-frontend" \
+     -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-frontend/frontend" \
      frontend/
+
+**現在の推奨コマンド**
+
+.. code-block:: bash
+
+   # 現在の環境用バックエンドイメージビルド
+   docker build --platform linux/amd64 \
+     -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" \
+     -f backend/Dockerfile .
 
 **ローカルテスト実行**
 
 .. code-block:: bash
 
-   # ビルド済みイメージでローカルテスト
+   # 現在のイメージでローカルテスト
    docker run -p 3000:3000 \
-     -e NEXT_PUBLIC_API_URL=https://gamechat-ai-backend-507618950161.asia-northeast1.run.app \
-     gcr.io/gamechat-ai-production/gamechat-ai-frontend
+     -e NEXT_PUBLIC_API_URL=https://gamechat-ai-backend-905497046775.asia-northeast1.run.app \
+     asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-frontend/frontend
 
 アクセス先
 ~~~~~~~~~~
