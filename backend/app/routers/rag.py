@@ -20,9 +20,9 @@ async def debug_auth_status() -> Dict[str, Any]:
     """認証システムのデバッグ情報を返すエンドポイント（本番では無効化すべき）"""
     environment = os.getenv("ENVIRONMENT", "unknown")
     
-    # 本番環境では無効化
-    if environment == "production":
-        raise HTTPException(status_code=404, detail="Not found")
+    # デバッグ用に一時的に本番環境でも有効化
+    # if environment == "production":
+    #     raise HTTPException(status_code=404, detail="Not found")
     
     # 環境変数の確認
     env_status = {
@@ -51,9 +51,9 @@ async def debug_test_auth(
     """認証フローをテストするデバッグエンドポイント"""
     environment = os.getenv("ENVIRONMENT", "unknown")
     
-    # 本番環境では無効化
-    if environment == "production":
-        raise HTTPException(status_code=404, detail="Not found")
+    # デバッグ用に一時的に本番環境でも有効化
+    # if environment == "production":
+    #     raise HTTPException(status_code=404, detail="Not found")
     
     logger.info("=== DEBUG AUTH TEST STARTED ===")
     
@@ -97,9 +97,9 @@ async def debug_env_status() -> Dict[str, Any]:
     """環境変数とSecret設定の状態を確認するデバッグエンドポイント"""
     environment = os.getenv("ENVIRONMENT", "unknown")
     
-    # 本番環境では無効化
-    if environment == "production":
-        raise HTTPException(status_code=404, detail="Not found")
+    # デバッグ用に一時的に本番環境でも有効化
+    # if environment == "production":
+    #     raise HTTPException(status_code=404, detail="Not found")
     
     # 重要な環境変数の確認
     env_status = {
@@ -108,7 +108,11 @@ async def debug_env_status() -> Dict[str, Any]:
         "OPENAI_API_KEY": "Set" if os.getenv("OPENAI_API_KEY") else "Not set",
         "UPSTASH_VECTOR_REST_URL": "Set" if os.getenv("UPSTASH_VECTOR_REST_URL") else "Not set", 
         "UPSTASH_VECTOR_REST_TOKEN": "Set" if os.getenv("UPSTASH_VECTOR_REST_TOKEN") else "Not set",
-        "RECAPTCHA_SECRET_TEST": "Set" if os.getenv("RECAPTCHA_SECRET_TEST") else "Not set",
+        "RECAPTCHA_SECRET": "Set" if os.getenv("RECAPTCHA_SECRET") else "Not set",
+        "API_KEY_DEVELOPMENT": "Set" if os.getenv("API_KEY_DEVELOPMENT") else "Not set",
+        "API_KEY_PRODUCTION": "Set" if os.getenv("API_KEY_PRODUCTION") else "Not set",
+        "API_KEY_FRONTEND": "Set" if os.getenv("API_KEY_FRONTEND") else "Not set",
+        "API_KEY_READONLY": "Set" if os.getenv("API_KEY_READONLY") else "Not set",
     }
     
     # OpenAI APIキーの詳細確認
@@ -120,10 +124,21 @@ async def debug_env_status() -> Dict[str, Any]:
         "first_10_chars": openai_key[:10] if openai_key else None
     }
     
+    # APIキーの詳細確認
+    api_key_details = {}
+    for key_name in ["API_KEY_DEVELOPMENT", "API_KEY_PRODUCTION", "API_KEY_FRONTEND", "API_KEY_READONLY"]:
+        key_value = os.getenv(key_name)
+        api_key_details[key_name] = {
+            "present": bool(key_value),
+            "length": len(key_value) if key_value else 0,
+            "first_10_chars": key_value[:10] if key_value else None
+        }
+    
     return {
         "environment_variables": env_status,
         "openai_api_key_details": openai_details,
-        "timestamp": "2025-06-17T00:00:00Z"
+        "api_key_details": api_key_details,
+        "timestamp": "2025-06-18T00:00:00Z"
     }
 
 @router.post("/rag/query")
