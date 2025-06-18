@@ -18,9 +18,10 @@ hybrid_search_service = HybridSearchService()
 # OPTIONSプリフライトリクエストのハンドラー
 @router.options("/rag/query")
 @router.options("/chat")  
-async def options_preflight(request: Request, response: Response):
+async def options_preflight(request: Request, response: Response) -> Dict[str, str]:
     """OPTIONSプリフライトリクエストを処理"""
-    logger.info(f"OPTIONS request received from {request.client.host}")
+    client_host = request.client.host if request.client else "unknown"
+    logger.info(f"OPTIONS request received from {client_host}")
     logger.info(f"Request headers: {dict(request.headers)}")
     
     # CORS ヘッダーを設定
@@ -66,9 +67,8 @@ async def debug_test_auth(
     test_data: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
     """認証フローをテストするデバッグエンドポイント"""
-    environment = os.getenv("ENVIRONMENT", "unknown")
-    
     # デバッグ用に一時的に本番環境でも有効化
+    # environment = os.getenv("ENVIRONMENT", "unknown")
     # if environment == "production":
     #     raise HTTPException(status_code=404, detail="Not found")
     
