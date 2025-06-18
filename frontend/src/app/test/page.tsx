@@ -16,34 +16,56 @@ export default function APITestPage() {
     setResponse(null);
 
     try {
+      // デバッグ情報をログ出力
+      console.log("=== API Test Debug Info ===");
+      console.log("API Key:", process.env.NEXT_PUBLIC_API_KEY ? `${process.env.NEXT_PUBLIC_API_KEY.substring(0, 15)}***` : "Not set");
+      console.log("reCAPTCHA Site Key:", process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? `${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY.substring(0, 20)}***` : "Not set");
+      
       // reCAPTCHAトークン取得
       let recaptchaToken = "";
-      if (window.grecaptcha && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+      // reCAPTCHA認証をスキップするかチェック
+      if (process.env.NEXT_PUBLIC_SKIP_RECAPTCHA === "true") {
+        recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
+        console.log("reCAPTCHA verification skipped due to NEXT_PUBLIC_SKIP_RECAPTCHA=true");
+      } else if (window.grecaptcha && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
         recaptchaToken = await window.grecaptcha.execute(
           process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, 
           { action: "submit" }
         );
+        console.log("reCAPTCHA Token:", recaptchaToken ? `${recaptchaToken.substring(0, 20)}***` : "Failed to generate");
       }
+
+      const requestHeaders = {
+        "Content-Type": "application/json",
+        "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
+      };
+      
+      const requestBody = { 
+        question,
+        top_k: 5,
+        with_context: true,
+        recaptchaToken
+      };
+
+      console.log("Request Headers:", requestHeaders);
+      console.log("Request Body:", requestBody);
+      console.log("Request URL:", "/api/rag/query");
 
       const res = await fetch("/api/rag/query", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // APIキー認証ヘッダーを追加
-          "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
-        },
-        body: JSON.stringify({ 
-          question,
-          top_k: 5,
-          with_context: true,
-          recaptchaToken
-        }),
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody),
         credentials: "include"
       });
       
+      console.log("Response Status:", res.status);
+      console.log("Response Headers:", Object.fromEntries(res.headers.entries()));
+      
       const data = await res.json();
+      console.log("Response Data:", data);
       setResponse(data);
     } catch (err) {
+      console.error("API Error:", err);
       setError(err instanceof Error ? err.message : "APIエラーが発生しました");
     } finally {
       setLoading(false);

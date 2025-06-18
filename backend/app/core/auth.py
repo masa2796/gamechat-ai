@@ -199,6 +199,11 @@ class EnhancedAuth:
         """Authenticate request using multiple methods."""
         logger.info("Starting authentication process")
         
+        # リクエストの詳細をログ出力
+        logger.info(f"Request URL: {request.url}")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        
         # テスト環境での認証バイパス
         environment = os.getenv("ENVIRONMENT", "production")
         is_testing = os.getenv("TESTING", "false").lower() == "true"
@@ -214,6 +219,8 @@ class EnhancedAuth:
         # Check for API key in headers
         api_key = request.headers.get("X-API-Key")
         logger.info(f"API key in headers: {'Present' if api_key else 'Not present'}")
+        if api_key:
+            logger.info(f"API key value: {api_key[:15]}***")
         
         if api_key:
             logger.info("Attempting API key authentication")

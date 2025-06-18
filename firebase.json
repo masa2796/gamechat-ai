@@ -69,11 +69,15 @@
           },
           {
             "key": "Access-Control-Allow-Headers",
-            "value": "Authorization,Content-Type,X-API-Key"
+            "value": "Authorization,Content-Type,X-API-Key,X-Requested-With,Accept,Origin,Cache-Control"
           },
           {
             "key": "Access-Control-Allow-Methods",
-            "value": "GET,POST,OPTIONS"
+            "value": "GET,POST,OPTIONS,PUT,DELETE"
+          },
+          {
+            "key": "Access-Control-Max-Age",
+            "value": "86400"
           }
         ]
       }

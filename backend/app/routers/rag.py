@@ -15,6 +15,23 @@ rag_service = RagService()
 auth_service = AuthService()
 hybrid_search_service = HybridSearchService()
 
+# OPTIONSプリフライトリクエストのハンドラー
+@router.options("/rag/query")
+@router.options("/chat")  
+async def options_preflight(request: Request, response: Response):
+    """OPTIONSプリフライトリクエストを処理"""
+    logger.info(f"OPTIONS request received from {request.client.host}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+    
+    # CORS ヘッダーを設定
+    response.headers["Access-Control-Allow-Origin"] = "https://gamechat-ai.web.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-API-Key, X-Requested-With, Accept, Origin, Cache-Control"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    
+    return {"status": "ok"}
+
 @router.get("/debug/auth-status")
 async def debug_auth_status() -> Dict[str, Any]:
     """認証システムのデバッグ情報を返すエンドポイント（本番では無効化すべき）"""
