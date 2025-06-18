@@ -69,7 +69,7 @@
           },
           {
             "key": "Access-Control-Allow-Headers",
-            "value": "Authorization,Content-Type"
+            "value": "Authorization,Content-Type,X-API-Key"
           },
           {
             "key": "Access-Control-Allow-Methods",

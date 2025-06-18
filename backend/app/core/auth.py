@@ -46,6 +46,8 @@ class APIKeyAuth:
         prod_key = os.getenv("API_KEY_PRODUCTION")
         logger.info(f"Loading production API key: {'Found' if prod_key else 'Not found'}")
         if prod_key:
+            # Secret Managerからの改行文字を除去
+            prod_key = prod_key.strip()
             logger.info(f"Production API key loaded: {prod_key[:10]}***")
             api_keys[prod_key] = {
                 "name": "production",
@@ -58,6 +60,8 @@ class APIKeyAuth:
         dev_key = os.getenv("API_KEY_DEVELOPMENT")
         logger.info(f"Loading development API key: {'Found' if dev_key else 'Not found'}")
         if dev_key:
+            # Secret Managerからの改行文字を除去
+            dev_key = dev_key.strip()
             logger.info(f"Development API key loaded: {dev_key[:10]}***")
             api_keys[dev_key] = {
                 "name": "development",
@@ -70,6 +74,8 @@ class APIKeyAuth:
         readonly_key = os.getenv("API_KEY_READONLY")
         logger.info(f"Loading readonly API key: {'Found' if readonly_key else 'Not found'}")
         if readonly_key:
+            # Secret Managerからの改行文字を除去
+            readonly_key = readonly_key.strip()
             logger.info(f"Readonly API key loaded: {readonly_key[:10]}***")
             api_keys[readonly_key] = {
                 "name": "readonly",
@@ -82,6 +88,8 @@ class APIKeyAuth:
         frontend_key = os.getenv("API_KEY_FRONTEND")
         logger.info(f"Loading frontend API key: {'Found' if frontend_key else 'Not found'}")
         if frontend_key:
+            # Secret Managerからの改行文字を除去
+            frontend_key = frontend_key.strip()
             logger.info(f"Frontend API key loaded: {frontend_key[:10]}***")
             api_keys[frontend_key] = {
                 "name": "frontend",
