@@ -92,7 +92,11 @@ export const Assistant = () => {
         }
       }
       let recaptchaToken = "";
-      if (window.grecaptcha && recaptchaReady) {
+      // reCAPTCHA認証をスキップするかチェック
+      if (process.env.NEXT_PUBLIC_SKIP_RECAPTCHA === "true") {
+        recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
+        console.log("reCAPTCHA verification skipped due to NEXT_PUBLIC_SKIP_RECAPTCHA=true");
+      } else if (window.grecaptcha && recaptchaReady) {
         recaptchaToken = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: "submit" });
       }
       const res = await fetch("/api/rag/query", {

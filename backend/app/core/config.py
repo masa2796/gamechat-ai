@@ -37,9 +37,14 @@ class Settings:
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
     UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     
-    # CORS設定
+    # CORS設定（デバッグ用に一時的に緩和）
     CORS_ORIGINS: List[str] = (
-        ["https://gamechat-ai.web.app", "https://gamechat-ai.firebaseapp.com"] if environment == "production" 
+        [
+            "https://gamechat-ai.web.app", 
+            "https://gamechat-ai.firebaseapp.com",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000"
+        ] if environment == "production" 
         else os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
     )
     
