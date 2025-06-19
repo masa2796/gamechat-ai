@@ -55,7 +55,10 @@ steps:
         ENVIRONMENT: production
         LOG_LEVEL: INFO
         CORS_ORIGINS: "https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com"
-        # データファイルパス（本番環境用）
+        # Google Cloud Storage設定
+        GCS_BUCKET_NAME: "gamechat-ai-data"
+        GCS_PROJECT_ID: "gamechat-ai"
+        # データファイルパス（後方互換性のため保持）
         DATA_FILE_PATH: "/app/data/data.json"
         CONVERTED_DATA_FILE_PATH: "/app/data/convert_data.json"
         EMBEDDING_FILE_PATH: "/app/data/embedding_list.jsonl"

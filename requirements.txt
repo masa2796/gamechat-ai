@@ -26,6 +26,9 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 gunicorn>=21.2.0
 
+# Google Cloud Storage
+google-cloud-storage>=2.13.0
+
 # Authentication and Security (required for production)
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4

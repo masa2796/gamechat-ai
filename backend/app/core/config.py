@@ -94,6 +94,11 @@ class Settings:
     EMBEDDING_FILE_PATH: str = os.getenv("EMBEDDING_FILE_PATH", str(DATA_DIR / "embedding_list.jsonl"))
     QUERY_DATA_FILE_PATH: str = os.getenv("QUERY_DATA_FILE_PATH", str(DATA_DIR / "query_data.json"))
     
+    # Google Cloud Storage設定
+    GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "gamechat-ai-data")
+    GCS_PROJECT_ID: Optional[str] = os.getenv("GCS_PROJECT_ID")
+    # 認証はCloud Runのサービスアカウントまたは環境変数GOOGLE_APPLICATION_CREDENTIALSを使用
+    
     # ベクトル検索設定
     VECTOR_SEARCH_CONFIG = {
         # 分類タイプ別の類似度閾値
