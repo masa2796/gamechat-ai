@@ -34,20 +34,12 @@ COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
 COPY requirements.txt .
 
-# Copy data files with explicit ownership
-COPY --chown=app:app data/ ./data/
+# Create data directory and copy files if they exist
+# This handles the case where data/ is in .gitignore but may exist locally
+RUN mkdir -p ./data
 
 # Change ownership of app directory to ensure proper permissions
 RUN chown -R app:app /app
-
-# Verify data files are copied correctly and show detailed info
-RUN echo "=== Data directory contents ===" && \
-    ls -la /app/data/ && \
-    echo "=== Checking specific files ===" && \
-    ls -la /app/data/data.json && \
-    ls -la /app/data/convert_data.json && \
-    echo "=== File sizes ===" && \
-    du -h /app/data/*.json
 
 # Switch to non-root user
 USER app

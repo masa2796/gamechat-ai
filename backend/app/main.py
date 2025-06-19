@@ -28,6 +28,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger = logging.getLogger("startup")
     logger.info("🚀 Starting GameChat AI backend...")
     
+    # データディレクトリの存在確認と作成
+    try:
+        if not os.path.exists(str(settings.DATA_DIR)):
+            os.makedirs(str(settings.DATA_DIR), exist_ok=True)
+            logger.info(f"📁 Created data directory: {settings.DATA_DIR}")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not create data directory: {e}")
+    
     # 環境情報とパス設定をログ出力
     logger.info("📍 Environment and Path Configuration:", extra={
         "environment": settings.ENVIRONMENT,

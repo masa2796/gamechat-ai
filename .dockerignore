@@ -60,11 +60,14 @@ logs
 tmp/
 temp/
 
-# Build artifacts (will be built inside container)
-dist/
-build/
+# Frontend specific
 .next/
 out/
+build/
+dist/
+
+# Data files should be included in Docker builds
+# data/
 
 # Python specific
 __pycache__/

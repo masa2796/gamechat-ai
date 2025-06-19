@@ -6,6 +6,7 @@ const nextConfig = {
     // CI環境では通常のNext.jsサーバーモードを使用
     distDir: '.next',
     generateEtags: false,
+    output: 'standalone', // Docker用の最適化された出力
   } : { 
     output: 'export' 
   }),
