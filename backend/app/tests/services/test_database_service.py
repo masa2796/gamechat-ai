@@ -111,7 +111,7 @@ class TestDatabaseService:
             
             with mock_storage_service:
                 data = database_service._load_data()
-                assert len(data) == 3
+                assert len(data) == 3  # sample_dataの長さは3
                 assert data[0]["name"] == "テストカード1"
 
         @pytest.mark.asyncio

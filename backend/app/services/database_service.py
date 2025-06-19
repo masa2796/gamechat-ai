@@ -59,7 +59,7 @@ class DatabaseService:
             return self.cache
         
         # 両方のファイルが利用できない場合
-        GameChatLogger.log_error("database_service", "データファイルが利用できません", None, {
+        GameChatLogger.log_error("database_service", "データファイルが利用できません", Exception("No data files available"), {
             "primary_file": "data.json",
             "fallback_file": "convert_data.json",
             "environment": settings.ENVIRONMENT
