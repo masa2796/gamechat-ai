@@ -34,11 +34,13 @@ COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
 COPY requirements.txt .
 
-# Create data directory
-RUN mkdir -p ./data
+# Create data directory for cache/temporary files
+RUN mkdir -p ./data /tmp/gamechat-data && \
+    chmod 755 /tmp/gamechat-data && \
+    chown app:app /tmp/gamechat-data
 
-# Create placeholder data files for CI/CD environments where data/ is gitignored
-# These will be overwritten by actual data in production or when data files are available
+# Create minimal placeholder data files for CI/CD environments
+# These will be replaced by GCS data in production
 RUN echo '[{"id":"placeholder","title":"Placeholder","content":"This is a placeholder data file for CI/CD builds","category":"system","created_at":"2025-06-20T00:00:00Z"}]' > ./data/data.json && \
     echo '[{"id":"placeholder","title":"Placeholder","content":"This is a placeholder data file for CI/CD builds","category":"system","created_at":"2025-06-20T00:00:00Z"}]' > ./data/convert_data.json && \
     echo '[]' > ./data/embedding_list.jsonl && \

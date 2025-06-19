@@ -96,3 +96,11 @@ dist/
 .idea/
 *.orig
 .merge_file*
+
+# Data directory (now using Cloud Storage)
+data/
+*.jsonl
+*.json
+
+# Python virtual environment
+.venv/
