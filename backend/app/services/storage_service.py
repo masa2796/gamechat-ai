@@ -165,6 +165,8 @@ class StorageService:
         # Cloud環境での処理
         self._ensure_cache_directory()
         
+        if self.cache_dir is None:
+            return None
         cache_path = self.cache_dir / f"{file_key}.cache"
         
         # キャッシュが存在する場合はそれを使用
@@ -190,7 +192,7 @@ class StorageService:
             })
             return local_path
         
-        GameChatLogger.log_error("storage_service", "利用可能なファイルが見つかりません", None, {
+        GameChatLogger.log_error("storage_service", "利用可能なファイルが見つかりません", Exception("No file available"), {
             "file_key": file_key,
             "gcs_path": gcs_path,
             "local_path": local_path,
@@ -212,7 +214,7 @@ class StorageService:
         file_path = self.get_file_path(file_key)
         
         if not file_path:
-            GameChatLogger.log_error("storage_service", "データファイルが利用できません", None, {
+            GameChatLogger.log_error("storage_service", "データファイルが利用できません", Exception("File path not available"), {
                 "file_key": file_key
             })
             return []
@@ -222,7 +224,7 @@ class StorageService:
                 data = json.load(f)
                 
             if not isinstance(data, list):
-                GameChatLogger.log_error("storage_service", "データファイル形式が不正です", None, {
+                GameChatLogger.log_error("storage_service", "データファイル形式が不正です", Exception("Invalid data format"), {
                     "file_key": file_key,
                     "file_path": file_path,
                     "data_type": type(data).__name__
@@ -263,7 +265,7 @@ class StorageService:
         file_path = self.get_file_path(file_key)
         
         if not file_path:
-            GameChatLogger.log_error("storage_service", "データファイルが利用できません", None, {
+            GameChatLogger.log_error("storage_service", "データファイルが利用できません", Exception("File path not available for JSONL"), {
                 "file_key": file_key
             })
             return []
@@ -278,10 +280,11 @@ class StorageService:
                     try:
                         data.append(json.loads(line))
                     except json.JSONDecodeError as e:
-                        GameChatLogger.log_warning("storage_service", f"JSONL行のパースエラー（行 {line_num}）", e, {
+                        GameChatLogger.log_warning("storage_service", f"JSONL行のパースエラー（行 {line_num}）", {
                             "file_key": file_key,
                             "line_number": line_num,
-                            "line_content": line[:100] + "..." if len(line) > 100 else line
+                            "line_content": line[:100] + "..." if len(line) > 100 else line,
+                            "error": str(e)
                         })
                         continue
             
@@ -320,7 +323,7 @@ class StorageService:
         if not self.cache_dir:
             return {"cache_enabled": False}
         
-        cache_info = {
+        cache_info: Dict[str, Any] = {
             "cache_enabled": True,
             "cache_dir": str(self.cache_dir),
             "cache_exists": self.cache_dir.exists(),
