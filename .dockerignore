@@ -1,0 +1,106 @@
+# Root level ignore patterns
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Test files
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+test/
+tests/
+coverage/
+.nyc_output/
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Frontend specific
+.next/
+out/
+build/
+dist/
+
+# Data files should be included in Docker builds
+# data/
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+venv/
+env/
+ENV/
+
+# Frontend specific
+.next/
+out/
+build/
+dist/
+
+# Development and testing
+.vscode/
+.idea/
+*.orig
+.merge_file*
+
+# Data directory (now using Cloud Storage)
+data/
+*.jsonl
+*.json
+
+# Python virtual environment
+.venv/

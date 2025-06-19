@@ -1,28 +1,176 @@
-from fastapi import APIRouter, Request, Response, Body, Cookie, HTTPException
+from fastapi import APIRouter, Request, Response, Body, Cookie, HTTPException, Depends
 from typing import Optional, Dict, Any
+import os
+import logging
 from ..models.rag_models import RagRequest
 from ..services.rag_service import RagService
 from ..services.auth_service import AuthService
 from ..services.hybrid_search_service import HybridSearchService
+from ..core.auth import require_read_permission, auth
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 rag_service = RagService()
 auth_service = AuthService()
 hybrid_search_service = HybridSearchService()
 
+# OPTIONSプリフライトリクエストのハンドラー
+@router.options("/rag/query")
+@router.options("/chat")  
+async def options_preflight(request: Request, response: Response) -> Dict[str, str]:
+    """OPTIONSプリフライトリクエストを処理"""
+    client_host = request.client.host if request.client else "unknown"
+    logger.info(f"OPTIONS request received from {client_host}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+    
+    # CORS ヘッダーを設定
+    response.headers["Access-Control-Allow-Origin"] = "https://gamechat-ai.web.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-API-Key, X-Requested-With, Accept, Origin, Cache-Control"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    
+    return {"status": "ok"}
+
+@router.get("/debug/auth-status")
+async def debug_auth_status() -> Dict[str, Any]:
+    """認証システムのデバッグ情報を返すエンドポイント（本番では無効化すべき）"""
+    environment = os.getenv("ENVIRONMENT", "unknown")
+    
+    # 本番環境ではデバッグエンドポイントを無効化
+    if environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    # 環境変数の確認
+    env_status = {
+        "ENVIRONMENT": environment,
+        "API_KEY_PRODUCTION": "Set" if os.getenv("API_KEY_PRODUCTION") else "Not set",
+        "API_KEY_DEVELOPMENT": "Set" if os.getenv("API_KEY_DEVELOPMENT") else "Not set",
+        "API_KEY_READONLY": "Set" if os.getenv("API_KEY_READONLY") else "Not set",
+        "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
+    }
+    
+    # APIキー認証システムの状態
+    api_key_count = len(auth.api_key_auth.api_keys)
+    
+    return {
+        "environment_variables": env_status,
+        "api_key_count": api_key_count,
+        "auth_system_initialized": True,
+        "timestamp": "2025-06-17T00:00:00Z"
+    }
+
+@router.post("/debug/test-auth")
+async def debug_test_auth(
+    request: Request,
+    test_data: Dict[str, Any] = Body(...)
+) -> Dict[str, Any]:
+    """認証フローをテストするデバッグエンドポイント"""
+    environment = os.getenv("ENVIRONMENT", "unknown")
+    
+    # 本番環境ではデバッグエンドポイントを無効化
+    if environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    logger.info("=== DEBUG AUTH TEST STARTED ===")
+    
+    # ヘッダー情報をログ出力（APIキー等の機密情報は除外）
+    headers_info = {}
+    for key, value in request.headers.items():
+        if key.lower() == "x-api-key":
+            headers_info[key] = "***REDACTED***" if value else "None"
+        else:
+            headers_info[key] = value
+    
+    logger.info(f"Request headers: {headers_info}")
+    
+    # 手動で認証を試行
+    try:
+        auth_result = await auth.authenticate(request, None)
+        logger.info(f"Authentication successful: {auth_result}")
+        return {
+            "status": "success",
+            "auth_result": auth_result,
+            "headers": headers_info
+        }
+    except HTTPException as e:
+        logger.error(f"Authentication failed: {e.detail}")
+        return {
+            "status": "failed",
+            "error": e.detail,
+            "status_code": e.status_code,
+            "headers": headers_info
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error during authentication: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "headers": headers_info
+        }
+
+@router.get("/debug/env-status")
+async def debug_env_status() -> Dict[str, Any]:
+    """環境変数とSecret設定の状態を確認するデバッグエンドポイント"""
+    environment = os.getenv("ENVIRONMENT", "unknown")
+    
+    # 本番環境ではデバッグエンドポイントを無効化
+    if environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    # 重要な環境変数の確認
+    env_status = {
+        "ENVIRONMENT": environment,
+        "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
+        "OPENAI_API_KEY": "Set" if os.getenv("OPENAI_API_KEY") else "Not set",
+        "UPSTASH_VECTOR_REST_URL": "Set" if os.getenv("UPSTASH_VECTOR_REST_URL") else "Not set", 
+        "UPSTASH_VECTOR_REST_TOKEN": "Set" if os.getenv("UPSTASH_VECTOR_REST_TOKEN") else "Not set",
+        "RECAPTCHA_SECRET": "Set" if os.getenv("RECAPTCHA_SECRET") else "Not set",
+        "API_KEY_DEVELOPMENT": "Set" if os.getenv("API_KEY_DEVELOPMENT") else "Not set",
+        "API_KEY_PRODUCTION": "Set" if os.getenv("API_KEY_PRODUCTION") else "Not set",
+        "API_KEY_FRONTEND": "Set" if os.getenv("API_KEY_FRONTEND") else "Not set",
+        "API_KEY_READONLY": "Set" if os.getenv("API_KEY_READONLY") else "Not set",
+    }
+    
+    # OpenAI APIキーの基本状態確認（セキュリティ情報は除外）
+    openai_key = os.getenv("OPENAI_API_KEY")
+    openai_details = {
+        "present": bool(openai_key),
+        "valid_format": openai_key.startswith("sk-") if openai_key else False
+    }
+    
+    # APIキーの基本状態確認（セキュリティ情報は除外）
+    api_key_details = {}
+    for key_name in ["API_KEY_DEVELOPMENT", "API_KEY_PRODUCTION", "API_KEY_FRONTEND", "API_KEY_READONLY"]:
+        key_value = os.getenv(key_name)
+        api_key_details[key_name] = {
+            "present": bool(key_value)
+        }
+    
+    return {
+        "environment_variables": env_status,
+        "openai_api_key_details": openai_details,
+        "api_key_details": api_key_details,
+        "timestamp": "2025-06-18T00:00:00Z"
+    }
+
 @router.post("/rag/query")
 async def rag_query(
     request: Request,
     response: Response,
     rag_req: RagRequest = Body(...),
-    recaptcha_passed: Optional[str] = Cookie(None)
+    recaptcha_passed: Optional[str] = Cookie(None),
+    auth_info: dict = Depends(require_read_permission)
 ) -> Dict[str, Any]:
+    """RAGクエリエンドポイント - API認証とreCAPTCHA認証の両方が必要"""
     recaptcha_status = await auth_service.verify_request(
         request, response, rag_req.recaptchaToken, recaptcha_passed
     )
     if not recaptcha_status:
-        raise HTTPException(status_code=401, detail="認証に失敗しました")
-      
+        raise HTTPException(status_code=401, detail="reCAPTCHA認証に失敗しました")
+    
+    # API認証情報がauth_infoに含まれる
     result = await rag_service.process_query(rag_req)
     
     return result
@@ -32,14 +180,15 @@ async def search_test(
     request: Request,
     response: Response,
     query_data: Dict[str, Any] = Body(...),
-    recaptcha_passed: Optional[str] = Cookie(None)
+    recaptcha_passed: Optional[str] = Cookie(None),
+    auth_info: dict = Depends(require_read_permission)
 ) -> Dict[str, Any]:
-    """ハイブリッド検索のテスト用エンドポイント"""
+    """ハイブリッド検索のテスト用エンドポイント - API認証とreCAPTCHA認証の両方が必要"""
     recaptcha_status = await auth_service.verify_request(
         request, response, query_data.get("recaptchaToken"), recaptcha_passed
     )
     if not recaptcha_status:
-        raise HTTPException(status_code=401, detail="認証に失敗しました")
+        raise HTTPException(status_code=401, detail="reCAPTCHA認証に失敗しました")
     
     query = query_data.get("query", "")
     top_k = query_data.get("top_k", 50)
@@ -57,4 +206,43 @@ async def search_test(
         "db_results": [item.model_dump() for item in result["db_results"]],
         "vector_results": [item.model_dump() for item in result["vector_results"]],
         "merged_results": [item.model_dump() for item in result["merged_results"]]
+    }
+
+@router.post("/chat")
+async def chat(
+    request: Request,
+    response: Response,
+    chat_data: Dict[str, Any] = Body(...),
+    recaptcha_passed: Optional[str] = Cookie(None),
+    auth_info: dict = Depends(require_read_permission)
+) -> Dict[str, Any]:
+    """一般的なチャットエンドポイント - API認証とreCAPTCHA認証の両方が必要"""
+    # リクエストデータをRagRequestに変換
+    question = chat_data.get("message") or chat_data.get("question", "")
+    if not question:
+        raise HTTPException(status_code=400, detail="メッセージまたは質問が必要です")
+    
+    # reCAPTCHA認証確認
+    recaptcha_status = await auth_service.verify_request(
+        request, response, chat_data.get("recaptchaToken"), recaptcha_passed
+    )
+    if not recaptcha_status:
+        raise HTTPException(status_code=401, detail="reCAPTCHA認証に失敗しました")
+    
+    # RagRequestオブジェクトを作成
+    from ..models.rag_models import RagRequest
+    rag_req = RagRequest(
+        question=question,
+        top_k=chat_data.get("top_k", 5),
+        with_context=chat_data.get("with_context", False),
+        recaptchaToken=chat_data.get("recaptchaToken")
+    )
+    
+    # RAGサービスで処理
+    result = await rag_service.process_query(rag_req)
+    
+    # チャット形式のレスポンスに変換
+    return {
+        "response": result.get("answer", "申し訳ありませんが、回答を生成できませんでした。"),
+        "context": result.get("context", []) if chat_data.get("with_context") else None
     }
