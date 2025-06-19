@@ -1,5 +1,6 @@
 # main.py
 import time
+import os
 import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator
@@ -26,6 +27,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 起動時の処理
     logger = logging.getLogger("startup")
     logger.info("🚀 Starting GameChat AI backend...")
+    
+    # 環境情報とパス設定をログ出力
+    logger.info("📍 Environment and Path Configuration:", extra={
+        "environment": settings.ENVIRONMENT,
+        "current_directory": os.getcwd(),
+        "project_root": str(settings.PROJECT_ROOT),
+        "data_file_path": settings.DATA_FILE_PATH,
+        "converted_data_path": settings.CONVERTED_DATA_FILE_PATH,
+        "data_file_exists": os.path.exists(settings.DATA_FILE_PATH),
+        "converted_data_exists": os.path.exists(settings.CONVERTED_DATA_FILE_PATH),
+        "data_dir_exists": os.path.exists(str(settings.DATA_DIR)),
+        "data_dir_contents": os.listdir(str(settings.DATA_DIR)) if os.path.exists(str(settings.DATA_DIR)) else "N/A"
+    })
     
     # データベース接続プール初期化
     try:

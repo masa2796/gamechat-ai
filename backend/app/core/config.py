@@ -4,7 +4,12 @@ from typing import Optional, List
 from dotenv import load_dotenv
 
 # プロジェクトルートディレクトリを先に定義
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+# Cloud Run環境では /app がプロジェクトルートになる
+# ローカル環境では親ディレクトリを辿る
+if os.getenv("ENVIRONMENT") == "production":
+    PROJECT_ROOT = Path("/app")
+else:
+    PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 # 環境に応じて適切な.envファイルを読み込み（override=Trueで既存の環境変数を上書き）
 environment = os.getenv("ENVIRONMENT", "development")
@@ -20,6 +25,9 @@ else:
     load_dotenv(PROJECT_ROOT / "backend" / ".env", override=True)
 
 class Settings:
+    # プロジェクトルート（デバッグ用）
+    PROJECT_ROOT: Path = PROJECT_ROOT
+    
     # 環境設定
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
@@ -37,8 +45,16 @@ class Settings:
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
     UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     
-    # CORS設定
-    CORS_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:3000"]
+    # CORS設定（デバッグ用に一時的に緩和）
+    CORS_ORIGINS: List[str] = (
+        [
+            "https://gamechat-ai.web.app", 
+            "https://gamechat-ai.firebaseapp.com",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000"
+        ] if environment == "production" 
+        else os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    )
     
     # Security Settings
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -71,6 +87,7 @@ class Settings:
     MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
     
     # データファイルパス設定
+    # Cloud Run環境では /app がプロジェクトルートになる
     DATA_DIR: Path = PROJECT_ROOT / "data"
     DATA_FILE_PATH: str = os.getenv("DATA_FILE_PATH", str(DATA_DIR / "data.json"))
     CONVERTED_DATA_FILE_PATH: str = os.getenv("CONVERTED_DATA_FILE_PATH", str(DATA_DIR / "convert_data.json"))

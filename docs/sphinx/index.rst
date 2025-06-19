@@ -8,18 +8,16 @@ AIチャット型ゲーム攻略アシスタントの包括的技術ドキュメ
    :caption: メインコンテンツ:
 
    services/index
+   api/index
    models/index
    core/index
-   api/index
-   deployment/index
 
 .. toctree::
    :maxdepth: 2
-   :caption: 開発者ガイド:
+   :caption: システム運用:
 
-   guides/development
-   guides/testing
-   guides/deployment
+   deployment/index
+   guides/index
 
 概要
 ----
@@ -27,6 +25,15 @@ AIチャット型ゲーム攻略アシスタントの包括的技術ドキュメ
 GameChat AIは、カードゲームなどの戦略ゲーム攻略をサポートする高度なAIアシスタントです。
 最新のRAG（Retrieval-Augmented Generation）技術を用いて、ハイブリッド検索システム（データベース検索 + ベクトル検索）とLLMを組み合わせ、
 ユーザーの質問に対して正確で実用的な回答を提供します。
+
+.. note::
+   **⚠️ 部分稼働中** (2025年6月17日現在)
+   
+   - APIキー認証・OpenAI API接続: ✅ 解決済み
+   - reCAPTCHA認証: ✅ 最適化済み  
+   - レスポンス時間問題: 🔄 対応中
+   
+   詳細は `現在の問題点分析 <../current-issues-analysis.md>`_ を参照してください。
 
 技術的特徴
 ----------

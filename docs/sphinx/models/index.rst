@@ -9,9 +9,6 @@ Pydanticベースの型安全なモデル設計により、データの整合性
    
    rag_models
    classification_models
-   vector_models
-   auth_models
-   api_models
 
 概要
 ----

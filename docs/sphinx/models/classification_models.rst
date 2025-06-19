@@ -17,6 +17,7 @@ ClassificationRequest
 .. autoclass:: models.classification_models.ClassificationRequest
    :members:
    :undoc-members:
+   :no-index:
 
 ClassificationResult
 ~~~~~~~~~~~~~~~~~~~~
@@ -24,3 +25,4 @@ ClassificationResult
 .. autoclass:: models.classification_models.ClassificationResult
    :members:
    :undoc-members:
+   :no-index:

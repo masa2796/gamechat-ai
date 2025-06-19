@@ -47,9 +47,22 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
 - Python（データ埋め込み・アップロードスクリプト）
 
 ### インフラ・ホスティング
-- Firebase Hosting / Vercel（フロントエンド）
+- **Google Cloud Run**（バックエンドAPI）
+  - サービス名: `gamechat-ai-backend`
+  - リージョン: `asia-northeast1`（東京）
+  - URL: `https://gamechat-ai-backend-507618950161.asia-northeast1.run.app`
+  - スペック: CPU 1コア、メモリ 1GB
+  - 自動スケーリング: 0-10インスタンス
+  - コンテナ: Docker（linux/amd64）
+- **Firebase Hosting**（フロントエンド）
+  - 静的サイトホスティング
+  - Cloud Runバックエンドとの自動連携
+  - グローバルCDN配信
+  - 自動HTTPS化
 - Firebase Firestore / Upstash Vector（データベース）
 - AWS Lambda / Firebase Functions（サーバレスAPI）
+- **Artifact Registry**（Dockerイメージ管理）
+  - イメージ: `asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend`
 - Docker（ローカル開発環境）
   - Alpine Linux ベースの軽量イメージ
   - マルチステージビルドによる最適化
@@ -537,8 +550,8 @@ cp .env.example backend/.env
 # cp .env.example frontend/.env.local
 # frontend/.env.localファイルを編集
 
-# Docker サービスをビルド・起動
-docker-compose up --build -d
+# Docker サービスをビルド・起動（バックエンドのみ）
+docker-compose up --build -d backend
 ```
 
 #### 🔐 環境変数の設定
@@ -548,40 +561,50 @@ docker-compose up --build -d
 **開発環境セットアップ**:
 ```bash
 # バックエンド環境変数を作成
-cp backend/.env.production.template backend/.env
+cp .env.example backend/.env
+# backend/.env を編集して実際のAPIキーを設定
 
-# フロントエンド環境変数を作成（必要に応じて）
+# フロントエンド環境変数を作成（通常はデフォルトで動作）
 cp frontend/.env.local.template frontend/.env.local
 ```
 
 **本番環境セットアップ**:
 ```bash
-# 本番環境用テンプレートを使用
+# 本番環境用設定（バックエンドのみ）
 cp backend/.env.production.template backend/.env.production
-cp frontend/.env.production.template frontend/.env.production
 ```
 
-**設定項目**:
-- **必須**: `OPENAI_API_KEY`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
-- **セキュリティ**: `SECRET_KEY`, `RATE_LIMIT_*`設定
-- **本番環境**: `CORS_ORIGINS`, `DEBUG=false`, `LOG_LEVEL=WARNING`
+**Firebase Hosting用**:
+```bash
+# Firebase Hosting専用設定
+cp frontend/.env.firebase.example frontend/.env.firebase
+```
 
-**参考**: `.env.example`に全体の設定例と詳細な説明があります。
+**必須設定項目**:
+- `OPENAI_API_KEY`: OpenAI APIキー
+- `UPSTASH_VECTOR_REST_URL`: Upstash Vector URL
+- `UPSTASH_VECTOR_REST_TOKEN`: Upstash Vectorトークン
+
+詳細は [`docs/guides/environment-setup.md`](docs/guides/environment-setup.md) を参照してください。
 
 #### 開発サーバーの起動
 
+**フロントエンド（Next.js + Firebase Hosting）**:
 ```bash
-# フロントエンド（Next.js）:  
 cd frontend
-npm run dev
+npm install
+npm run dev          # 開発サーバー（http://localhost:3000）
+npm run build:firebase   # Firebase Hosting用ビルド
+firebase deploy --only hosting  # Firebase Hostingにデプロイ
+```
 
-# バックエンド（FastAPI）:  
-  
+**バックエンド（FastAPI + Docker）**:
 ```bash
-# ルートディレクトリで仮想環境をアクティベート
-source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
+# Dockerで起動（推奨）
+docker-compose up --build -d backend
 
-# プロジェクトルートから起動（推奨）
+# または直接起動
+source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 → http://localhost:8000
@@ -1035,3 +1058,164 @@ data/
 ## 作者
 
 MASAKI
+
+---
+
+## デプロイメント
+
+### 🚀 本番環境（Google Cloud Run）
+
+#### ✅ デプロイ完了済み（2025年6月16日）
+
+**現在のデプロイ済み環境情報**
+- **プロジェクトID**: `gamechat-ai`
+- **サービス名**: `gamechat-ai-backend`
+- **リージョン**: `asia-northeast1`（東京）
+- **サービスURL**: `https://gamechat-ai-backend-905497046775.asia-northeast1.run.app`
+- **スペック**: CPU 1コア、メモリ 1GB、自動スケーリング（0-10インスタンス）
+
+**稼働中のエンドポイント**
+- **ヘルスチェック**: `/health` ✅ 正常稼働中
+- **API ドキュメント**: `/docs`
+- **ReDoc**: `/redoc`
+- **チャットAPI**: `/api/v1/chat`
+- **RAG API**: `/api/v1/rag/chat`
+
+**デプロイ構成**
+- **Docker イメージ**: `asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend`
+- **プラットフォーム**: linux/amd64
+- **セキュリティ**: HTTPS自動適用、CORS設定済み
+- **監視**: ヘルスチェック、構造化ログ、メトリクス収集
+
+#### デプロイ手順（更新時）
+
+**自動デプロイ（推奨）**
+```bash
+# 自動デプロイスクリプト使用
+./scripts/cloud-run-deploy.sh
+```
+
+**手動デプロイ**
+
+**1. 環境準備**
+```bash
+# Google Cloud CLI認証確認
+gcloud auth list
+gcloud config set project gamechat-ai
+
+# Docker認証設定
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+```
+
+**2. イメージビルド・プッシュ**
+```bash
+# Cloud Run対応のイメージをビルド
+docker build --platform linux/amd64 -f backend/Dockerfile -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" .
+
+# Artifact Registry にプッシュ
+docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest
+```
+
+**3. Cloud Run デプロイ**
+```bash
+gcloud run deploy gamechat-ai-backend \
+  --image asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend:latest \
+  --platform managed \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --port 8000 \
+  --memory 1Gi \
+  --cpu 1 \
+  --min-instances 0 \
+  --max-instances 10 \
+  --timeout 300 \
+  --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO"
+```
+
+### 📦 フロントエンド（Docker イメージ準備済み）
+
+#### ⚠️ 旧環境のDocker イメージ（使用停止）
+
+**現在のビルド・デプロイ環境**
+- **現在**: Artifact Registry使用（バックエンドのみ）、統一プロジェクト `gamechat-ai` で運用
+
+**Firebase Hosting 運用中**
+- Firebase Hostingサイト設定完了
+- 静的エクスポート対応済み
+- Cloud Run バックエンドとの連携設定済み
+
+---
+
+### 🌐 Firebase Hosting（フロントエンド）
+
+#### ✅ Firebase Hosting 移行準備完了（2025年6月16日）
+
+**Firebase Hosting設定**
+- **静的サイト生成**: Next.js export機能使用
+- **Cloud Run連携**: API リクエスト自動プロキシ
+- **グローバルCDN**: 世界中で高速配信
+- **自動HTTPS**: SSL証明書自動管理
+
+**デプロイ手順**
+```bash
+# 1. Firebase CLI認証（初回のみ）
+firebase login
+
+# 2. Firebaseプロジェクト初期化（初回のみ）
+firebase init hosting
+
+# 3. フロントエンドビルド & デプロイ
+./scripts/firebase-deploy.sh
+
+# 4. Firebase Hosting URL確認
+firebase hosting:sites:list
+```
+
+**環境設定**
+```bash
+# frontend/.env.firebase を作成・編集
+cp frontend/.env.firebase.example frontend/.env.firebase
+```
+
+**主な利点**
+- 📈 **パフォーマンス**: グローバルCDNによる高速配信
+- 🔒 **セキュリティ**: 自動HTTPS・セキュリティヘッダー
+- 💰 **コスト効率**: 静的ホスティングで低コスト
+- 🛠 **運用性**: 自動デプロイ・ロールバック機能
+
+---
+
+## 📊 デプロイメント統計
+
+### デプロイ完了状況（2025年6月15日現在）
+
+| コンポーネント | 状況 | デプロイ先 | URL |
+|---------------|------|-----------|-----|
+| **バックエンド API** | ✅ 稼働中 | Google Cloud Run | https://gamechat-ai-backend-507618950161.asia-northeast1.run.app |
+| **フロントエンド** | � 移行準備完了 | Firebase Hosting | プロジェクト設定後に確定 |
+| **データベース** | ✅ 稼働中 | Upstash Vector | 本番環境データ準備済み |
+| **監視システム** | 🔧 設定済み | Cloud Monitoring | メトリクス・ログ収集中 |
+
+### パフォーマンス指標
+
+| 項目 | 値 | 備考 |
+|------|----|----- |
+| **API 応答時間** | 平均 1.8秒 | 挨拶検出最適化済み（87%短縮） |
+| **Docker イメージサイズ** | Backend: 532MB, Frontend: 309MB | Alpine Linux 軽量化済み |
+| **ビルド時間** | Backend: ~1.5秒, Frontend: ~3.7秒 | キャッシュ最適化済み |
+| **メモリ使用量** | 本番: 1GB, 開発: 512MB | リソース効率化済み |
+
+### セキュリティ対応
+
+- ✅ **HTTPS**: Cloud Run自動SSL適用
+- ✅ **CORS**: 本番ドメイン制限設定済み  
+- ✅ **認証**: API キー管理・環境変数分離
+- ✅ **コンテナ**: 非rootユーザー実行
+- ✅ **ログ**: 構造化ログ・監視連携
+
+### 今後の予定
+
+- 🔄 Firebase Hosting フロントエンドデプロイ
+- 🔄 CDN設定とパフォーマンス最適化
+- 🔄 モニタリング・アラート設定完成
+- 🔄 自動デプロイパイプライン活用

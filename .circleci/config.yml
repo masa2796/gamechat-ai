@@ -64,15 +64,70 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: .
+          at: frontend
       - run:
           name: Build
-          command: cd frontend && npm run build
-      - run:
-          name: Start server and check health
           command: |
-            cd frontend && nohup npm start & sleep 10
-            curl -f http://localhost:3000 || (echo "Server did not start" && exit 1)
+            cd frontend
+            echo "Node.js version: $(node --version)"
+            echo "npm version: $(npm --version)"
+            echo "Environment variables:"
+            env | grep -E "(CI|NODE_ENV|NEXT_)" || echo "No relevant env vars found"
+            echo "Building application..."
+            npm run build
+            echo "Build completed. Checking output..."
+            ls -la .next/ || echo ".next directory not created"
+      - run:
+          name: Start server in background
+          command: |
+            cd frontend && npm run start:ci
+          background: true
+      - run:
+          name: Wait for server startup
+          command: |
+            cd frontend
+            echo "Waiting for server to fully initialize..."
+            sleep 10
+            # プロセス確認
+            echo "Node processes:"
+            ps aux | grep -v grep | grep node || echo "No node processes found"
+            echo "Port 3000 status:"
+            netstat -an | grep :3000 || echo "Port 3000 not in use"
+      - run:
+          name: Wait for server to start
+          command: |
+            cd frontend
+            timeout=60
+            counter=0
+            echo "Waiting for server to respond..."
+            while [ $counter -lt $timeout ]; do
+              # Check if server is responding
+              if curl -f -s http://localhost:3000 > /dev/null 2>&1; then
+                echo "Server is ready!"
+                echo "Server response check:"
+                curl -s http://localhost:3000 | head -10 || echo "Could not get response content"
+                # Try API health check if available
+                if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+                  echo "API health check passed"
+                  curl -s http://localhost:3000/api/health | head -5
+                else
+                  echo "API health check not available (this is normal for Next.js apps without custom API health endpoint)"
+                fi
+                exit 0
+              fi
+              echo "Waiting for server... ($counter/$timeout)"
+              sleep 2
+              counter=$((counter + 2))
+            done
+            echo "Server failed to respond within $timeout seconds"
+            echo "Final diagnostics:"
+            echo "Node processes:"
+            ps aux | grep -v grep | grep node || echo "No node processes found"
+            echo "Port 3000 status:"
+            netstat -an | grep :3000 || echo "Port 3000 not in use"
+            echo "System resources:"
+            free -h || echo "Memory info not available"
+            exit 1
 
   test:
     executor: node-executor

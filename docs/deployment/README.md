@@ -1,54 +1,71 @@
-# Deployment Documentation
+# デプロイメント関連ドキュメント
 
-このディレクトリには、GameChat AIプロジェクトのデプロイメント関連ドキュメントが含まれています。
+このディレクトリには、GameChat AIのデプロイメント、インフラ設定、運用に関するドキュメントが含まれています。
 
-## 📁 ドキュメント一覧
+## 📋 ドキュメント一覧
 
-### 🚀 デプロイメントガイド
+### [`deployment-guide.md`](./deployment-guide.md) ⭐ **メインガイド**
+**包括的なデプロイメントガイド**
+- 🚀 **1分でデプロイ**: クイックスタートコマンド
+- 📱 **本番環境**: Google Cloud Run + Firebase Hosting
+- 🛠️ **開発環境**: ローカル・Docker環境
+- 🔍 **監視・トラブルシューティング**: ログ確認、エラー対応
 
-- **[`production-deployment.md`](./production-deployment.md)** - 本番環境デプロイメントの詳細ガイド
-- **[`build-deploy-pipeline-completion.md`](./build-deploy-pipeline-completion.md)** - ビルド・デプロイパイプライン完了報告書
+### [`cloud-services-overview.md`](./cloud-services-overview.md) 🌟 **NEW**
+**Google Cloud & Firebase サービス全体ガイド**
+- 🏗️ **アーキテクチャ概要**: システム全体の構成図
+- 📦 **使用サービス**: Cloud Run, Firebase, Secret Manager等
+- 🔧 **運用・管理**: 監視、ログ確認、費用管理
+- 🔒 **セキュリティ**: IAM設定、災害復旧
 
-### 📊 検証・レポート
+### [`cloud-run-openai-setup.md`](./cloud-run-openai-setup.md)
+**Google Cloud Run OpenAI API設定専用ガイド**
+- Secret Manager設定
+- APIキー管理
+- 環境変数設定
+- セキュリティ考慮事項
 
-- **[`pipeline-verification-report.md`](./pipeline-verification-report.md)** - GitHub Actionsパイプライン検証レポート
-  - ローカル環境でのパイプライン動作確認結果
-  - 型チェック、Dockerビルド、依存関係分析の検証結果
-  - act（GitHub Actions ローカル実行）テスト結果
+### [`api-key-authentication-implementation-report.md`](./api-key-authentication-implementation-report.md)
+**APIキー認証実装レポート**
+- 認証システムの実装詳細
+- 問題解決過程
+- セキュリティ設定
 
-## 🎯 クイックスタート
+## 🎯 用途別ガイド
 
-### 1. 開発環境での検証
-```bash
-# パイプラインの動作確認
-./scripts/test-pipeline-local.sh
+### 🆕 クラウドサービス全体理解
+[`cloud-services-overview.md`](./cloud-services-overview.md) でアーキテクチャと使用サービス全体を把握
 
-# 環境変数のセキュリティチェック
-./scripts/check-env-security.sh
-```
+### 初回デプロイ
+1. [`deployment-guide.md`](./deployment-guide.md) の「クイックスタート」を実行
+2. 問題が発生した場合は「トラブルシューティング」セクションを参照
 
-### 2. 本番環境デプロイ
-```bash
-# 本番環境へのデプロイ
-./scripts/prod-deploy.sh
-```
+### クラウド運用・管理
+[`cloud-services-overview.md`](./cloud-services-overview.md) の「運用・管理」「費用管理」セクションを参照
 
-## 🔍 検証状況
+### OpenAI API設定のみ
+[`cloud-run-openai-setup.md`](./cloud-run-openai-setup.md) を参照
 
-### ✅ 完了済み
-- Python型チェック（mypy）: 24ファイル、エラーなし
-- Dockerビルドテスト: バックエンド532MB、フロントエンド309MB
-- Docker Compose設定検証: 構文エラーなし
-- GitHub Actions ローカル実行: type-checkワークフロー正常動作
+### 認証システム詳細
+[`api-key-authentication-implementation-report.md`](./api-key-authentication-implementation-report.md) を参照
 
-### 📋 次のステップ
-- 本番環境でのパイプライン実行
-- 監視・ログシステムの検証
-- セキュリティスキャンの実装
+## 🔧 よくある問題
 
-## 📚 関連リンク
+### デプロイエラー
+- **APIキー認証エラー**: Secret Managerの設定を確認
+- **タイムアウト**: Cloud Runの設定とリソース制限を確認
+- **reCAPTCHA認証エラー**: 環境変数の設定を確認
 
-- [スクリプトディレクトリ](../../scripts/)
-- [開発ガイド](../guides/)
-- [API仕様書](../api/)
-- [パフォーマンス結果](../performance/)
+### パフォーマンス問題
+- **応答時間遅延**: [`../performance/`](../performance/) のメトリクスを参照
+- **メモリ不足**: Cloud Runのメモリ制限を調整
+
+## 📞 サポート
+
+問題が解決しない場合：
+1. 各ガイドの「トラブルシューティング」セクションを確認
+2. Cloud Runのログを確認: `gcloud logging read`
+3. 開発チームに相談
+
+---
+**最終更新**: 2025年6月17日
