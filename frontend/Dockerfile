@@ -20,7 +20,15 @@ RUN npm ci --no-audit --prefer-offline
 COPY . .
 
 # Build the application
-RUN npm run build
+ENV DOCKER_BUILD=true
+ENV NODE_ENV=production
+RUN npm run build:ci
+
+# Debug: Check build output
+RUN echo "=== Build completed ===" && \
+    ls -la .next/ && \
+    echo "=== Checking standalone directory ===" && \
+    ls -la .next/standalone/ 2>/dev/null || echo "Standalone directory not found"
 
 # Production image
 FROM base AS runner
@@ -34,8 +42,10 @@ RUN adduser --system --uid 1001 nextjs
 
 # Copy the built application
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Try to copy standalone build, fall back to regular build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 USER nextjs
 

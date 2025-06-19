@@ -55,6 +55,8 @@ jobs:
         tags: gamechat-ai-frontend:cache-test
         build-args: |
           BUILDKIT_INLINE_CACHE=1
+          DOCKER_BUILD=true
+          CI=true
 
     - name: Move cache
       run: |

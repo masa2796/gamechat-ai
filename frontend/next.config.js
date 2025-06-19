@@ -1,19 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Firebase Hosting用設定（静的エクスポート + Cloud Run連携）
-  // CI環境では静的エクスポートを無効にして通常のNext.jsサーバーを使用
-  ...(process.env.CI ? { 
-    // CI環境では通常のNext.jsサーバーモードを使用
-    distDir: '.next',
-    generateEtags: false,
-    output: 'standalone', // Docker用の最適化された出力
-  } : { 
-    output: 'export' 
-  }),
+  // Docker環境またはCI環境では standalone モードを使用
+  // ローカル開発では export モードを使用
+  output: process.env.DOCKER_BUILD || process.env.CI ? 'standalone' : 'export',
+  
+  // 基本設定
+  distDir: '.next',
+  generateEtags: false,
   trailingSlash: true,
-  images: {
-    unoptimized: true,
-  },
+  
+  // パフォーマンス最適化
   
   // パフォーマンス最適化
   experimental: {
@@ -25,16 +21,11 @@ const nextConfig = {
   
   // 画像最適化設定
   images: {
-    ...(process.env.CI ? { 
-      unoptimized: true,
-      domains: [],
-    } : {
-      formats: ['image/webp', 'image/avif'],
-      minimumCacheTTL: 31536000, // 1年
-      deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-      imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-      unoptimized: true,
-    }),
+    unoptimized: true, // Docker/CI環境では画像最適化を無効化
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 31536000, // 1年
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   
   // 静的ファイル最適化
