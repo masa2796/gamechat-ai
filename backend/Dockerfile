@@ -34,10 +34,15 @@ COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
 COPY requirements.txt .
 
-# Create data directory and copy prepared data files
+# Create data directory
 RUN mkdir -p ./data
-# Copy data files that were prepared in the Cloud Build step
-COPY data/ ./data/
+
+# Create placeholder data files for CI/CD environments where data/ is gitignored
+# These will be overwritten by actual data in production or when data files are available
+RUN echo '[{"id":"placeholder","title":"Placeholder","content":"This is a placeholder data file for CI/CD builds","category":"system","created_at":"2025-06-20T00:00:00Z"}]' > ./data/data.json && \
+    echo '[{"id":"placeholder","title":"Placeholder","content":"This is a placeholder data file for CI/CD builds","category":"system","created_at":"2025-06-20T00:00:00Z"}]' > ./data/convert_data.json && \
+    echo '[]' > ./data/embedding_list.jsonl && \
+    echo '[]' > ./data/query_data.json
 
 # Change ownership of app directory to ensure proper permissions
 RUN chown -R app:app /app
