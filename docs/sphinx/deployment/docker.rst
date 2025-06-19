@@ -67,6 +67,49 @@ Docker Compose使用
    # サービス状況確認
    docker-compose ps
 
+フロントエンドイメージ構築状況
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+   **✅ ビルド完了済み** （2025年6月15日）
+   
+   フロントエンド用Dockerイメージは本番環境用にビルド完了しています。
+
+**現在のビルド環境**
+
+* **現在のイメージタグ**: ``asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend``
+* **プラットフォーム**: linux/amd64
+* **ベースイメージ**: Node.js 20 Alpine
+* **ビルド方式**: マルチステージビルド
+* **サイズ最適化**: 軽量Alpine Linuxベース
+
+**現在のイメージビルドコマンド**
+
+.. code-block:: bash
+
+   # 現在のフロントエンドイメージビルド
+   docker build --platform linux/amd64 \
+     -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-frontend/frontend" \
+     frontend/
+
+**現在の推奨コマンド**
+
+.. code-block:: bash
+
+   # 現在の環境用バックエンドイメージビルド
+   docker build --platform linux/amd64 \
+     -t "asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend" \
+     -f backend/Dockerfile .
+
+**ローカルテスト実行**
+
+.. code-block:: bash
+
+   # 現在のイメージでローカルテスト
+   docker run -p 3000:3000 \
+     -e NEXT_PUBLIC_API_URL=https://gamechat-ai-backend-905497046775.asia-northeast1.run.app \
+     asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-frontend/frontend
+
 アクセス先
 ~~~~~~~~~~
 
@@ -138,7 +181,17 @@ Alpine Linux採用による利点
 2025年6月15日
 ~~~~~~~~~~~~~
 
-* Alpine Linux ベースのイメージに移行
-* 開発用・本番用Dockerfileを統一
+* **✅ 本番環境デプロイ完了**: Cloud Run へのバックエンドデプロイ成功
+* **✅ フロントエンドイメージ構築完了**: 本番環境用 Docker イメージビルド済み
+* Alpine Linux ベースのイメージに移行完了
+* 開発用・本番用Dockerfileを統一・最適化
 * セキュリティ向上と軽量化を実現
 * 不要なDockerfileを削除してメンテナンス性向上
+* マルチステージビルドによる本番最適化実装
+
+**デプロイ済み構成**
+
+* **バックエンド**: Google Cloud Run (``gamechat-ai-backend``)
+* **フロントエンド**: Docker イメージ準備完了
+* **イメージサイズ**: バックエンド 532MB、フロントエンド 309MB
+* **プラットフォーム**: linux/amd64 対応

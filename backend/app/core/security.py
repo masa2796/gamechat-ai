@@ -20,15 +20,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # HSTS (HTTPS Strict Transport Security)
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
             
-            # CSP (Content Security Policy) - 必要に応じて調整
+            # CSP (Content Security Policy) - Firebase Hosting + Cloud Run用
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-                "style-src 'self' 'unsafe-inline'; "
+                "default-src 'self' https://gamechat-ai.web.app https://gamechat-ai.firebaseapp.com; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "img-src 'self' data: https:; "
-                "font-src 'self' data:; "
-                "connect-src 'self' https:; "
-                "frame-ancestors 'self';"
+                "font-src 'self' data: https://fonts.gstatic.com; "
+                "connect-src 'self' https: https://gamechat-ai.web.app https://gamechat-ai.firebaseapp.com; "
+                "frame-ancestors 'self' https://gamechat-ai.web.app https://gamechat-ai.firebaseapp.com;"
             )
             
         return response
