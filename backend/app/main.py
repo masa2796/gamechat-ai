@@ -14,6 +14,7 @@ from .core.security import SecurityHeadersMiddleware
 from .core.rate_limit import RateLimitMiddleware
 from .core.database import initialize_database, close_database, database_health_check
 from .core.logging import GameChatLogger
+from .services.storage_service import StorageService
 
 # ログ設定を初期化
 GameChatLogger.configure_logging()
@@ -35,6 +36,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info(f"📁 Created data directory: {settings.DATA_DIR}")
     except Exception as e:
         logger.warning(f"⚠️ Could not create data directory: {e}")
+    
+    # StorageServiceを初期化してデータを準備
+    try:
+        storage_service = StorageService()
+        logger.info("📦 StorageService initialized")
+        
+        # 主要なデータファイルの可用性をチェック
+        data_status = {}
+        for file_key in ["data", "convert_data", "embedding_list", "query_data"]:
+            file_path = storage_service.get_file_path(file_key)
+            data_status[file_key] = bool(file_path)
+        
+        logger.info("📊 Data files status:", extra=data_status)
+        
+        # 最低限必要なファイルの確認
+        if not (data_status.get("data") or data_status.get("convert_data")):
+            logger.warning("⚠️ No primary data files available. Application may have limited functionality.")
+        
+    except Exception as e:
+        logger.error(f"❌ StorageService initialization failed: {e}")
+        logger.warning("🔄 Application will continue with limited functionality")
     
     # 環境情報とパス設定をログ出力
     logger.info("📍 Environment and Path Configuration:", extra={
@@ -126,6 +148,27 @@ async def detailed_health_check() -> dict[str, Any]:
     except Exception as e:
         db_health = {"status": "error", "message": str(e)}
     
+    # ストレージサービス状況を確認
+    try:
+        storage_service = StorageService()
+        storage_health = {
+            "status": "healthy",
+            "gcs_configured": bool(storage_service.bucket_name),
+            "environment": settings.ENVIRONMENT,
+            "cache_info": storage_service.get_cache_info()
+        }
+        
+        # データファイルの可用性確認
+        data_files = {}
+        for file_key in ["data", "convert_data", "embedding_list", "query_data"]:
+            file_path = storage_service.get_file_path(file_key)
+            data_files[file_key] = bool(file_path)
+        
+        storage_health["data_files"] = data_files
+        
+    except Exception as e:
+        storage_health = {"status": "error", "message": str(e)}
+    
     health_data = {
         "status": "healthy",
         "service": "gamechat-ai-backend",
@@ -133,10 +176,14 @@ async def detailed_health_check() -> dict[str, Any]:
         "uptime_seconds": round(uptime, 2),
         "version": "1.0.0",
         "environment": settings.ENVIRONMENT,
+        "settings": {
+            "gcs_bucket_name": settings.GCS_BUCKET_NAME,
+            "data_dir": str(settings.DATA_DIR)
+        },
         "checks": {
             "database": db_health,
             "external_apis": "healthy",  # 外部API接続チェック
-            "storage": "healthy"  # ストレージ接続チェック
+            "storage": storage_health
         }
     }
     
