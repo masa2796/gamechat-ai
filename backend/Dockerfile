@@ -34,9 +34,10 @@ COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
 COPY requirements.txt .
 
-# Create data directory and copy files if they exist
-# This handles the case where data/ is in .gitignore but may exist locally
+# Create data directory and copy prepared data files
 RUN mkdir -p ./data
+# Copy data files that were prepared in the Cloud Build step
+COPY data/ ./data/
 
 # Change ownership of app directory to ensure proper permissions
 RUN chown -R app:app /app
