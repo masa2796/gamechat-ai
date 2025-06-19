@@ -55,9 +55,10 @@ class DatabaseService:
                         "files": files_in_data_dir
                     })
                 except Exception as e:
-                    GameChatLogger.log_error("database_service", f"データディレクトリの確認に失敗: {e}")
+                    GameChatLogger.log_error("database_service", "データディレクトリの確認に失敗", e)
             else:
-                GameChatLogger.log_error("database_service", f"データディレクトリが存在しません: {data_dir}")
+                # ディレクトリが存在しない場合は警告ログとして出力
+                GameChatLogger.log_warning("database_service", f"データディレクトリが存在しません: {data_dir}")
             
             # data.jsonを優先して使用（構造化データ）
             with open(self.data_path, 'r', encoding='utf-8') as f:
@@ -68,8 +69,7 @@ class DatabaseService:
                 GameChatLogger.log_success("database_service", f"データファイルを読み込みました: {self.data_path}")
                 return self.cache
         except FileNotFoundError as fnf_error:
-            GameChatLogger.log_error("database_service", f"データファイルが見つかりません: {self.data_path}", {
-                "error": str(fnf_error),
+            GameChatLogger.log_error("database_service", f"データファイルが見つかりません: {self.data_path}", fnf_error, {
                 "attempted_path": self.data_path,
                 "absolute_path": os.path.abspath(self.data_path),
                 "current_directory": os.getcwd()
@@ -85,7 +85,7 @@ class DatabaseService:
                     GameChatLogger.log_info("database_service", f"フォールバックファイルを使用: {self.converted_data_path}")
                     return self.cache
             except FileNotFoundError as cnf_error:
-                GameChatLogger.log_error("database_service", "両方のデータファイルが見つかりません", {
+                GameChatLogger.log_error("database_service", "両方のデータファイルが見つかりません", cnf_error, {
                     "primary_file": self.data_path,
                     "fallback_file": self.converted_data_path,
                     "primary_error": str(fnf_error),
