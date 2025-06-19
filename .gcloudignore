@@ -2,11 +2,21 @@
 .git/
 .gitignore
 
+# データファイル（Cloud Storageを使用するため不要）
+data/
+*.jsonl
+*.json
+
 # Node.js
+node_modules/
 frontend/node_modules/
+**/node_modules/
 frontend/.next/
 frontend/dist/
 frontend/build/
+frontend/out/
+package-lock.json
+yarn.lock
 
 # Python
 backend/__pycache__/
@@ -18,6 +28,7 @@ backend/**/__pycache__/
 backend/env/
 backend/venv/
 backend/.venv/
+.venv/
 backend/ENV/
 backend/env.bak/
 backend/venv.bak/
