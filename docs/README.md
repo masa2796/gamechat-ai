@@ -5,7 +5,14 @@
 - [**デプロイガイド**](./deployment/deployment-guide.md) - 1分でデプロイ、本番環境設定
 - [**🌟 クラウドサービス全体ガイド**](./deployment/cloud-services-overview.md) - GCP・Firebaseの包括的利用ガイド
 - [**OpenAI設定**](./deployment/cloud-run-openai-setup.md) - APIキー・Secret Manager設定
-- [**認証レポート**](./deployment/api-key-authentication-implementation-report.md) - セキュリティ実装詳細クトリには、GameChat AIプロジェクトの各種ドキュメントが整理されています。
+- [**認証レポート**](./deployment/api-key-authentication-implementation-report.md) - セキュリティ実装詳細
+
+### 🔐 [`security/`](./security/) - セキュリティドキュメント
+**システムセキュリティの包括的評価・管理**
+- [**包括的セキュリティレポート**](./security/comprehensive-security-report.md) - 全体的なセキュリティ評価・改善計画
+- [**セキュリティ評価レポート**](./security/security-assessment-report.md) - 基本的なセキュリティ状況評価
+
+このディレクトリには、GameChat AIプロジェクトの各種ドキュメントが整理されています。
 
 ## 🎯 クイックスタート
 
@@ -80,7 +87,12 @@
 1. [`api/rag_api_spec.md`](./api/rag_api_spec.md) で詳細仕様を確認
 2. 認証・エラーハンドリングを実装
 
-### 🛠️ 開発に参加したい
+### � セキュリティを確認したい
+1. [`security/comprehensive-security-report.md`](./security/comprehensive-security-report.md) で全体的なセキュリティ状況を確認
+2. [`security/security-assessment-report.md`](./security/security-assessment-report.md) で基本的な評価結果を確認
+3. [`deployment/api-key-authentication-implementation-report.md`](./deployment/api-key-authentication-implementation-report.md) で認証実装詳細を確認
+
+### �🛠️ 開発に参加したい
 1. [`project-status.md`](./project-status.md) で今後の計画を確認
 2. [`guides/`](./guides/) で技術実装の詳細を学習
 3. [`scripts/`](./scripts/) で開発ツールを活用

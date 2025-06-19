@@ -38,9 +38,9 @@ async def debug_auth_status() -> Dict[str, Any]:
     """認証システムのデバッグ情報を返すエンドポイント（本番では無効化すべき）"""
     environment = os.getenv("ENVIRONMENT", "unknown")
     
-    # デバッグ用に一時的に本番環境でも有効化
-    # if environment == "production":
-    #     raise HTTPException(status_code=404, detail="Not found")
+    # 本番環境ではデバッグエンドポイントを無効化
+    if environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     
     # 環境変数の確認
     env_status = {
@@ -67,18 +67,19 @@ async def debug_test_auth(
     test_data: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
     """認証フローをテストするデバッグエンドポイント"""
-    # デバッグ用に一時的に本番環境でも有効化
-    # environment = os.getenv("ENVIRONMENT", "unknown")
-    # if environment == "production":
-    #     raise HTTPException(status_code=404, detail="Not found")
+    environment = os.getenv("ENVIRONMENT", "unknown")
+    
+    # 本番環境ではデバッグエンドポイントを無効化
+    if environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     
     logger.info("=== DEBUG AUTH TEST STARTED ===")
     
-    # ヘッダー情報をログ出力
+    # ヘッダー情報をログ出力（APIキー等の機密情報は除外）
     headers_info = {}
     for key, value in request.headers.items():
         if key.lower() == "x-api-key":
-            headers_info[key] = f"{value[:10]}***" if value else "None"
+            headers_info[key] = "***REDACTED***" if value else "None"
         else:
             headers_info[key] = value
     
@@ -114,9 +115,9 @@ async def debug_env_status() -> Dict[str, Any]:
     """環境変数とSecret設定の状態を確認するデバッグエンドポイント"""
     environment = os.getenv("ENVIRONMENT", "unknown")
     
-    # デバッグ用に一時的に本番環境でも有効化
-    # if environment == "production":
-    #     raise HTTPException(status_code=404, detail="Not found")
+    # 本番環境ではデバッグエンドポイントを無効化
+    if environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     
     # 重要な環境変数の確認
     env_status = {
@@ -132,23 +133,19 @@ async def debug_env_status() -> Dict[str, Any]:
         "API_KEY_READONLY": "Set" if os.getenv("API_KEY_READONLY") else "Not set",
     }
     
-    # OpenAI APIキーの詳細確認
+    # OpenAI APIキーの基本状態確認（セキュリティ情報は除外）
     openai_key = os.getenv("OPENAI_API_KEY")
     openai_details = {
         "present": bool(openai_key),
-        "starts_with_sk": openai_key.startswith("sk-") if openai_key else False,
-        "length": len(openai_key) if openai_key else 0,
-        "first_10_chars": openai_key[:10] if openai_key else None
+        "valid_format": openai_key.startswith("sk-") if openai_key else False
     }
     
-    # APIキーの詳細確認
+    # APIキーの基本状態確認（セキュリティ情報は除外）
     api_key_details = {}
     for key_name in ["API_KEY_DEVELOPMENT", "API_KEY_PRODUCTION", "API_KEY_FRONTEND", "API_KEY_READONLY"]:
         key_value = os.getenv(key_name)
         api_key_details[key_name] = {
-            "present": bool(key_value),
-            "length": len(key_value) if key_value else 0,
-            "first_10_chars": key_value[:10] if key_value else None
+            "present": bool(key_value)
         }
     
     return {

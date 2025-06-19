@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 import json
+import os
 from ..models.rag_models import ContextItem
 from ..core.config import settings
 from ..core.exceptions import DatabaseException
@@ -14,6 +15,14 @@ class DatabaseService:
         self.data_path = settings.DATA_FILE_PATH
         self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
         self.cache: Optional[List[Dict[str, Any]]] = None
+        
+        # 初期化時にパス情報をログ出力
+        GameChatLogger.log_info("database_service", "DatabaseService初期化", {
+            "data_path": self.data_path,
+            "converted_path": self.converted_data_path,
+            "project_root": str(settings.PROJECT_ROOT if hasattr(settings, 'PROJECT_ROOT') else 'N/A'),
+            "environment": settings.ENVIRONMENT
+        })
     
     def _load_data(self) -> List[Dict[str, Any]]:
         """データファイルを読み込む"""
@@ -21,6 +30,35 @@ class DatabaseService:
             return self.cache
         
         try:
+            # 詳細なパス情報をログに出力（デバッグ用）
+            current_dir = os.getcwd()
+            project_root = getattr(settings, 'PROJECT_ROOT', 'N/A')
+            
+            GameChatLogger.log_info("database_service", "データファイル読み込み開始", {
+                "current_directory": current_dir,
+                "project_root": str(project_root),
+                "data_path": self.data_path,
+                "converted_path": self.converted_data_path,
+                "data_path_absolute": os.path.abspath(self.data_path),
+                "converted_path_absolute": os.path.abspath(self.converted_data_path),
+                "data_path_exists": os.path.exists(self.data_path),
+                "converted_path_exists": os.path.exists(self.converted_data_path),
+                "environment": settings.ENVIRONMENT
+            })
+            
+            # /app/dataディレクトリの内容を確認
+            data_dir = os.path.dirname(self.data_path)
+            if os.path.exists(data_dir):
+                try:
+                    files_in_data_dir = os.listdir(data_dir)
+                    GameChatLogger.log_info("database_service", f"データディレクトリの内容: {data_dir}", {
+                        "files": files_in_data_dir
+                    })
+                except Exception as e:
+                    GameChatLogger.log_error("database_service", f"データディレクトリの確認に失敗: {e}")
+            else:
+                GameChatLogger.log_error("database_service", f"データディレクトリが存在しません: {data_dir}")
+            
             # data.jsonを優先して使用（構造化データ）
             with open(self.data_path, 'r', encoding='utf-8') as f:
                 loaded_data = json.load(f)
@@ -29,9 +67,16 @@ class DatabaseService:
                 self.cache = loaded_data
                 GameChatLogger.log_success("database_service", f"データファイルを読み込みました: {self.data_path}")
                 return self.cache
-        except FileNotFoundError:
+        except FileNotFoundError as fnf_error:
+            GameChatLogger.log_error("database_service", f"データファイルが見つかりません: {self.data_path}", {
+                "error": str(fnf_error),
+                "attempted_path": self.data_path,
+                "absolute_path": os.path.abspath(self.data_path),
+                "current_directory": os.getcwd()
+            })
             try:
                 # フォールバックでconvert_data.jsonを使用
+                GameChatLogger.log_info("database_service", f"フォールバックファイルを試行: {self.converted_data_path}")
                 with open(self.converted_data_path, 'r', encoding='utf-8') as f:
                     loaded_data = json.load(f)
                     if not isinstance(loaded_data, list):
@@ -39,7 +84,15 @@ class DatabaseService:
                     self.cache = loaded_data
                     GameChatLogger.log_info("database_service", f"フォールバックファイルを使用: {self.converted_data_path}")
                     return self.cache
-            except FileNotFoundError:
+            except FileNotFoundError as cnf_error:
+                GameChatLogger.log_error("database_service", "両方のデータファイルが見つかりません", {
+                    "primary_file": self.data_path,
+                    "fallback_file": self.converted_data_path,
+                    "primary_error": str(fnf_error),
+                    "fallback_error": str(cnf_error),
+                    "current_directory": os.getcwd(),
+                    "environment": settings.ENVIRONMENT
+                })
                 raise DatabaseException(
                     message="データファイルが見つかりません",
                     code="DATA_FILE_NOT_FOUND",
