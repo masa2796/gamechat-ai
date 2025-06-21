@@ -24,7 +24,7 @@ from .services.storage_service import StorageService
 
 # Sentry初期化
 if settings.SENTRY_DSN:
-    def traces_sampler(sampling_context):
+    def traces_sampler(sampling_context: dict[str, Any]) -> float:
         """動的トレースサンプリング"""
         # リクエストパスに基づいたサンプリング
         if "wsgi_environ" in sampling_context or "asgi_scope" in sampling_context:
@@ -55,7 +55,7 @@ if settings.SENTRY_DSN:
         # その他の場合のデフォルト値
         return 0.1 if settings.ENVIRONMENT == "production" else 1.0
     
-    def before_send(event, hint):
+    def before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
         """エラーフィルタリング"""
         if settings.ENVIRONMENT != "production":
             return event
@@ -89,7 +89,6 @@ if settings.SENTRY_DSN:
         dsn=settings.SENTRY_DSN,
         integrations=[
             FastApiIntegration(
-                auto_enabling_integrations=False,
                 transaction_style="endpoint",
                 failed_request_status_codes=[500, 502, 503, 504],
             ),
@@ -103,17 +102,8 @@ if settings.SENTRY_DSN:
         sample_rate=0.8 if settings.ENVIRONMENT == "production" else 1.0,
         send_default_pii=False,
         attach_stacktrace=True,
-        before_send=before_send,
+        before_send=before_send,  # type: ignore[arg-type]
         release=os.getenv("GIT_COMMIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
-        # パフォーマンス監視の詳細設定
-        _experiments={
-            "profiles_sample_rate": 0.01 if settings.ENVIRONMENT == "production" else 0.1,
-        },
-        # タグの設定
-        tags={
-            "component": "fastapi-backend",
-            "deployment": "production" if settings.ENVIRONMENT == "production" else "development",
-        },
     )
 
 # ログ設定を初期化
