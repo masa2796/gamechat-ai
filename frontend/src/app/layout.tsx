@@ -4,6 +4,7 @@ import "./globals.css";
 import { PWAProvider } from "@/components/pwa-provider";
 import { StructuredData } from "@/components/structured-data";
 import { generateWebAppStructuredData } from "@/lib/structured-data";
+import { SentryProvider } from "@/components/sentry-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -100,9 +101,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <PWAProvider>
-          {children}
-        </PWAProvider>
+        <SentryProvider>
+          <PWAProvider>
+            {children}
+          </PWAProvider>
+        </SentryProvider>
       </body>
     </html>
   );
