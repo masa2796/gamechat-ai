@@ -26,7 +26,7 @@ if settings.SENTRY_DSN:
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         integrations=[
-            FastApiIntegration(auto_enabling_integrations=False),
+            FastApiIntegration(),
             LoggingIntegration(
                 level=logging.INFO,
                 event_level=logging.ERROR
