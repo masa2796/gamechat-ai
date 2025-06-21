@@ -83,3 +83,5 @@ docs/**/.DS_Store
 
 # data
 data/
+# Sentry Config File
+.env.sentry-build-plugin

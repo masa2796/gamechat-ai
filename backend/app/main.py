@@ -2,11 +2,17 @@
 import time
 import os
 import logging
+import random
 from datetime import datetime
 from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Histogram
 from .routers import rag
 from .core.exception_handlers import setup_exception_handlers
 from .core.config import settings
@@ -16,11 +22,137 @@ from .core.database import initialize_database, close_database, database_health_
 from .core.logging import GameChatLogger
 from .services.storage_service import StorageService
 
+# Sentry初期化
+if settings.SENTRY_DSN:
+    def traces_sampler(sampling_context: dict[str, Any]) -> float:
+        """動的トレースサンプリング"""
+        # リクエストパスに基づいたサンプリング
+        if "wsgi_environ" in sampling_context or "asgi_scope" in sampling_context:
+            try:
+                # FastAPIの場合、asgi_scopeから情報を取得
+                scope = sampling_context.get("asgi_scope", {})
+                path = scope.get("path", "")
+                
+                # ヘルスチェックやメトリクスエンドポイントは低頻度
+                if path in ["/health", "/healthcheck", "/metrics", "/ping"]:
+                    return 0.01 if settings.ENVIRONMENT == "production" else 0.1
+                
+                # 静的リソースは監視しない
+                if path.startswith(("/static/", "/_next/", "/favicon.ico")):
+                    return 0
+                
+                # API エンドポイントは中頻度
+                if path.startswith("/api/"):
+                    return 0.1 if settings.ENVIRONMENT == "production" else 0.5
+                
+                # その他のエンドポイント
+                return 0.05 if settings.ENVIRONMENT == "production" else 1.0
+                
+            except Exception:
+                # エラーが発生した場合のデフォルト値
+                return 0.1 if settings.ENVIRONMENT == "production" else 1.0
+        
+        # その他の場合のデフォルト値
+        return 0.1 if settings.ENVIRONMENT == "production" else 1.0
+    
+    def before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
+        """エラーフィルタリング"""
+        if settings.ENVIRONMENT != "production":
+            return event
+        
+        # 一般的なネットワークエラーをフィルタリング
+        if event.get("exception"):
+            exc_values = event["exception"].get("values", [])
+            for exc_value in exc_values:
+                exc_type = exc_value.get("type", "")
+                exc_value_str = exc_value.get("value", "")
+                
+                # よくあるネットワークエラー
+                if any(pattern in exc_value_str.lower() for pattern in [
+                    "connection reset", "connection aborted", "broken pipe",
+                    "timeout", "connection refused", "network is unreachable"
+                ]):
+                    # 10%の確率で送信
+                    return event if random.random() < 0.1 else None
+                
+                # HTTP エラーの処理
+                if "httpx" in exc_type.lower() or "requests" in exc_type.lower():
+                    # HTTP 5xx エラーは送信、4xx エラーは低頻度
+                    if "5" in exc_value_str[:3]:
+                        return event
+                    elif "4" in exc_value_str[:3]:
+                        return event if random.random() < 0.2 else None
+        
+        return event
+    
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        integrations=[
+            FastApiIntegration(
+                transaction_style="endpoint",
+                failed_request_status_codes=[500, 502, 503, 504],
+            ),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR
+            ),
+        ],
+        environment=settings.ENVIRONMENT,
+        traces_sampler=traces_sampler,
+        sample_rate=0.8 if settings.ENVIRONMENT == "production" else 1.0,
+        send_default_pii=False,
+        attach_stacktrace=True,
+        before_send=before_send,  # type: ignore[arg-type]
+        release=os.getenv("GIT_COMMIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
+    )
+
 # ログ設定を初期化
 GameChatLogger.configure_logging()
 
 # ヘルスチェック用のアプリ開始時間
 app_start_time = time.time()
+
+# カスタムPrometheusメトリクス
+RAG_QUERY_COUNTER = Counter(
+    'gamechat_ai_rag_queries_total', 
+    'Total number of RAG queries processed',
+    ['method', 'status']
+)
+
+RAG_QUERY_DURATION = Histogram(
+    'gamechat_ai_rag_query_duration_seconds',
+    'Time spent processing RAG queries',
+    ['method']
+)
+
+DATABASE_OPERATIONS_COUNTER = Counter(
+    'gamechat_ai_database_operations_total',
+    'Total number of database operations',
+    ['operation', 'status']
+)
+
+STORAGE_OPERATIONS_COUNTER = Counter(
+    'gamechat_ai_storage_operations_total',
+    'Total number of storage operations',
+    ['operation', 'status']
+)
+
+# メトリクス更新用ヘルパー関数
+def increment_rag_query_counter(method: str, status: str) -> None:
+    """RAGクエリカウンターを増加"""
+    RAG_QUERY_COUNTER.labels(method=method, status=status).inc()
+
+def observe_rag_query_duration(method: str, duration: float) -> None:
+    """RAGクエリ処理時間を記録"""
+    RAG_QUERY_DURATION.labels(method=method).observe(duration)
+
+def increment_database_operations_counter(operation: str, status: str) -> None:
+    """データベース操作カウンターを増加"""
+    DATABASE_OPERATIONS_COUNTER.labels(operation=operation, status=status).inc()
+
+def increment_storage_operations_counter(operation: str, status: str) -> None:
+    """ストレージ操作カウンターを増加"""
+    STORAGE_OPERATIONS_COUNTER.labels(operation=operation, status=status).inc()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -102,6 +234,21 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan
 )
+
+# Prometheus メトリクス設定
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/health", "/metrics"],
+    env_var_name="ENABLE_METRICS",
+    inprogress_name="gamechat_ai_requests_inprogress",
+    inprogress_labels=True,
+)
+
+# メトリクスを初期化して公開
+instrumentator.instrument(app).expose(app)
 
 # セキュリティヘッダーミドルウェアを追加
 app.add_middleware(SecurityHeadersMiddleware)
@@ -188,5 +335,26 @@ async def detailed_health_check() -> dict[str, Any]:
     }
     
     return health_data
+
+@app.get("/health/metrics")
+async def metrics_health_check() -> dict[str, Any]:
+    """メトリクス収集状況のヘルスチェック"""
+    return {
+        "status": "healthy",
+        "service": "gamechat-ai-backend-metrics",
+        "timestamp": datetime.now().isoformat(),
+        "metrics_endpoint": "/metrics",
+        "custom_metrics": {
+            "rag_queries": "gamechat_ai_rag_queries_total",
+            "rag_duration": "gamechat_ai_rag_query_duration_seconds",
+            "database_ops": "gamechat_ai_database_operations_total",
+            "storage_ops": "gamechat_ai_storage_operations_total"
+        },
+        "instrumentator": {
+            "enabled": True,
+            "inprogress_tracking": True,
+            "excluded_handlers": ["/health", "/metrics"]
+        }
+    }
 
 app.include_router(rag.router, prefix="/api")
