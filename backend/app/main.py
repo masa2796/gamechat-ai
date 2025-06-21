@@ -2,6 +2,7 @@
 import time
 import os
 import logging
+import random
 from datetime import datetime
 from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
@@ -23,20 +24,96 @@ from .services.storage_service import StorageService
 
 # Sentry初期化
 if settings.SENTRY_DSN:
+    def traces_sampler(sampling_context):
+        """動的トレースサンプリング"""
+        # リクエストパスに基づいたサンプリング
+        if "wsgi_environ" in sampling_context or "asgi_scope" in sampling_context:
+            try:
+                # FastAPIの場合、asgi_scopeから情報を取得
+                scope = sampling_context.get("asgi_scope", {})
+                path = scope.get("path", "")
+                
+                # ヘルスチェックやメトリクスエンドポイントは低頻度
+                if path in ["/health", "/healthcheck", "/metrics", "/ping"]:
+                    return 0.01 if settings.ENVIRONMENT == "production" else 0.1
+                
+                # 静的リソースは監視しない
+                if path.startswith(("/static/", "/_next/", "/favicon.ico")):
+                    return 0
+                
+                # API エンドポイントは中頻度
+                if path.startswith("/api/"):
+                    return 0.1 if settings.ENVIRONMENT == "production" else 0.5
+                
+                # その他のエンドポイント
+                return 0.05 if settings.ENVIRONMENT == "production" else 1.0
+                
+            except Exception:
+                # エラーが発生した場合のデフォルト値
+                return 0.1 if settings.ENVIRONMENT == "production" else 1.0
+        
+        # その他の場合のデフォルト値
+        return 0.1 if settings.ENVIRONMENT == "production" else 1.0
+    
+    def before_send(event, hint):
+        """エラーフィルタリング"""
+        if settings.ENVIRONMENT != "production":
+            return event
+        
+        # 一般的なネットワークエラーをフィルタリング
+        if event.get("exception"):
+            exc_values = event["exception"].get("values", [])
+            for exc_value in exc_values:
+                exc_type = exc_value.get("type", "")
+                exc_value_str = exc_value.get("value", "")
+                
+                # よくあるネットワークエラー
+                if any(pattern in exc_value_str.lower() for pattern in [
+                    "connection reset", "connection aborted", "broken pipe",
+                    "timeout", "connection refused", "network is unreachable"
+                ]):
+                    # 10%の確率で送信
+                    return event if random.random() < 0.1 else None
+                
+                # HTTP エラーの処理
+                if "httpx" in exc_type.lower() or "requests" in exc_type.lower():
+                    # HTTP 5xx エラーは送信、4xx エラーは低頻度
+                    if "5" in exc_value_str[:3]:
+                        return event
+                    elif "4" in exc_value_str[:3]:
+                        return event if random.random() < 0.2 else None
+        
+        return event
+    
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         integrations=[
-            FastApiIntegration(),
+            FastApiIntegration(
+                auto_enabling_integrations=False,
+                transaction_style="endpoint",
+                failed_request_status_codes=[500, 502, 503, 504],
+            ),
             LoggingIntegration(
                 level=logging.INFO,
                 event_level=logging.ERROR
             ),
         ],
         environment=settings.ENVIRONMENT,
-        traces_sample_rate=1.0 if settings.ENVIRONMENT == "development" else 0.1,
+        traces_sampler=traces_sampler,
+        sample_rate=0.8 if settings.ENVIRONMENT == "production" else 1.0,
         send_default_pii=False,
         attach_stacktrace=True,
-        before_send=lambda event, hint: event if settings.ENVIRONMENT == "production" else None,
+        before_send=before_send,
+        release=os.getenv("GIT_COMMIT_SHA") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
+        # パフォーマンス監視の詳細設定
+        _experiments={
+            "profiles_sample_rate": 0.01 if settings.ENVIRONMENT == "production" else 0.1,
+        },
+        # タグの設定
+        tags={
+            "component": "fastapi-backend",
+            "deployment": "production" if settings.ENVIRONMENT == "production" else "development",
+        },
     )
 
 # ログ設定を初期化
