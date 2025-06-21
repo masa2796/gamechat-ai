@@ -6,7 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { SentryTestComponent } from "@/components/sentry-test";
+import { SentryTestComponentWrapper as SentryTestComponent } from "@/components/sentry-test-wrapper";
 import { getAuth } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
