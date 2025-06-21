@@ -57,48 +57,50 @@ const nextConfig = {
     return config;
   },
   
-  // セキュリティ設定
-  async headers() {
-    const headers = [
-      {
-        key: 'X-Frame-Options',
-        value: 'SAMEORIGIN',
-      },
-      {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff',
-      },
-      {
-        key: 'X-XSS-Protection',
-        value: '1; mode=block',
-      },
-      {
-        key: 'Referrer-Policy',
-        value: 'strict-origin-when-cross-origin',
-      },
-    ];
-
-    // 本番環境でのみ追加のセキュリティヘッダーを設定
-    if (process.env.NODE_ENV === 'production') {
-      headers.push(
+  // セキュリティ設定（standalone モードでのみ有効）
+  ...(process.env.DOCKER_BUILD || process.env.CI ? {
+    async headers() {
+      const headers = [
         {
-          key: 'Strict-Transport-Security',
-          value: 'max-age=31536000; includeSubDomains',
+          key: 'X-Frame-Options',
+          value: 'SAMEORIGIN',
         },
         {
-          key: 'Content-Security-Policy',
-          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';",
-        }
-      );
-    }
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
+        },
+        {
+          key: 'X-XSS-Protection',
+          value: '1; mode=block',
+        },
+        {
+          key: 'Referrer-Policy',
+          value: 'strict-origin-when-cross-origin',
+        },
+      ];
 
-    return [
-      {
-        source: '/(.*)',
-        headers,
-      },
-    ];
-  },
+      // 本番環境でのみ追加のセキュリティヘッダーを設定
+      if (process.env.NODE_ENV === 'production') {
+        headers.push(
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';",
+          }
+        );
+      }
+
+      return [
+        {
+          source: '/(.*)',
+          headers,
+        },
+      ];
+    },
+  } : {}),
   
   // 環境変数設定
   env: {
@@ -119,19 +121,21 @@ const nextConfig = {
     NEXT_PUBLIC_API_KEY: process.env.NEXT_PUBLIC_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : ''),
   },
 
-  // PWA対応設定
-  async rewrites() {
-    return [
-      {
-        source: '/sw.js',
-        destination: '/sw.js',
-      },
-      {
-        source: '/manifest.json',
-        destination: '/manifest.json',
-      },
-    ];
-  },
+  // PWA対応設定（export モードでは無効化）
+  ...(!(process.env.DOCKER_BUILD || process.env.CI) ? {} : {
+    async rewrites() {
+      return [
+        {
+          source: '/sw.js',
+          destination: '/sw.js',
+        },
+        {
+          source: '/manifest.json',
+          destination: '/manifest.json',
+        },
+      ];
+    },
+  }),
 }
 
 // Injected content via Sentry wizard below
@@ -156,11 +160,8 @@ module.exports = withSentryConfig(
     // Upload a larger set of source maps for prettier stack traces (increases build time)
     widenClientFileUpload: true,
 
-    // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-    // This can increase your server load as well as your hosting bill.
-    // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-    // side errors will fail.
-    tunnelRoute: "/monitoring",
+    // tunnelRoute を export モードでは無効化
+    tunnelRoute: process.env.DOCKER_BUILD || process.env.CI ? "/monitoring" : undefined,
 
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     disableLogger: true,
@@ -169,6 +170,6 @@ module.exports = withSentryConfig(
     // See the following for more information:
     // https://docs.sentry.io/product/crons/
     // https://vercel.com/docs/cron-jobs
-    automaticVercelMonitors: true,
+    automaticVercelMonitors: process.env.DOCKER_BUILD || process.env.CI || false,
   }
 );
