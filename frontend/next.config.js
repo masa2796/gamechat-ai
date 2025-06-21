@@ -158,7 +158,10 @@ const sentryConfig = {
   // This can increase your server load as well as your hosting bill.
   // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
   // side errors will fail.
-  tunnelRoute: "/monitoring",
+  // tunnelRoute は static export モードでは動作しないため、本番環境でのみ有効化
+  ...(process.env.NODE_ENV === 'production' && nextConfig.output !== 'export' && {
+    tunnelRoute: "/monitoring",
+  }),
 
   // Hides source maps from generated client bundles
   hideSourceMaps: true,

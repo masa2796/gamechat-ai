@@ -10,7 +10,8 @@ export async function register() {
         dsn: SENTRY_DSN,
         tracesSampleRate: 1.0,
         profilesSampleRate: 1.0,
-        debug: false,
+        debug: process.env.NODE_ENV === 'development',
+        sendDefaultPii: true,
       });
     }
 
@@ -20,7 +21,8 @@ export async function register() {
         dsn: SENTRY_DSN,
         tracesSampleRate: 1.0,
         profilesSampleRate: 1.0,
-        debug: false,
+        debug: process.env.NODE_ENV === 'development',
+        sendDefaultPii: true,
       });
     }
   } else {
