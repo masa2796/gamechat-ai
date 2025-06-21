@@ -8,12 +8,15 @@ if (SENTRY_DSN) {
     dsn: SENTRY_DSN,
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,
-    debug: false,
+    debug: process.env.NODE_ENV === 'development',
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.1,
+    sendDefaultPii: true,
     integrations: [
       Sentry.replayIntegration({
+        // Mask all text content, numbers, and input values
         maskAllText: true,
+        // Mask all media elements (img, svg, video, object, embed, canvas)
         blockAllMedia: true,
       }),
     ],
