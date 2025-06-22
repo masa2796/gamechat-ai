@@ -1,6 +1,7 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, AsyncGenerator
 import openai
 import os
+import asyncio
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
@@ -149,7 +150,7 @@ class LLMService:
         return "\n".join(prompt_parts)
 
     async def _request_llm_response(self, system_prompt: str, user_prompt: str) -> str:
-        """LLMにリクエストを送信して回答を取得"""
+        """LLMにリクエストを送信して回答を取得（タイムアウト制御付き）"""
         if not self.client:
             raise LLMException(
                 message="OpenAI APIキーが設定されていません",
@@ -162,17 +163,30 @@ class LLMService:
             GameChatLogger.log_info("llm_service", "テスト環境でのモックレスポンスを生成")
             return "こんにちは！GameChat AIです。テスト環境で動作中です。ゲームに関する質問をお気軽にどうぞ！"
         
+        # OpenAIクライアントが設定されていない場合
+        if self.client is None:
+            error_msg = "申し訳ございません、現在LLMサービスが利用できません。"  # type: ignore[unreachable]
+            GameChatLogger.log_error("llm_service", "OpenAI client is not initialized", None)
+            return error_msg
+
+        # OpenAI API呼び出し
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,  # 簡潔な回答を促すため削減
-                temperature=0.3,  # より一貫性のある回答のため下げる
-                presence_penalty=0.1,  # 冗長性を減らす
-                frequency_penalty=0.1  # 繰り返しを減らす
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: self.client.chat.completions.create(  # type: ignore[union-attr]
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        max_tokens=250,
+                        temperature=0.2,
+                        presence_penalty=0.1,
+                        frequency_penalty=0.1,
+                        timeout=8
+                    )
+                ),
+                timeout=10.0
             )
             
             # レスポンス内容の取得と検証
@@ -182,6 +196,10 @@ class LLMService:
                 return "申し訳ありませんが、回答の生成中にエラーが発生しました。"
             
             return response_content.strip()
+            
+        except asyncio.TimeoutError:
+            GameChatLogger.log_warning("llm_service", "OpenAI APIタイムアウト（10秒）")
+            return "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。"
             
         except Exception as e:
             GameChatLogger.log_error("llm_service", "OpenAI API呼び出しエラー", e)
@@ -414,3 +432,56 @@ class LLMService:
         """下位互換性のための旧generate_answerメソッド"""
         result = await self.generate_answer(query, context_items)
         return result
+
+    async def stream_response(self, query: str, context_text: str) -> AsyncGenerator[str, None]:
+        """
+        OpenAI APIからストリーミングレスポンスを取得
+        """
+        try:
+            # 開発・テスト環境での簡易対応
+            environment = os.getenv("ENVIRONMENT", "production")
+            
+            if environment in ["development", "test"]:
+                # テスト環境ではモックストリーミングレスポンス
+                mock_response = f"「{query}」について、テスト環境からお答えします。"
+                words = mock_response.split()
+                
+                for word in words:
+                    yield word + " "
+                    await asyncio.sleep(0.1)  # 実際のストリーミングを模擬
+                return
+            
+            # 本番環境でのOpenAI APIストリーミング
+            if not self.client:
+                raise LLMException("OpenAI client is not initialized")
+            
+            system_prompt = """あなたはゲーム攻略に特化したAIアシスタントです。
+提供されたコンテキストを基に、正確で役立つ回答を生成してください。
+回答は簡潔で分かりやすく、ゲーマーにとって実用的な内容にしてください。"""
+            
+            user_prompt = f"""質問: {query}
+
+参考情報:
+{context_text}
+
+上記の情報を参考に、質問に対する適切な回答を生成してください。"""
+            
+            # OpenAI API ストリーミング呼び出し
+            stream = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                stream=True,
+                max_tokens=1000,
+                temperature=0.7
+            )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    yield chunk.choices[0].delta.content
+            
+        except Exception as e:
+            GameChatLogger.log_error("llm_service", "Streaming error", e)
+            yield f"申し訳ありませんが、回答の生成中にエラーが発生しました: {str(e)}"
