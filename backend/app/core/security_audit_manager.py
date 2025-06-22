@@ -535,7 +535,7 @@ def check_security_issues(results: Dict[str, Any]) -> List[str]:
 
 # モジュールレベルでインスタンスを作成
 try:
-    security_audit_manager = SecurityAuditManager()
+    security_audit_manager: Optional[SecurityAuditManager] = SecurityAuditManager()
 except Exception as e:
     logger.error(f"Failed to initialize security_audit_manager: {e}")
     security_audit_manager = None

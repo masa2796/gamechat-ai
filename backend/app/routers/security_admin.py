@@ -3,15 +3,17 @@
 管理者向けのセキュリティ監視とAPIキーローテーション機能
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 from datetime import datetime
 
 from ..core.auth import require_read_permission
 from ..core.log_security import security_audit_logger
 from ..core.api_key_rotation import api_key_rotation_manager
+from ..core.intrusion_detection import intrusion_detection_system
 
 # セキュリティ監査マネージャーのインポートをより堅牢にする
+security_audit_manager: Optional[Any] = None
 try:
     from ..core.security_audit_manager import security_audit_manager
 except ImportError as e:
@@ -19,8 +21,6 @@ except ImportError as e:
     _temp_logger = logging.getLogger(__name__)
     _temp_logger.warning(f"Failed to import security_audit_manager: {e}")
     security_audit_manager = None
-
-from ..core.intrusion_detection import intrusion_detection_system
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/security", tags=["Security Management"])
