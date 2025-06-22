@@ -43,11 +43,11 @@ class BackgroundTaskManager:
     
     async def submit_task(
         self, 
-        func: Callable, 
+        func: Callable[..., Any],
         name: str, 
-        *args, 
+        *args: Any, 
         metadata: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs: Any
     ) -> str:
         """
         バックグラウンドタスクを投入
@@ -73,7 +73,7 @@ class BackgroundTaskManager:
         logger.info(f"📋 Background task submitted: {name} (ID: {task_id})")
         return task_id
     
-    async def _execute_task(self, task_id: str, func: Callable, *args, **kwargs):
+    async def _execute_task(self, task_id: str, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
         """タスクを実行"""
         task = self.tasks[task_id]
         
@@ -151,7 +151,7 @@ class BackgroundTaskManager:
         """全タスクの状態を取得"""
         return self.tasks.copy()
     
-    async def cleanup_old_tasks(self, max_age_hours: int = 24):
+    async def cleanup_old_tasks(self, max_age_hours: int = 24) -> None:
         """古いタスクをクリーンアップ"""
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
         
@@ -171,7 +171,7 @@ class BackgroundTaskManager:
 # グローバルタスクマネージャー
 task_manager = BackgroundTaskManager(max_concurrent_tasks=3)
 
-async def start_background_cleanup():
+async def start_background_cleanup() -> None:
     """バックグラウンドクリーンアップタスクを開始"""
     while True:
         try:
@@ -197,7 +197,7 @@ async def process_heavy_rag_query(question: str, top_k: int = 50) -> Dict[str, A
     
     return result
 
-async def precompute_popular_queries():
+async def precompute_popular_queries() -> None:
     """
     人気のあるクエリを事前計算してキャッシュ
     """
@@ -218,4 +218,4 @@ async def precompute_popular_queries():
         except Exception as e:
             logger.error(f"❌ Failed to precompute {query}: {e}")
     
-    return results
+    logger.info(f"Precomputed {len(results)} queries")

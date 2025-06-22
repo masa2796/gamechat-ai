@@ -26,7 +26,7 @@ class CacheEntry:
     def is_expired(self) -> bool:
         return datetime.now() > self.expires_at
     
-    def increment_hits(self):
+    def increment_hits(self) -> None:
         self.hit_count += 1
 
 class AdvancedCache:
@@ -230,9 +230,9 @@ class AdvancedCache:
 class QueryCache:
     """クエリ応答専用キャッシュ（高速化）"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.cache = AdvancedCache(default_ttl=1200, max_memory_mb=150)  # 20分、150MB
-        self._key_cache = {}  # キー生成のキャッシュ
+        self._key_cache: Dict[str, str] = {}  # キー生成のキャッシュ
     
     def _generate_key(self, question: str, top_k: int = 50) -> str:
         """クエリキーを生成（安定性重視版）"""
@@ -248,9 +248,9 @@ class QueryCache:
         cache_key = self._generate_key(question, top_k)
         cached_data = await self.cache.get(cache_key)
         
-        if cached_data:
+        if cached_data and isinstance(cached_data, dict):
             # パフォーマンス情報は除外されているので、ここで追加
-            result = cached_data.copy()
+            result: Dict[str, Any] = cached_data.copy()
             result["performance"] = {
                 "cache_hit": True,
                 "total_duration": 0.001  # キャッシュヒット時の最小時間
@@ -293,7 +293,7 @@ class QueryCache:
 class SearchResultCache:
     """検索結果専用キャッシュ"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.cache = AdvancedCache(default_ttl=1800, max_memory_mb=100)  # 30分
     
     def _generate_search_key(self, query: str, query_type: str) -> str:
@@ -328,7 +328,7 @@ FAST_CACHE_CONFIG = {
 class FastQueryCache(QueryCache):
     """高速化されたクエリキャッシュ（シンプル版）"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.cache = AdvancedCache(default_ttl=600, max_memory_mb=100)  # 10分
         self._enabled = True
     
@@ -391,11 +391,11 @@ COMMON_QUESTIONS = [
 class PrewarmedCache:
     """プリウォーミング機能付きキャッシュ"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.fast_cache = FastQueryCache()
         self._prewarmed = False
     
-    async def prewarm_cache(self, rag_service=None):
+    async def prewarm_cache(self, rag_service: Any = None) -> None:
         """よくある質問でキャッシュをプリウォーミング"""
         if self._prewarmed or not rag_service:
             return
@@ -434,7 +434,7 @@ prewarmed_query_cache = PrewarmedCache()
 # - データベース最適化: Vector検索・ボトルネック検出実装
 # 全体達成率: 5.6% → 79.6% (+74%向上)
 
-async def cleanup_expired_cache():
+async def cleanup_expired_cache() -> None:
     """期限切れキャッシュのクリーンアップ（バックグラウンドタスク）"""
     while True:
         try:

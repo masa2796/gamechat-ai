@@ -3,7 +3,7 @@
 """
 import time
 import functools
-from typing import Dict, Any, Callable, Optional, List
+from typing import Dict, Any, Callable, Optional, List, AsyncIterator
 from datetime import datetime
 import logging
 from contextlib import asynccontextmanager
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class PerformanceProfiler:
     """パフォーマンス測定・プロファイリング用クラス"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.metrics: Dict[str, Any] = {}
         self.start_times: Dict[str, float] = {}
     
@@ -38,7 +38,7 @@ class PerformanceProfiler:
         return elapsed
     
     @asynccontextmanager
-    async def timer(self, operation: str):
+    async def timer(self, operation: str) -> AsyncIterator[None]:
         """コンテキストマネージャーとしてのタイマー"""
         start_time = time.perf_counter()
         logger.debug(f"⏱️ Starting: {operation}")
@@ -73,11 +73,11 @@ class PerformanceProfiler:
         self.start_times.clear()
 
 
-def async_timer(operation_name: str):
+def async_timer(operation_name: str) -> Callable:
     """非同期関数用デコレータ"""
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.perf_counter()
             logger.debug(f"⏱️ Starting: {operation_name}")
             
@@ -92,11 +92,11 @@ def async_timer(operation_name: str):
     return decorator
 
 
-def sync_timer(operation_name: str):
+def sync_timer(operation_name: str) -> Callable:
     """同期関数用デコレータ"""
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.perf_counter()
             logger.debug(f"⏱️ Starting: {operation_name}")
             
@@ -118,7 +118,7 @@ class BottleneckDetector:
         self.threshold = threshold_seconds
         self.bottlenecks: List[Dict[str, Any]] = []
     
-    def check_operation(self, operation: str, duration: float, context: Optional[Dict] = None):
+    def check_operation(self, operation: str, duration: float, context: Optional[Dict] = None) -> None:
         """操作の実行時間をチェックしてボトルネックを検出"""
         if duration > self.threshold:
             bottleneck = {

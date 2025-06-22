@@ -324,18 +324,22 @@ class VectorService:
             
             # 同期検索を非同期実行
             loop = asyncio.get_event_loop()
-            results = await loop.run_in_executor(
-                None,
-                lambda: self.vector_index.query(
-                    vector=query_embedding,
-                    top_k=top_k,
-                    namespace=namespace,
-                    include_metadata=True,
-                    include_vectors=True
+            if self.vector_index is not None:
+                results = await loop.run_in_executor(
+                    None,
+                    lambda: self.vector_index.query(  # type: ignore
+                        vector=query_embedding,
+                        top_k=top_k,
+                        namespace=namespace,
+                        include_metadata=True,
+                        include_vectors=True
+                    )
                 )
-            )
+            else:
+                results = None
             
-            matches = results.matches if hasattr(results, "matches") else results
+            if results is not None:
+                matches = results.matches if hasattr(results, "matches") else results
             GameChatLogger.log_info("vector_service", "検索結果取得", {
                 "namespace": namespace,
                 "results_count": len(matches)
@@ -394,14 +398,15 @@ class VectorService:
             GameChatLogger.log_warning("vector_service", "Vector index が設定されていません")
             return []
         
-        # パラメータ最適化
-        optimized_params = self._optimize_search_parameters(
-            top_k, namespaces, classification, min_score
-        )
+        # パラメータ最適化（classificationがある場合のみ）
+        if classification is not None:
+            top_k, min_score, namespaces = self._optimize_search_params(
+                classification, top_k, min_score, namespaces
+            )
         
-        namespaces = optimized_params["namespaces"]
-        top_k = optimized_params["top_k"]
-        min_score = optimized_params["min_score"]
+        # ネームスペースの確認
+        if namespaces is None:
+            namespaces = self._get_default_namespaces(classification)
         
         # 並列検索タスクを作成
         tasks = []
@@ -429,7 +434,7 @@ class VectorService:
         
         GameChatLogger.log_success("vector_service", "並列ベクトル検索完了", {
             "total_results": len(all_results),
-            "namespaces_processed": len(namespaces)
+            "namespaces_processed": len(namespaces) if namespaces else 0
         })
         
         if all_results:

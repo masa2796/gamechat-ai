@@ -163,23 +163,30 @@ class LLMService:
             GameChatLogger.log_info("llm_service", "テスト環境でのモックレスポンスを生成")
             return "こんにちは！GameChat AIです。テスト環境で動作中です。ゲームに関する質問をお気軽にどうぞ！"
         
+        # OpenAIクライアントが設定されていない場合
+        if self.client is None:
+            error_msg = "申し訳ございません、現在LLMサービスが利用できません。"  # type: ignore[unreachable]
+            GameChatLogger.log_error("llm_service", "OpenAI client is not initialized", None)
+            return error_msg
+
+        # OpenAI API呼び出し
         try:
-            # 10秒のタイムアウトを設定
             response = await asyncio.wait_for(
                 asyncio.to_thread(
-                    self.client.chat.completions.create,
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    max_tokens=250,  # 更に削減してレスポンス時間短縮
-                    temperature=0.2,  # より一貫性のある回答
-                    presence_penalty=0.1,
-                    frequency_penalty=0.1,
-                    timeout=8  # OpenAI側のタイムアウト
+                    lambda: self.client.chat.completions.create(  # type: ignore[union-attr]
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        max_tokens=250,
+                        temperature=0.2,
+                        presence_penalty=0.1,
+                        frequency_penalty=0.1,
+                        timeout=8
+                    )
                 ),
-                timeout=10.0  # 全体のタイムアウト
+                timeout=10.0
             )
             
             # レスポンス内容の取得と検証
@@ -460,7 +467,7 @@ class LLMService:
 上記の情報を参考に、質問に対する適切な回答を生成してください。"""
             
             # OpenAI API ストリーミング呼び出し
-            stream = await self.client.chat.completions.acreate(
+            stream = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -471,10 +478,10 @@ class LLMService:
                 temperature=0.7
             )
             
-            async for chunk in stream:
+            for chunk in stream:
                 if chunk.choices[0].delta.content is not None:
                     yield chunk.choices[0].delta.content
             
         except Exception as e:
-            GameChatLogger.log_error("llm_service", f"Streaming error: {e}")
+            GameChatLogger.log_error("llm_service", "Streaming error", e)
             yield f"申し訳ありませんが、回答の生成中にエラーが発生しました: {str(e)}"
