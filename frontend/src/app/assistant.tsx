@@ -1,37 +1,137 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { SentryTestComponentWrapper as SentryTestComponent } from "@/components/sentry-test-wrapper";
+import { getAuth } from "firebase/auth";
+import { initializeApp } from "firebase/app";
+import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
+// Firebase設定（環境変数から取得）
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+};
+
+// Firebase初期化をクライアントサイドでのみ実行
+let app: ReturnType<typeof initializeApp> | null = null;
+let auth: ReturnType<typeof getAuth> | null = null;
+
+// Firebase初期化の安全なチェック
+const shouldInitializeFirebase = () => {
+  if (typeof window === "undefined") return false; // サーバーサイドでは初期化しない
+  if (process.env.CI) return false; // CI環境では初期化しない
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "dummy-api-key-for-ci") return false;
+  return true;
+};
+
+if (shouldInitializeFirebase()) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+  } catch (error) {
+    console.warn("Firebase initialization failed:", error);
+  }
+}
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      ready: (callback: () => void) => void;
+    };
+  }
+}
+
 export const Assistant = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+
+  // reCAPTCHAスクリプトの動的ロード
+  useEffect(() => {
+    // Sentryタグを設定
+    setSentryTag("component", "assistant");
+    setSentryTag("environment", process.env.NEXT_PUBLIC_ENVIRONMENT || "development");
+    
+    if (typeof window !== "undefined" && !window.grecaptcha) {
+      const script = document.createElement("script");
+      script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
+      script.async = true;
+      script.onload = () => setRecaptchaReady(true);
+      document.body.appendChild(script);
+    } else {
+      setRecaptchaReady(true);
+    }
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
     
     const userMessage: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
+    
+    // Sentryにユーザーアクションを記録
+    captureUserAction("message_sent", { messageLength: input.length });
+    
     setInput("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      let idToken = "";
+      if (auth && auth.currentUser) {
+        try {
+          idToken = await auth.currentUser.getIdToken();
+        } catch (error) {
+          console.warn("Failed to get auth token:", error);
+        }
+      }
+      let recaptchaToken = "";
+      // reCAPTCHA認証をスキップするかチェック
+      if (process.env.NEXT_PUBLIC_SKIP_RECAPTCHA === "true") {
+        recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
+        console.log("reCAPTCHA verification skipped due to NEXT_PUBLIC_SKIP_RECAPTCHA=true");
+      } else if (window.grecaptcha && recaptchaReady) {
+        recaptchaToken = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: "submit" });
+      }
+      const res = await fetch("/api/rag/query", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: input })
+        headers: {
+          "Content-Type": "application/json",
+          // APIキー認証ヘッダーを追加
+          "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+        },
+        body: JSON.stringify({ 
+          question: input,
+          top_k: 5,
+          with_context: true,
+          recaptchaToken
+        }),
+        credentials: "include"
       });
       
       const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message || "APIエラーが発生しました");
+      }
+      
       const botMessage: Message = { 
         role: "assistant", 
         content: data.answer || "エラーが発生しました" 
@@ -39,6 +139,14 @@ export const Assistant = () => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("Error:", error);
+      
+      // Sentryにエラーを報告
+      captureAPIError(error as Error, {
+        endpoint: "/api/rag/query",
+        userMessage: userMessage.content,
+        timestamp: new Date().toISOString()
+      });
+      
       const errorMessage: Message = { 
         role: "assistant", 
         content: "エラーが発生しました。もう一度お試しください。" 
@@ -50,17 +158,18 @@ export const Assistant = () => {
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  GameChat AI
+    <ErrorBoundary>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="#">
+                    GameChat AI
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -72,6 +181,9 @@ export const Assistant = () => {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
+        
+        {/* 開発環境用Sentryテストパネル */}
+        {process.env.NODE_ENV === 'development' && <SentryTestComponent />}
         
         {/* チャット画面 */}
         <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -135,5 +247,6 @@ export const Assistant = () => {
         </div>
       </SidebarInset>
     </SidebarProvider>
+    </ErrorBoundary>
   );
 };

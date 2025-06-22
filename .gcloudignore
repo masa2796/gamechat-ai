@@ -1,0 +1,85 @@
+# Git-related files
+.git/
+.gitignore
+
+# データファイル（Cloud Storageを使用するため不要）
+data/
+*.jsonl
+*.json
+
+# Node.js
+node_modules/
+frontend/node_modules/
+**/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+frontend/out/
+package-lock.json
+yarn.lock
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+backend/env/
+backend/venv/
+backend/.venv/
+.venv/
+backend/ENV/
+backend/env.bak/
+backend/venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (except templates)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/.env.local
+backend/.env.development
+backend/.env.test
+
+# Testing
+coverage/
+.nyc_output/
+.pytest_cache/
+
+# Documentation build
+docs/_build/
+docs/sphinx/_build/
+
+# Backup files
+backups/
+
+# Docker
+.dockerignore
+
+# Monitoring
+monitoring/data/
+
+# Build artifacts
+*.tar.gz
+*.zip

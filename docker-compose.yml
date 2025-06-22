@@ -1,0 +1,37 @@
+services:
+  # Backend service
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: gamechat-ai-backend-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - CORS_ORIGINS=http://localhost:3000
+    volumes:
+      # Mount source code for hot reload in development
+      - ./backend/app:/app/app:ro
+      - ./requirements.txt:/app/requirements.txt:ro
+    env_file:
+      - .env
+    networks:
+      - gamechat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend is now deployed on Firebase Hosting (static)
+  # No longer using Docker container for frontend development
+
+networks:
+  gamechat-network:
+    driver: bridge
+
+volumes:
+  backend_data:

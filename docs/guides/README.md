@@ -20,6 +20,22 @@
 - スコアリング・品質評価システム
 - パフォーマンスチューニング
 
+### 🛠️ 開発・環境管理
+
+#### [`dependencies.md`](./dependencies.md)
+**依存関係と開発ガイド**
+- 統一された依存関係管理アプローチ
+- 開発・本番環境のセットアップ
+- VSCode統合とトラブルシューティング
+- オプション依存関係と型チェック
+
+#### [`environment-setup.md`](./environment-setup.md)
+**環境セットアップガイド**
+- プロジェクト初期設定
+- 開発環境の構築手順
+- 環境変数の設定方法
+- Docker環境の使用方法
+
 ### 🤖 AI・LLM関連
 
 #### [`llm_response_enhancement.md`](./llm_response_enhancement.md)
