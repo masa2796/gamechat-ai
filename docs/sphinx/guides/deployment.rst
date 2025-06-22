@@ -31,7 +31,7 @@ GameChat AIの本番環境デプロイに関する詳細ガイドです。
        runs-on: ubuntu-latest
        steps:
          - name: Checkout code
-           uses: actions/checkout@v3
+           uses: actions/checkout@v4
          
          - name: Run tests
            run: |

@@ -18,10 +18,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Configure build cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: /tmp/.buildx-cache-${{ matrix.component }}
         key: ${{ runner.os }}-buildx-${{ matrix.component }}-${{ github.sha }}
@@ -104,7 +104,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build backend for size analysis
       uses: docker/build-push-action@v5
