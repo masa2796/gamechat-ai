@@ -217,7 +217,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from .services.rag_service import RagService
         
         # バックグラウンドでプリウォーミング実行
-        async def background_prewarm():
+        async def background_prewarm() -> None:
             try:
                 await asyncio.sleep(5)  # 5秒待機してからプリウォーミング
                 rag_service = RagService()

@@ -19,7 +19,7 @@ logger = GameChatLogger.get_logger(__name__)
 class StreamingRagService:
     """ストリーミング対応RAGサービス"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.rag_service = RagService()
     
     async def stream_rag_response(self, rag_req: RagRequest) -> AsyncGenerator[str, None]:
@@ -113,7 +113,7 @@ class StreamingRagService:
             ])
             
             # OpenAI ChatCompletionのストリーミング
-            response_stream = await self.rag_service.llm_service.stream_response(
+            response_stream = self.rag_service.llm_service.stream_response(
                 question, context_text
             )
             
@@ -147,7 +147,7 @@ class StreamingRagService:
 streaming_service = StreamingRagService()
 
 @router.post("/rag/query")
-async def stream_rag_query(rag_req: RagRequest):
+async def stream_rag_query(rag_req: RagRequest) -> StreamingResponse:
     """
     ストリーミング対応RAGクエリエンドポイント
     Server-Sent Events (SSE) でリアルタイム配信
@@ -157,7 +157,7 @@ async def stream_rag_query(rag_req: RagRequest):
     
     logger.info(f"🚀 Streaming RAG query: {rag_req.question[:50]}...")
     
-    async def event_generator():
+    async def event_generator() -> AsyncGenerator[str, None]:
         async for chunk in streaming_service.stream_rag_response(rag_req):
             yield chunk
     
@@ -172,7 +172,7 @@ async def stream_rag_query(rag_req: RagRequest):
     )
 
 @router.get("/health")
-async def streaming_health():
+async def streaming_health() -> Dict[str, Any]:
     """ストリーミングサービスヘルスチェック"""
     return {
         "status": "healthy",
