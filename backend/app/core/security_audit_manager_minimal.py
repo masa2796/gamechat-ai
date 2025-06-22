@@ -8,7 +8,7 @@ from pathlib import Path
 class SecurityAuditManager:
     """最小版セキュリティ監査マネージャー"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.audit_dir = Path("logs/security_audit")
         self.audit_dir.mkdir(parents=True, exist_ok=True)
     

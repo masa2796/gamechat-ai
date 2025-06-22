@@ -105,9 +105,9 @@ class SecurityLogMasker:
             else:
                 # 通常の値の処理
                 if isinstance(value, dict):
-                    masked_dict[key] = cls.mask_sensitive_data(value)  # type: ignore
+                    masked_dict[key] = cls.mask_sensitive_data(value)
                 elif isinstance(value, str):
-                    masked_dict[key] = cls.mask_sensitive_data(value)  # type: ignore
+                    masked_dict[key] = cls.mask_sensitive_data(value)
                 else:
                     masked_dict[key] = str(value)
         
