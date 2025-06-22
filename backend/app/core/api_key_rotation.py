@@ -36,7 +36,8 @@ class APIKeyRotationManager:
             self.backup_dir.mkdir(parents=True, exist_ok=True)
         except (PermissionError, OSError) as e:
             self.logger.warning(f"Cannot create backup directory: {e}")
-            self.backup_dir = None
+            # バックアップディレクトリが作成できない場合は現在のディレクトリを使用
+            self.backup_dir = Path(".")
     
     def generate_api_key(self, key_type: str) -> str:
         """
@@ -171,7 +172,7 @@ class APIKeyRotationManager:
                         "needs_rotation": self.is_rotation_needed(key_type),
                         "last_rotation": last_rotation.isoformat(),
                         "next_rotation": next_rotation.isoformat(),
-                        "days_until_rotation": (next_rotation - datetime.now()).days
+                        "days_until_rotation": str((next_rotation - datetime.now()).days)
                     }
                     
             except (json.JSONDecodeError, KeyError, ValueError) as e:

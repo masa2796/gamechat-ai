@@ -57,6 +57,7 @@ class SecurityAuditLogger:
         self.logger.setLevel(logging.INFO)
         
         # セキュリティ専用ログハンドラーの設定
+        handler: logging.Handler
         if log_file_path:
             handler = logging.FileHandler(log_file_path)
         else:
@@ -186,7 +187,7 @@ class SecurityAuditLogger:
         await self.log_security_event(
             SecurityEventType.SECURITY_VIOLATION,
             SeverityLevel.CRITICAL,
-            f"Unauthorized debug endpoint access attempted",
+            "Unauthorized debug endpoint access attempted",
             client_ip=event.client_ip,
             endpoint=event.endpoint,
             additional_data={"should_not_exist_in_production": True}

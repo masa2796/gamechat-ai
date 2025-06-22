@@ -61,7 +61,7 @@ class SecurityLogMasker:
                 masked_text = re.sub(pattern, r'\1***MASKED***', masked_text)
             elif pattern_name == 'email':
                 # メールアドレスの部分マスキング
-                def mask_email(match):
+                def mask_email(match: re.Match[str]) -> str:
                     email = match.group(1)
                     local, domain = email.split('@')
                     masked_local = local[:2] + '***' if len(local) > 2 else '***'
@@ -79,7 +79,7 @@ class SecurityLogMasker:
     @classmethod
     def _mask_dict(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         """辞書内の機密情報をマスキング"""
-        masked_dict = {}
+        masked_dict: Dict[str, Any] = {}
         
         # 機密情報が含まれる可能性のあるキー
         sensitive_keys = {
@@ -104,7 +104,12 @@ class SecurityLogMasker:
                     masked_dict[key] = "***MASKED***"
             else:
                 # 通常の値の処理
-                masked_dict[key] = cls.mask_sensitive_data(value)
+                if isinstance(value, dict):
+                    masked_dict[key] = cls.mask_sensitive_data(value)  # type: ignore
+                elif isinstance(value, str):
+                    masked_dict[key] = cls.mask_sensitive_data(value)  # type: ignore
+                else:
+                    masked_dict[key] = str(value)
         
         return masked_dict
     
@@ -262,10 +267,11 @@ security_audit_logger = SecurityAuditLogger()
 
 def mask_log_message(message: str) -> str:
     """ログメッセージの機密情報をマスキングする簡易関数"""
-    return SecurityLogMasker.mask_sensitive_data(message)
+    result = SecurityLogMasker.mask_sensitive_data(message)
+    return result if isinstance(result, str) else str(result)
 
 
-def log_safe(logger: logging.Logger, level: str, message: str, **kwargs) -> None:
+def log_safe(logger: logging.Logger, level: str, message: str, **kwargs: Any) -> None:
     """安全なログ出力（機密情報自動マスキング）"""
     masked_message = mask_log_message(message)
     
