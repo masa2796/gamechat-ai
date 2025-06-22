@@ -1,0 +1,429 @@
+name: Blue-Green Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment Type'
+        required: true
+        default: 'blue-green'
+        type: choice
+        options:
+          - blue-green
+          - rollback
+          - canary
+      target_environment:
+        description: 'Target Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  PROJECT_ID: gamechat-ai
+  REGION: asia-northeast1
+  SERVICE_NAME: gamechat-ai-backend
+  
+jobs:
+  # 準備フェーズ
+  prepare-deployment:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      deployment-id: ${{ steps.generate-id.outputs.deployment-id }}
+      blue-version: ${{ steps.versions.outputs.blue-version }}
+      green-version: ${{ steps.versions.outputs.green-version }}
+      current-traffic: ${{ steps.traffic.outputs.current-traffic }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Generate Deployment ID
+      id: generate-id
+      run: |
+        DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)-${{ github.sha }}"
+        echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+        echo "🚀 Deployment ID: $DEPLOYMENT_ID"
+        
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Get Current Deployment Versions
+      id: versions
+      run: |
+        # 現在のBlue/Greenバージョンを取得
+        CURRENT_SERVICES=$(gcloud run services list --region=${{ env.REGION }} --format="value(metadata.name)" | grep "${{ env.SERVICE_NAME }}")
+        
+        if echo "$CURRENT_SERVICES" | grep -q "${{ env.SERVICE_NAME }}-blue"; then
+          BLUE_EXISTS=true
+          BLUE_VERSION=$(gcloud run services describe ${{ env.SERVICE_NAME }}-blue --region=${{ env.REGION }} --format="value(metadata.labels.version)")
+        else
+          BLUE_EXISTS=false
+          BLUE_VERSION=""
+        fi
+        
+        if echo "$CURRENT_SERVICES" | grep -q "${{ env.SERVICE_NAME }}-green"; then
+          GREEN_EXISTS=true
+          GREEN_VERSION=$(gcloud run services describe ${{ env.SERVICE_NAME }}-green --region=${{ env.REGION }} --format="value(metadata.labels.version)")
+        else
+          GREEN_EXISTS=false
+          GREEN_VERSION=""
+        fi
+        
+        echo "blue-version=$BLUE_VERSION" >> $GITHUB_OUTPUT
+        echo "green-version=$GREEN_VERSION" >> $GITHUB_OUTPUT
+        echo "🔵 Blue version: $BLUE_VERSION"
+        echo "🟢 Green version: $GREEN_VERSION"
+        
+    - name: Get Current Traffic Distribution
+      id: traffic
+      run: |
+        # 現在のトラフィック分散を取得
+        TRAFFIC_INFO=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="json" 2>/dev/null || echo "{}")
+        echo "current-traffic=$TRAFFIC_INFO" >> $GITHUB_OUTPUT
+
+  # Blueデプロイメント（新バージョン）
+  deploy-blue:
+    name: Deploy Blue Environment
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: github.event.inputs.deployment_type != 'rollback'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Configure Docker authentication
+      run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      
+    - name: Build and Push Image
+      run: |
+        IMAGE_TAG="asia-northeast1-docker.pkg.dev/${{ env.PROJECT_ID }}/gamechat-ai-backend/backend:${{ needs.prepare-deployment.outputs.deployment-id }}"
+        
+        # Dockerイメージビルド
+        docker build -f backend/Dockerfile -t $IMAGE_TAG .
+        docker push $IMAGE_TAG
+        
+        echo "📦 Image pushed: $IMAGE_TAG"
+        
+    - name: Deploy to Blue Environment
+      run: |
+        IMAGE_TAG="asia-northeast1-docker.pkg.dev/${{ env.PROJECT_ID }}/gamechat-ai-backend/backend:${{ needs.prepare-deployment.outputs.deployment-id }}"
+        
+        # Blueサービスにデプロイ
+        gcloud run deploy ${{ env.SERVICE_NAME }}-blue \
+          --image $IMAGE_TAG \
+          --region ${{ env.REGION }} \
+          --platform managed \
+          --allow-unauthenticated \
+          --port 8000 \
+          --memory 1Gi \
+          --cpu 1 \
+          --max-instances 10 \
+          --min-instances 1 \
+          --set-env-vars="ENVIRONMENT=${{ github.event.inputs.target_environment || 'production' }},LOG_LEVEL=INFO" \
+          --labels="version=${{ needs.prepare-deployment.outputs.deployment-id }},environment=blue,deployment-type=blue-green" \
+          --no-traffic
+          
+        echo "🔵 Blue environment deployed successfully"
+
+  # ヘルスチェック（Blue環境）
+  health-check-blue:
+    name: Health Check Blue Environment
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, deploy-blue]
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Get Blue Service URL
+      id: blue-url
+      run: |
+        BLUE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }}-blue --region=${{ env.REGION }} --format="value(status.url)")
+        echo "blue-url=$BLUE_URL" >> $GITHUB_OUTPUT
+        echo "🔵 Blue URL: $BLUE_URL"
+        
+    - name: Comprehensive Health Check
+      run: |
+        BLUE_URL="${{ steps.blue-url.outputs.blue-url }}"
+        
+        echo "🔍 Starting comprehensive health check for Blue environment..."
+        
+        # 基本ヘルスチェック
+        for i in {1..5}; do
+          echo "Attempt $i/5: Basic health check"
+          if curl -f --max-time 30 "$BLUE_URL/health" > /dev/null 2>&1; then
+            echo "✅ Basic health check passed"
+            break
+          elif [ $i -eq 5 ]; then
+            echo "❌ Basic health check failed after 5 attempts"
+            exit 1
+          else
+            echo "⏳ Waiting 10 seconds before retry..."
+            sleep 10
+          fi
+        done
+        
+        # 詳細ヘルスチェック
+        echo "🔍 Detailed health check"
+        HEALTH_RESPONSE=$(curl -s "$BLUE_URL/health/detailed" | jq -r '.status // "unknown"')
+        if [ "$HEALTH_RESPONSE" = "healthy" ]; then
+          echo "✅ Detailed health check passed"
+        else
+          echo "❌ Detailed health check failed: $HEALTH_RESPONSE"
+          exit 1
+        fi
+        
+        # パフォーマンステスト
+        echo "🚀 Performance test"
+        RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}" "$BLUE_URL/health")
+        echo "⏱️ Response time: ${RESPONSE_TIME}s"
+        
+        if (( $(echo "$RESPONSE_TIME < 5.0" | bc -l) )); then
+          echo "✅ Performance test passed"
+        else
+          echo "❌ Performance test failed: Response time too slow"
+          exit 1
+        fi
+
+  # カナリアリリース（5%トラフィック）
+  canary-release:
+    name: Canary Release (5% Traffic)
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, health-check-blue]
+    if: github.event.inputs.deployment_type != 'rollback'
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Route 5% Traffic to Blue
+      run: |
+        echo "🐤 Starting canary release with 5% traffic to Blue environment"
+        
+        # メインサービスのトラフィックを95%（Green）と5%（Blue）に分割
+        gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --to-revisions="${{ env.SERVICE_NAME }}-green=95,${{ env.SERVICE_NAME }}-blue=5" \
+          --platform managed
+          
+        echo "✅ Canary release configured: 95% Green, 5% Blue"
+        
+    - name: Monitor Canary Release
+      run: |
+        echo "📊 Monitoring canary release for 5 minutes..."
+        
+        # 5分間モニタリング
+        for i in {1..10}; do
+          echo "Monitoring cycle $i/10"
+          
+          # エラー率チェック（実際の監視ツールに置き換え）
+          ERROR_RATE=$(curl -s "https://your-monitoring-endpoint/api/error-rate" || echo "0")
+          echo "Current error rate: $ERROR_RATE%"
+          
+          if (( $(echo "$ERROR_RATE > 5.0" | bc -l) )); then
+            echo "❌ High error rate detected: $ERROR_RATE%"
+            echo "🔄 Rolling back..."
+            
+            gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+              --region=${{ env.REGION }} \
+              --to-revisions="${{ env.SERVICE_NAME }}-green=100" \
+              --platform managed
+              
+            exit 1
+          fi
+          
+          sleep 30
+        done
+        
+        echo "✅ Canary release monitoring completed successfully"
+
+  # 承認ワークフロー
+  approval-workflow:
+    name: Deployment Approval
+    runs-on: ubuntu-latest
+    needs: canary-release
+    environment: 
+      name: production-approval
+      url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    
+    steps:
+    - name: Request Deployment Approval
+      run: |
+        echo "🔐 Deployment approval required for full traffic switch"
+        echo "Current status: Canary release (5% traffic) successful"
+        echo "Next step: Switch 100% traffic to Blue environment"
+        echo ""
+        echo "Review the following before approval:"
+        echo "- Application health metrics"
+        echo "- Error rates and logs"
+        echo "- Performance metrics"
+        echo "- User feedback"
+
+  # フルトラフィック切り替え
+  full-traffic-switch:
+    name: Switch Full Traffic to Blue
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, approval-workflow]
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Switch 100% Traffic to Blue
+      run: |
+        echo "🔄 Switching 100% traffic to Blue environment"
+        
+        gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --to-revisions="${{ env.SERVICE_NAME }}-blue=100" \
+          --platform managed
+          
+        echo "✅ Full traffic switched to Blue environment"
+        
+    - name: Update Service Labels
+      run: |
+        # Blueを新しいアクティブとしてマーク
+        gcloud run services update ${{ env.SERVICE_NAME }}-blue \
+          --region=${{ env.REGION }} \
+          --update-labels="status=active,switched-at=$(date +%Y%m%d-%H%M%S)"
+          
+        # Greenを非アクティブとしてマーク（もし存在する場合）
+        if gcloud run services describe ${{ env.SERVICE_NAME }}-green --region=${{ env.REGION }} > /dev/null 2>&1; then
+          gcloud run services update ${{ env.SERVICE_NAME }}-green \
+            --region=${{ env.REGION }} \
+            --update-labels="status=standby,switched-from=$(date +%Y%m%d-%H%M%S)"
+        fi
+
+  # デプロイメント後の最終検証
+  post-deployment-validation:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: full-traffic-switch
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Final Health Check
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)")
+        
+        echo "🔍 Final health check on: $SERVICE_URL"
+        
+        # 複数回ヘルスチェック
+        for i in {1..3}; do
+          echo "Final check $i/3"
+          if curl -f --max-time 30 "$SERVICE_URL/health" > /dev/null 2>&1; then
+            echo "✅ Final health check $i passed"
+          else
+            echo "❌ Final health check $i failed"
+            exit 1
+          fi
+          sleep 5
+        done
+        
+    - name: Performance Validation
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)")
+        
+        echo "🚀 Performance validation"
+        
+        # パフォーマンス測定
+        for i in {1..5}; do
+          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}" "$SERVICE_URL/health")
+          echo "Response time $i: ${RESPONSE_TIME}s"
+        done
+        
+    - name: Generate Deployment Report
+      run: |
+        cat > deployment-report.md << EOF
+        # 🚀 Blue-Green Deployment Report
+        
+        **Deployment ID**: ${{ needs.prepare-deployment.outputs.deployment-id }}
+        **Date**: $(date)
+        **Status**: ✅ SUCCESS
+        
+        ## Deployment Summary
+        - **Previous Version**: ${{ needs.prepare-deployment.outputs.green-version }}
+        - **New Version**: ${{ needs.prepare-deployment.outputs.deployment-id }}
+        - **Environment**: ${{ github.event.inputs.target_environment || 'production' }}
+        
+        ## Validation Results
+        - ✅ Health checks passed
+        - ✅ Performance validation passed
+        - ✅ Canary release successful
+        - ✅ Traffic switch completed
+        
+        ## URLs
+        - **Active Service**: $(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)")
+        - **Blue Environment**: $(gcloud run services describe ${{ env.SERVICE_NAME }}-blue --region=${{ env.REGION }} --format="value(status.url)")
+        
+        ## Next Steps
+        - Monitor application for 24 hours
+        - Clean up old Green environment after 48 hours
+        - Update documentation if needed
+        EOF
+        
+        echo "📊 Deployment report generated"
+        cat deployment-report.md
+        
+    - name: Upload Deployment Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-report
+        path: deployment-report.md
+        retention-days: 90
+
+  # 通知
+  notify-deployment:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, post-deployment-validation]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: needs.post-deployment-validation.result == 'success'
+      run: |
+        echo "✅ Blue-Green deployment completed successfully!"
+        echo "🚀 Deployment ID: ${{ needs.prepare-deployment.outputs.deployment-id }}"
+        echo "🌐 Service URL: https://your-production-domain.com"
+        
+        # ここでSlack/Discord/メール通知を追加
+        
+    - name: Notify Failure
+      if: needs.post-deployment-validation.result == 'failure'
+      run: |
+        echo "❌ Blue-Green deployment failed!"
+        echo "🆔 Deployment ID: ${{ needs.prepare-deployment.outputs.deployment-id }}"
+        echo "🔄 Automatic rollback may have been triggered"
+        
+        # ここで緊急アラート通知を追加

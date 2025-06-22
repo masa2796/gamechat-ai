@@ -24,7 +24,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <MessagesSquare className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">GameChat AI</span>
+                  <span className="font-semibold" data-testid="app-title">GameChat AI</span>
                   <span className="">チャットボット</span>
                 </div>
               </Link>

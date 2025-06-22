@@ -1,7 +1,9 @@
 name: Deploy to Production
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Comprehensive Testing Pipeline"]
+    types: [completed]
     branches: [ main ]
   workflow_dispatch:
     inputs:
@@ -13,6 +15,11 @@ on:
         options:
           - production
           - staging
+      skip_tests:
+        description: 'Skip test validation (emergency only)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
