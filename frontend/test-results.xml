@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="1" failures="0" errors="0" time="0.016225166">
+    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-06-22T23:22:03.020Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.016225166">
+        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.015364">
+        </testcase>
+    </testsuite>
+</testsuites>
