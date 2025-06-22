@@ -34,6 +34,13 @@ on:
           - high
           - critical
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+  checks: write
+
 env:
   PROJECT_ID: gamechat-ai
   REGION: asia-northeast1
