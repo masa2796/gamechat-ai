@@ -163,7 +163,7 @@ export const Assistant = () => {
         <AppSidebar />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
+            <SidebarTrigger data-testid="sidebar-trigger" />
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
@@ -188,9 +188,9 @@ export const Assistant = () => {
         {/* チャット画面 */}
         <div className="flex flex-col h-[calc(100vh-4rem)]">
           {/* メッセージ履歴 */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4" data-testid="chat-messages">
             {messages.length === 0 ? (
-              <div className="text-center text-gray-500 mt-8">
+              <div className="text-center text-gray-500 mt-8" data-testid="welcome-message">
                 <p>GameChat AIへようこそ！</p>
                 <p>ゲームに関する質問をお気軽にどうぞ。</p>
               </div>
@@ -198,18 +198,21 @@ export const Assistant = () => {
               <div className="space-y-4 max-w-3xl mx-auto">
                 {messages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] p-3 rounded-lg ${
-                      msg.role === 'user' 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-100 text-gray-900'
-                    }`}>
+                    <div 
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        msg.role === 'user' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-100 text-gray-900'
+                      }`}
+                      data-testid={msg.role === 'user' ? 'user-message' : 'ai-message'}
+                    >
                       <div className="whitespace-pre-wrap">{msg.content}</div>
                     </div>
                   </div>
                 ))}
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="bg-gray-100 text-gray-900 p-3 rounded-lg">
+                    <div className="bg-gray-100 text-gray-900 p-3 rounded-lg" data-testid="loading-message">
                       <div className="flex items-center gap-2">
                         <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
                         考え中...
@@ -222,7 +225,7 @@ export const Assistant = () => {
           </div>
           
           {/* 入力エリア */}
-          <div className="border-t p-4">
+          <div className="border-t p-4" data-testid="chat-input-area">
             <div className="max-w-3xl mx-auto">
               <div className="flex gap-2">
                 <input
@@ -233,11 +236,13 @@ export const Assistant = () => {
                   className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ゲームについて質問してください..."
                   disabled={loading}
+                  data-testid="message-input"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={loading || !input.trim()}
                   className="px-6 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
+                  data-testid="send-button"
                 >
                   送信
                 </button>
