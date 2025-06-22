@@ -7,45 +7,12 @@ import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SentryTestComponentWrapper as SentryTestComponent } from "@/components/sentry-test-wrapper";
-import { getAuth } from "firebase/auth";
-import { initializeApp } from "firebase/app";
+import { auth as firebaseAuth } from "@/lib/firebase";
 import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
-}
-
-// Firebase設定（環境変数から取得）
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-};
-
-// Firebase初期化をクライアントサイドでのみ実行
-let app: ReturnType<typeof initializeApp> | null = null;
-let auth: ReturnType<typeof getAuth> | null = null;
-
-// Firebase初期化の安全なチェック
-const shouldInitializeFirebase = () => {
-  if (typeof window === "undefined") return false; // サーバーサイドでは初期化しない
-  if (process.env.CI) return false; // CI環境では初期化しない
-  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "dummy-api-key-for-ci") return false;
-  return true;
-};
-
-if (shouldInitializeFirebase()) {
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-  } catch (error) {
-    console.warn("Firebase initialization failed:", error);
-  }
 }
 
 declare global {
@@ -94,9 +61,9 @@ export const Assistant = () => {
 
     try {
       let idToken = "";
-      if (auth && auth.currentUser) {
+      if (firebaseAuth && firebaseAuth.currentUser) {
         try {
-          idToken = await auth.currentUser.getIdToken();
+          idToken = await firebaseAuth.currentUser.getIdToken();
         } catch (error) {
           console.warn("Failed to get auth token:", error);
         }
@@ -118,10 +85,10 @@ export const Assistant = () => {
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
         body: JSON.stringify({ 
-          question: input,
+          query: input,
           top_k: 5,
           with_context: true,
-          recaptchaToken
+          recaptcha_token: recaptchaToken
         }),
         credentials: "include"
       });

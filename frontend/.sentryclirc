@@ -1,0 +1,10 @@
+# Sentry CLI configuration
+# 開発環境・CI環境ではSENTRY_AUTH_TOKENが設定されていない場合はソースマップアップロードをスキップ
+# 本番環境でのみSENTRY_AUTH_TOKEN環境変数を設定してソースマップをアップロード
+
+defaults.url=https://sentry.io/
+defaults.org=masaki-tanaka
+defaults.project=javascript-nextjs
+
+# 認証トークンは環境変数から取得（設定されていない場合はアップロードしない）
+# auth.token=<SENTRY_AUTH_TOKEN will be read from environment>

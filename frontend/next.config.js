@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Docker環境またはCI環境では standalone モードを使用
-  // ローカル開発では export モードを使用
-  output: process.env.DOCKER_BUILD || process.env.CI ? 'standalone' : 'export',
+  // ローカル開発でも standalone モードを使用（API Routesが必要なため）
+  output: 'standalone',
   
   // 基本設定
   distDir: '.next',
@@ -104,7 +104,7 @@ const nextConfig = {
   
   // 環境変数設定
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001',
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     GOOGLE_SITE_VERIFICATION: process.env.GOOGLE_SITE_VERIFICATION,
@@ -118,7 +118,7 @@ const nextConfig = {
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || (process.env.CI ? '1:123456789012:web:dummy-app-id' : ''),
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || (process.env.CI ? 'G-DUMMY' : ''),
     NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || (process.env.CI ? 'dummy-recaptcha-site-key' : ''),
-    NEXT_PUBLIC_API_KEY: process.env.NEXT_PUBLIC_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : ''),
+    NEXT_PUBLIC_API_KEY: process.env.NEXT_PUBLIC_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : 'dev-key-12345'),
   },
 
   // PWA対応設定（export モードでは無効化）
@@ -140,9 +140,15 @@ const nextConfig = {
 
 // Injected content via Sentry wizard below
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
 
-module.exports = withSentryConfig(
+// CI環境または開発環境でSENTRY_AUTH_TOKENが設定されていない場合はSentryを無効化
+const shouldUseSentry = process.env.NODE_ENV === 'production' && 
+                       !process.env.CI && 
+                       process.env.SENTRY_AUTH_TOKEN;
+
+module.exports = shouldUseSentry ? withSentryConfig(
   nextConfig,
   {
     // For all available options, see:
@@ -172,4 +178,4 @@ module.exports = withSentryConfig(
     // https://vercel.com/docs/cron-jobs
     automaticVercelMonitors: process.env.DOCKER_BUILD || process.env.CI || false,
   }
-);
+) : nextConfig;

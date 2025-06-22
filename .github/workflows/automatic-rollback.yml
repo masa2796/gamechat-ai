@@ -213,7 +213,7 @@ jobs:
         echo "✅ Configuration backup completed"
         
     - name: Upload Backup Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: rollback-backup
         path: service-config-*.yaml
@@ -441,7 +441,7 @@ jobs:
         cat rollback-report.md
         
     - name: Upload Rollback Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: rollback-report
         path: rollback-report.md

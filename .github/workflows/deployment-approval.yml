@@ -231,7 +231,7 @@ jobs:
         echo "📋 Validation report generated"
         
     - name: Upload Validation Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: validation-report
         path: validation-report.md
@@ -337,7 +337,7 @@ jobs:
         echo "📋 Approval checklist created"
         
     - name: Upload Approval Checklist
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: approval-checklist
         path: approval-checklist.md
@@ -416,7 +416,7 @@ jobs:
         echo "📊 Staging report generated"
         
     - name: Upload Staging Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: staging-report
         path: staging-report.md
@@ -500,7 +500,7 @@ jobs:
         echo "✅ Production deployment initiated"
         
     - name: Upload Deployment Record
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-record
         path: deployment-record.json
