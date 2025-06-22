@@ -6,8 +6,10 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { SentryTestComponentWrapper as SentryTestComponent } from "@/components/sentry-test-wrapper";
 import { getAuth } from "firebase/auth";
 import { initializeApp } from "firebase/app";
+import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
 
 interface Message {
   role: "user" | "assistant";
@@ -63,6 +65,10 @@ export const Assistant = () => {
 
   // reCAPTCHAスクリプトの動的ロード
   useEffect(() => {
+    // Sentryタグを設定
+    setSentryTag("component", "assistant");
+    setSentryTag("environment", process.env.NEXT_PUBLIC_ENVIRONMENT || "development");
+    
     if (typeof window !== "undefined" && !window.grecaptcha) {
       const script = document.createElement("script");
       script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
@@ -79,6 +85,10 @@ export const Assistant = () => {
     
     const userMessage: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
+    
+    // Sentryにユーザーアクションを記録
+    captureUserAction("message_sent", { messageLength: input.length });
+    
     setInput("");
     setLoading(true);
 
@@ -129,6 +139,14 @@ export const Assistant = () => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("Error:", error);
+      
+      // Sentryにエラーを報告
+      captureAPIError(error as Error, {
+        endpoint: "/api/rag/query",
+        userMessage: userMessage.content,
+        timestamp: new Date().toISOString()
+      });
+      
       const errorMessage: Message = { 
         role: "assistant", 
         content: "エラーが発生しました。もう一度お試しください。" 
@@ -163,6 +181,9 @@ export const Assistant = () => {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
+        
+        {/* 開発環境用Sentryテストパネル */}
+        {process.env.NODE_ENV === 'development' && <SentryTestComponent />}
         
         {/* チャット画面 */}
         <div className="flex flex-col h-[calc(100vh-4rem)]">

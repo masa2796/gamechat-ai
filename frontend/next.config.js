@@ -57,48 +57,50 @@ const nextConfig = {
     return config;
   },
   
-  // セキュリティ設定
-  async headers() {
-    const headers = [
-      {
-        key: 'X-Frame-Options',
-        value: 'SAMEORIGIN',
-      },
-      {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff',
-      },
-      {
-        key: 'X-XSS-Protection',
-        value: '1; mode=block',
-      },
-      {
-        key: 'Referrer-Policy',
-        value: 'strict-origin-when-cross-origin',
-      },
-    ];
-
-    // 本番環境でのみ追加のセキュリティヘッダーを設定
-    if (process.env.NODE_ENV === 'production') {
-      headers.push(
+  // セキュリティ設定（standalone モードでのみ有効）
+  ...(process.env.DOCKER_BUILD || process.env.CI ? {
+    async headers() {
+      const headers = [
         {
-          key: 'Strict-Transport-Security',
-          value: 'max-age=31536000; includeSubDomains',
+          key: 'X-Frame-Options',
+          value: 'SAMEORIGIN',
         },
         {
-          key: 'Content-Security-Policy',
-          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';",
-        }
-      );
-    }
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
+        },
+        {
+          key: 'X-XSS-Protection',
+          value: '1; mode=block',
+        },
+        {
+          key: 'Referrer-Policy',
+          value: 'strict-origin-when-cross-origin',
+        },
+      ];
 
-    return [
-      {
-        source: '/(.*)',
-        headers,
-      },
-    ];
-  },
+      // 本番環境でのみ追加のセキュリティヘッダーを設定
+      if (process.env.NODE_ENV === 'production') {
+        headers.push(
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';",
+          }
+        );
+      }
+
+      return [
+        {
+          source: '/(.*)',
+          headers,
+        },
+      ];
+    },
+  } : {}),
   
   // 環境変数設定
   env: {
@@ -106,6 +108,7 @@ const nextConfig = {
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     GOOGLE_SITE_VERIFICATION: process.env.GOOGLE_SITE_VERIFICATION,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     // CI環境用のデフォルト値を設定
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : ''),
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (process.env.CI ? 'dummy-project.firebaseapp.com' : ''),
@@ -118,19 +121,55 @@ const nextConfig = {
     NEXT_PUBLIC_API_KEY: process.env.NEXT_PUBLIC_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : ''),
   },
 
-  // PWA対応設定
-  async rewrites() {
-    return [
-      {
-        source: '/sw.js',
-        destination: '/sw.js',
-      },
-      {
-        source: '/manifest.json',
-        destination: '/manifest.json',
-      },
-    ];
-  },
+  // PWA対応設定（export モードでは無効化）
+  ...(!(process.env.DOCKER_BUILD || process.env.CI) ? {} : {
+    async rewrites() {
+      return [
+        {
+          source: '/sw.js',
+          destination: '/sw.js',
+        },
+        {
+          source: '/manifest.json',
+          destination: '/manifest.json',
+        },
+      ];
+    },
+  }),
 }
 
-module.exports = nextConfig
+// Injected content via Sentry wizard below
+
+const { withSentryConfig } = require("@sentry/nextjs");
+
+module.exports = withSentryConfig(
+  nextConfig,
+  {
+    // For all available options, see:
+    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
+
+    org: "masaki-tanaka",
+    project: "javascript-nextjs",
+
+    // Only print logs for uploading source maps in CI
+    silent: !process.env.CI,
+
+    // For all available options, see:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+
+    // Upload a larger set of source maps for prettier stack traces (increases build time)
+    widenClientFileUpload: true,
+
+    // tunnelRoute を export モードでは無効化
+    tunnelRoute: process.env.DOCKER_BUILD || process.env.CI ? "/monitoring" : undefined,
+
+    // Automatically tree-shake Sentry logger statements to reduce bundle size
+    disableLogger: true,
+
+    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
+    // See the following for more information:
+    // https://docs.sentry.io/product/crons/
+    // https://vercel.com/docs/cron-jobs
+    automaticVercelMonitors: process.env.DOCKER_BUILD || process.env.CI || false,
+  }
+);
