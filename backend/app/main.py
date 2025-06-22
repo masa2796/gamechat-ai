@@ -3,6 +3,7 @@ import time
 import os
 import logging
 import random
+import asyncio
 from datetime import datetime
 from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
@@ -13,7 +14,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
-from .routers import rag
+from .routers import rag, streaming
 from .core.exception_handlers import setup_exception_handlers
 from .core.config import settings
 from .core.security import SecurityHeadersMiddleware
@@ -210,6 +211,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"❌ Failed to initialize database connections: {e}")
     
+    # キャッシュプリウォーミング（バックグラウンドで実行）
+    try:
+        from .core.cache import prewarmed_query_cache
+        from .services.rag_service import RagService
+        
+        # バックグラウンドでプリウォーミング実行
+        async def background_prewarm() -> None:
+            try:
+                await asyncio.sleep(5)  # 5秒待機してからプリウォーミング
+                rag_service = RagService()
+                await prewarmed_query_cache.prewarm_cache(rag_service)
+            except Exception as e:
+                logger.warning(f"Cache prewarming failed: {e}")
+        
+        asyncio.create_task(background_prewarm())
+        logger.info("🔥 Cache prewarming task started")
+    except Exception as e:
+        logger.warning(f"Could not start cache prewarming: {e}")
+    
     logger.info("🎉 GameChat AI backend started successfully")
     
     yield  # ここでアプリケーションが実行される
@@ -358,3 +378,4 @@ async def metrics_health_check() -> dict[str, Any]:
     }
 
 app.include_router(rag.router, prefix="/api")
+app.include_router(streaming.router, prefix="/api")
