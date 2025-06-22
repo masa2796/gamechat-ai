@@ -180,7 +180,7 @@ class HybridSearchService:
         return db_results, vector_results
     
     def _get_optimized_limits(self, classification: ClassificationResult, top_k: int) -> Dict[str, int]:
-        """分類結果に基づいて検索限界を最適化（パフォーマンス改善版）"""
+        """分類結果に基づいて検索限界を最適化"""
         
         config = settings.VECTOR_SEARCH_CONFIG["search_limits"]
         
@@ -198,24 +198,15 @@ class HybridSearchService:
             vector_limit = 10
             db_limit = 10
         
-        # パフォーマンス最適化：全体的な制限を厳しく
-        vector_limit = min(vector_limit, 20)  # 最大20に制限
-        db_limit = min(db_limit, 15)  # 最大15に制限
-        
-        # 信頼度による調整（より控えめに）
+        # 信頼度による調整
         if classification.confidence >= 0.8:
-            # 高信頼度でも制限を設ける
-            vector_limit = min(int(vector_limit * 1.1), 25)
-            db_limit = min(int(db_limit * 1.1), 18)
+            # 高信頼度の場合、より多くの結果を取得
+            vector_limit = int(vector_limit * 1.2)
+            db_limit = int(db_limit * 1.2)
         elif classification.confidence < 0.5:
-            # 低信頼度の場合、さらに結果を絞る
-            vector_limit = max(5, int(vector_limit * 0.7))
-            db_limit = max(3, int(db_limit * 0.7))
-        
-        # top_kに応じた最終調整
-        if top_k <= 10:
-            vector_limit = min(vector_limit, 15)
-            db_limit = min(db_limit, 10)
+            # 低信頼度の場合、結果を絞る
+            vector_limit = max(5, int(vector_limit * 0.8))
+            db_limit = max(5, int(db_limit * 0.8))
         
         return {
             "vector_limit": vector_limit,

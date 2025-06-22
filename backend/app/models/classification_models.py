@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import Optional, List
 from enum import Enum
 
 class QueryType(str, Enum):
@@ -26,5 +26,5 @@ class SearchStrategy(BaseModel):
     """検索戦略"""
     use_db_filter: bool
     use_vector_search: bool
-    db_filter_params: Optional[dict[str, Any]] = None
-    vector_search_params: Optional[dict[str, Any]] = None
+    db_filter_params: Optional[dict] = None
+    vector_search_params: Optional[dict] = None

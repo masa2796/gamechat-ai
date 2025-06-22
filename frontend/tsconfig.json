@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "types": ["node", "vitest/globals"],
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -19,7 +18,7 @@
     "incremental": true,
     "module": "esnext",
     "esModuleInterop": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -35,9 +34,7 @@
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
-    "**/*.tsx",
-    "instrumentation.ts",
-    "instrumentation-client.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"

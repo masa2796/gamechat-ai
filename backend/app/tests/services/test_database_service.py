@@ -10,9 +10,7 @@ class TestDatabaseService:
     # === セットアップ・フィクスチャ ===
     @pytest.fixture
     def database_service(self):
-        # StorageServiceの初期化をモックして、テスト用に安全な環境を作る
-        with patch('backend.app.services.database_service.StorageService'):
-            return DatabaseService()
+        return DatabaseService()
 
     @pytest.fixture
     def mock_settings(self, monkeypatch):
@@ -102,16 +100,12 @@ class TestDatabaseService:
         
         def test_load_data_success(self, database_service, sample_data, monkeypatch):
             """データ読み込み成功テスト"""
-            # StorageServiceをモックして正常なデータを返す
-            mock_storage_service = patch.object(
-                database_service.storage_service, 
-                'load_json_data', 
-                return_value=sample_data
-            )
+            mock_open = patch("builtins.open", create=True)
+            mock_json_load = patch("json.load", return_value=sample_data)
             
-            with mock_storage_service:
+            with mock_open, mock_json_load:
                 data = database_service._load_data()
-                assert len(data) == 3  # sample_dataの長さは3
+                assert len(data) == 3
                 assert data[0]["name"] == "テストカード1"
 
         @pytest.mark.asyncio
@@ -234,37 +228,12 @@ class TestDatabaseService:
         
         def test_load_data_file_not_found(self, database_service, monkeypatch):
             """ファイルが見つからない場合のテスト"""
-            # StorageServiceをモックしてデータが返されない場合をテスト
-            mock_storage_service = patch.object(
-                database_service.storage_service, 
-                'load_json_data', 
-                return_value=[]
-            )
+            mock_open = patch("builtins.open", side_effect=FileNotFoundError)
             
-            with mock_storage_service:
-                # 新しい実装では、プレースホルダーデータが返される
-                data = database_service._load_data()
-                assert len(data) == 2  # プレースホルダーデータが2個
-                assert data[0]["id"] == "placeholder-001"
-                assert data[1]["id"] == "placeholder-002"
-
-        def test_load_data_complete_failure(self, database_service, monkeypatch):
-            """完全な失敗の場合のテスト（プレースホルダーデータも利用できない）"""
-            # StorageServiceとプレースホルダーデータの両方をモック
-            mock_storage_service = patch.object(
-                database_service.storage_service, 
-                'load_json_data', 
-                return_value=[]
-            )
-            mock_placeholder = patch.object(
-                database_service,
-                '_get_placeholder_data',
-                return_value=[]
-            )
-            
+            # DatabaseExceptionが発生することを確認
             from backend.app.core.exceptions import DatabaseException
             
-            with mock_storage_service, mock_placeholder:
+            with mock_open:
                 with pytest.raises(DatabaseException) as exc_info:
                     database_service._load_data()
                 

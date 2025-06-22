@@ -6,20 +6,8 @@ import os
 import sys
 
 # Add the project root to Python path
-sys.path.insert(0, os.path.abspath('../../'))
 sys.path.insert(0, os.path.abspath('../../backend'))
 sys.path.insert(0, os.path.abspath('../../backend/app'))
-
-# Set environment variable to prevent relative import errors
-os.environ['PYTHONPATH'] = ':'.join([
-    os.path.abspath('../../'),
-    os.path.abspath('../../backend'),
-    os.path.abspath('../../backend/app'),
-    os.environ.get('PYTHONPATH', '')
-])
-
-# Set the working directory for imports
-os.chdir(os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
 project = 'GameChat AI'
@@ -64,57 +52,6 @@ autodoc_default_options = {
     'exclude-members': '__weakref__'
 }
 
-# More comprehensive autodoc settings
-autodoc_default_flags = ['members', 'undoc-members']
-
-# Additional autodoc settings to handle duplicates
-autodoc_preserve_defaults = True
-autodoc_class_signature = "separated"
-
-# Suppress warnings for missing modules
-autodoc_mock_imports = [
-    'openai',
-    'upstash_vector',
-    'requests',
-    'aiohttp',
-    'pydantic',
-    'fastapi',
-    'starlette',
-    'uvicorn',
-    'redis',
-    'sqlalchemy',
-    'alembic',
-    'pytest',
-    'httpx'
-]
-
-# Special handling for Pydantic v2 field validators
-autodoc_typehints = "description"
-autodoc_typehints_description_target = "documented_params"
-
-# Mock difficult imports
-autodoc_mock_imports.extend([
-    'pydantic.field_validator',
-    'pydantic_core'
-])
-
-# Ignore import errors during autodoc
-autodoc_type_aliases = {}
-autodoc_inherit_docstrings = True
-
-# Suppress specific warnings
-suppress_warnings = [
-    'autodoc.import_object',
-    'toc.not_readable',
-    'ref.doc',
-    'duplicate_object_description',
-    'toc.excluded',
-    'misc.highlighting_failure',
-    'autodoc',
-    'autodoc.import_object',
-    'py.class_reference'
-]
-
 # Templates path
 templates_path = ['_templates']
 
@@ -135,6 +72,7 @@ html_static_path = ['_static']
 html_theme_options = {
     'canonical_url': '',
     'analytics_id': '',
+    'display_version': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': False,
     'collapse_navigation': True,
@@ -172,8 +110,7 @@ texinfo_documents = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'fastapi': ('https://fastapi.tiangolo.com/', None),
-    # Remove pydantic as the URL is currently 404
-    # 'pydantic': ('https://docs.pydantic.dev/', None),
+    'pydantic': ('https://docs.pydantic.dev/', None),
 }
 
 # Todo extension
@@ -181,23 +118,3 @@ todo_include_todos = True
 
 # Coverage extension
 coverage_show_missing_items = True
-
-# Ignore specific warning types
-nitpicky = False
-nitpick_ignore = [
-    ('py:class', 'classmethod'),
-    ('py:obj', 'field_validator'),
-    ('py:class', 'field_validator'),
-]
-
-# Handle Pydantic field validators specifically
-def skip_field_validators(app, what, name, obj, skip, options):
-    """Skip Pydantic field validators to avoid signature errors"""
-    if hasattr(obj, '__name__') and 'field_validator' in str(type(obj)):
-        return True
-    if name in ['question_not_blank', 'top_k_range']:
-        return True
-    return skip
-
-def setup(app):
-    app.connect('autodoc-skip-member', skip_field_validators)

@@ -1,26 +1,9 @@
-# .env files - 機密情報を含むファイル
+# .env files (root, frontend, backend)
 .env
 .env.local
 .env.*.local
+frontend/.env
 backend/.env
-backend/.env.production
-frontend/.env.local
-frontend/.env.firebase
-frontend/.env.production
-# テンプレートファイルは除外しない（.env.example, .env.firebase.example等）
-
-# Cloud Run機密設定ファイル
-cloud-run-env.yaml
-cloud-run-current.yaml
-
-# その他の機密ファイル
-*.key
-*.pem
-*.p12
-*.pfx
-*secret*
-*credential*
-*private*
 
 # .venv
 .venv
@@ -31,8 +14,6 @@ __pycache__/
 *$py.class
 backend/.pytest_cache
 .pytest_chche/
-.mypy_cache
-.pytest_cache
 
 # Node modules
 node_modules/
@@ -41,19 +22,10 @@ backend/node_modules/
 
 # Build output / cache
 .next/
-out/
 dist/
 frontend/dist/
 backend/dist/
 coverage/
-build/
-*.tsbuildinfo
-
-# Firebase
-.firebase/
-.firebaserc
-firebase-debug.log
-ui-debug.log
 
 # Sphinx documentation
 docs/sphinx/_build/
@@ -66,10 +38,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 docs/scripts/logs/
-logs/
-
-# Docker
-docker-compose.override.yml
 
 # Editor/IDE settings
 .vscode/
@@ -83,5 +51,3 @@ docs/**/.DS_Store
 
 # data
 data/
-# Sentry Config File
-.env.sentry-build-plugin

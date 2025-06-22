@@ -104,18 +104,6 @@ class ValidationException(GameChatException):
         super().__init__(message, code, details)
 
 
-class StorageException(GameChatException):
-    """ストレージ関連例外"""
-    
-    def __init__(
-        self,
-        message: str = "ストレージ操作エラー",
-        code: str = "STORAGE_ERROR",
-        details: Optional[Dict[str, Any]] = None
-    ):
-        super().__init__(message, code, details)
-
-
 def to_http_exception(exc: GameChatException, status_code: int = 500) -> HTTPException:
     """GameChatExceptionをHTTPExceptionに変換"""
     return HTTPException(

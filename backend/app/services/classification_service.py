@@ -1,6 +1,7 @@
 import openai
 import json
 import os
+from typing import Optional
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
 from ..core.exceptions import ClassificationException
@@ -37,21 +38,7 @@ class ClassificationService:
     def __init__(self) -> None:
         # OpenAI クライアントを初期化
         api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        
-        # テスト環境では厳密なAPIキーチェックをスキップ
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
-        
-        # APIキーの検証
-        if not is_testing and (not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here"]):
-            raise ClassificationException(
-                "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
-            )
-        
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
-        
-        self.client = openai.OpenAI(api_key=api_key)
+        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -128,54 +115,17 @@ class ClassificationService:
             QueryType.FILTERABLE
             >>> print(result.filter_keywords)
             ['HP', '100以上']
+            
+            >>> # 挨拶の場合
+            >>> request = ClassificationRequest(query="こんにちは")
+            >>> result = await service.classify_query(request)
+            >>> print(result.query_type)
+            QueryType.GREETING
+            
+        Note:
+            JSON解析に失敗した場合やAPI呼び出しでエラーが発生した場合は、
+            フォールバック戦略により適切なデフォルト値で分類結果を返します。
         """
-        
-        # テスト環境・開発環境での簡易対応
-        environment = os.getenv("ENVIRONMENT", "production")
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
-        
-        if environment in ["test", "development"] or is_testing:
-            GameChatLogger.log_info("classification_service", f"テスト環境で実行 - environment: {environment}")
-            
-            # 簡単な分類ロジック
-            query_lower = request.query.lower()
-            
-            # 挨拶判定
-            greetings = ["こんにちは", "おはよう", "こんばんは", "はじめまして", "よろしく", "ありがとう"]
-            if any(greeting in query_lower for greeting in greetings):
-                return ClassificationResult(
-                    query_type=QueryType.GREETING,
-                    summary="挨拶・雑談",
-                    confidence=0.9,
-                    filter_keywords=[],
-                    search_keywords=[],
-                    reasoning="挨拶に関するキーワードが検出されました"
-                )
-            
-            # フィルター判定
-            filter_keywords_found = []
-            if any(word in query_lower for word in ["hp", "ダメージ", "以上", "以下", "タイプ", "レア"]):
-                filter_keywords_found = ["hp", "ダメージ"] if "hp" in query_lower or "ダメージ" in query_lower else ["タイプ"]
-                return ClassificationResult(
-                    query_type=QueryType.FILTERABLE,
-                    summary=f"フィルター検索: {request.query}",
-                    confidence=0.8,
-                    filter_keywords=filter_keywords_found,
-                    search_keywords=[],
-                    reasoning="具体的な条件が検出されました"
-                )
-            
-            # デフォルトはセマンティック検索
-            return ClassificationResult(
-                query_type=QueryType.SEMANTIC,
-                summary=f"セマンティック検索: {request.query}",
-                confidence=0.7,
-                filter_keywords=[],
-                search_keywords=request.query.split()[:3],  # 最初の3単語を使用
-                reasoning="一般的な質問として判定"
-            )
-        
-        # 本番環境の処理
         if not self.client:
             raise ClassificationException(
                 message="OpenAI APIキーが設定されていません",
@@ -189,43 +139,16 @@ class ClassificationService:
         
         user_prompt = f"質問: {request.query}"
         
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,
-                temperature=0.0,  # 一貫性のために0に設定
-                response_format={"type": "json_object"}  # JSON形式を強制
-            )
-        except openai.AuthenticationError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI認証エラー", e, {
-                "api_key_prefix": getattr(settings, 'OPENAI_API_KEY', 'None')[:10] if getattr(settings, 'OPENAI_API_KEY', None) else 'None'
-            })
-            raise ClassificationException(
-                message="OpenAI APIキーが無効です。正しいAPIキーを設定してください。",
-                code="INVALID_API_KEY"
-            ) from e
-        except openai.RateLimitError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI レート制限エラー", e)
-            raise ClassificationException(
-                message="OpenAI APIのレート制限に達しました。しばらく待ってから再試行してください。",
-                code="RATE_LIMIT_EXCEEDED"
-            ) from e
-        except openai.OpenAIError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI APIエラー", e)
-            raise ClassificationException(
-                message=f"OpenAI APIでエラーが発生しました: {str(e)}",
-                code="OPENAI_API_ERROR"
-            ) from e
-        except Exception as e:
-            GameChatLogger.log_error("classification_service", "予期しないエラー", e)
-            raise ClassificationException(
-                message=f"分類処理中に予期しないエラーが発生しました: {str(e)}",
-                code="UNEXPECTED_ERROR"
-            ) from e
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=300,
+            temperature=0.0,  # 一貫性のために0に設定
+            response_format={"type": "json_object"}  # JSON形式を強制
+        )
         
         result_text = response.choices[0].message.content
         if result_text is None:

@@ -1,88 +1,56 @@
 from typing import List, Dict, Any, Optional
+import json
 from ..models.rag_models import ContextItem
 from ..core.config import settings
 from ..core.exceptions import DatabaseException
 from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
-from .storage_service import StorageService
 
 class DatabaseService:
     """通常のデータベース検索サービス（構造化データのフィルタリング）"""
     
     def __init__(self) -> None:
-        # 設定ファイルからデータファイルのパスを取得（後方互換性のため保持）
+        # 設定ファイルからデータファイルのパスを取得
         self.data_path = settings.DATA_FILE_PATH
         self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
         self.cache: Optional[List[Dict[str, Any]]] = None
-        
-        # StorageServiceを初期化
-        self.storage_service = StorageService()
-        
-        # 初期化時にパス情報をログ出力
-        GameChatLogger.log_info("database_service", "DatabaseService初期化", {
-            "data_path": self.data_path,
-            "converted_path": self.converted_data_path,
-            "project_root": str(settings.PROJECT_ROOT if hasattr(settings, 'PROJECT_ROOT') else 'N/A'),
-            "environment": settings.ENVIRONMENT,
-            "storage_service_initialized": True
-        })
     
     def _load_data(self) -> List[Dict[str, Any]]:
         """データファイルを読み込む"""
         if self.cache is not None:
             return self.cache
         
-        GameChatLogger.log_info("database_service", "データファイル読み込み開始", {
-            "environment": settings.ENVIRONMENT,
-            "using_storage_service": True
-        })
-        
-        # まずmain data fileを試行
-        data = self.storage_service.load_json_data("data")
-        if data:
-            self.cache = data
-            GameChatLogger.log_success("database_service", "データファイルを読み込みました", {
-                "source": "data.json",
-                "data_count": len(data)
-            })
-            return self.cache
-        
-        # フォールバックとしてconvert_dataを試行
-        GameChatLogger.log_info("database_service", "フォールバックファイルを試行")
-        data = self.storage_service.load_json_data("convert_data")
-        if data:
-            self.cache = data
-            GameChatLogger.log_info("database_service", "フォールバックファイルを使用", {
-                "source": "convert_data.json",
-                "data_count": len(data)
-            })
-            return self.cache
-        
-        # 両方のファイルが利用できない場合
-        GameChatLogger.log_error("database_service", "データファイルが利用できません", Exception("No data files available"), {
-            "primary_file": "data.json",
-            "fallback_file": "convert_data.json",
-            "environment": settings.ENVIRONMENT
-        })
-        
-        # プレースホルダーデータを返す（完全な失敗を防ぐため）
-        placeholder_data = self._get_placeholder_data()
-        if placeholder_data:
-            self.cache = placeholder_data
-            GameChatLogger.log_warning("database_service", "プレースホルダーデータを使用", {
-                "data_count": len(placeholder_data)
-            })
-            return self.cache
-        
-        raise DatabaseException(
-            message="データファイルが見つかりません",
-            code="DATA_FILE_NOT_FOUND",
-            details={
-                "primary_file": "data.json", 
-                "fallback_file": "convert_data.json",
-                "storage_service_configured": bool(self.storage_service)
-            }
-        )
+        try:
+            # data.jsonを優先して使用（構造化データ）
+            with open(self.data_path, 'r', encoding='utf-8') as f:
+                loaded_data = json.load(f)
+                if not isinstance(loaded_data, list):
+                    raise ValueError("Data file must contain a list")
+                self.cache = loaded_data
+                GameChatLogger.log_success("database_service", f"データファイルを読み込みました: {self.data_path}")
+                return self.cache
+        except FileNotFoundError:
+            try:
+                # フォールバックでconvert_data.jsonを使用
+                with open(self.converted_data_path, 'r', encoding='utf-8') as f:
+                    loaded_data = json.load(f)
+                    if not isinstance(loaded_data, list):
+                        raise ValueError("Converted data file must contain a list")
+                    self.cache = loaded_data
+                    GameChatLogger.log_info("database_service", f"フォールバックファイルを使用: {self.converted_data_path}")
+                    return self.cache
+            except FileNotFoundError:
+                raise DatabaseException(
+                    message="データファイルが見つかりません",
+                    code="DATA_FILE_NOT_FOUND",
+                    details={"data_path": self.data_path, "converted_path": self.converted_data_path}
+                )
+        except Exception as e:
+            raise DatabaseException(
+                message="データ読み込みエラー",
+                code="DATA_LOAD_ERROR",
+                details={"original_error": str(e), "file_path": self.data_path}
+            )
     
     @handle_service_exceptions("database", fallback_return=[])
     async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[ContextItem]:
@@ -446,27 +414,4 @@ class DatabaseService:
                 text="データベースからの検索結果です。具体的な条件に基づいてフィルタリングされています。",
                 score=0.8
             )
-        ]
-    
-    def _get_placeholder_data(self) -> List[Dict[str, Any]]:
-        """データファイルが利用できない場合のプレースホルダーデータ"""
-        return [
-            {
-                "id": "placeholder-001",
-                "title": "システム情報",
-                "content": "このデータはプレースホルダーです。実際のゲームデータが利用できない状態です。",
-                "category": "system",
-                "type": "情報",
-                "created_at": "2025-06-20T00:00:00Z",
-                "tags": ["システム", "プレースホルダー"]
-            },
-            {
-                "id": "placeholder-002", 
-                "title": "データ読み込みエラー",
-                "content": "Google Cloud Storageまたはローカルファイルからデータを読み込めませんでした。管理者にお問い合わせください。",
-                "category": "system",
-                "type": "エラー",
-                "created_at": "2025-06-20T00:00:00Z",
-                "tags": ["エラー", "データ"]
-            }
         ]
