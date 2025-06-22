@@ -31,7 +31,17 @@ class SecurityAuditManager:
         # ディレクトリ作成
         self.audit_dir.mkdir(parents=True, exist_ok=True)
         
-        self.project_root = Path(__file__).parent.parent.parent.parent
+        # プロジェクトルートパスをより堅牢に決定
+        try:
+            self.project_root = Path(__file__).parent.parent.parent.parent
+        except NameError:
+            # __file__が利用できない場合（テスト環境など）
+            self.project_root = Path.cwd()
+            # カレントディレクトリからプロジェクトルートを推測
+            if "backend" in str(self.project_root):
+                # backend ディレクトリの場合は親ディレクトリに移動
+                while self.project_root.name == "backend":
+                    self.project_root = self.project_root.parent
     
     async def run_comprehensive_audit(self) -> Dict[str, Any]:
         """包括的なセキュリティ監査を実行"""
@@ -80,6 +90,49 @@ class SecurityAuditManager:
         logger.info(f"✅ セキュリティ監査完了 - 総合スコア: {audit_results['overall_score']}/100")
         return audit_results
     
+    async def run_quick_security_check(self) -> Dict[str, Any]:
+        """
+        簡易セキュリティチェックを実行
+        軽量版の監査で、重要な項目のみをチェック
+        """
+        logger.info("🔍 クイックセキュリティチェック開始")
+        check_start = datetime.now()
+        
+        quick_results: Dict[str, Any] = {
+            "timestamp": check_start.isoformat(),
+            "version": "1.0-quick",
+            "type": "quick_check",
+            "results": {},
+            "duration_seconds": 0.0,
+            "overall_score": 0
+        }
+        
+        # 重要な項目のみをチェック
+        critical_checks = [
+            ("environment_security", self._check_environment_security),
+            ("api_security", self._check_api_security)
+        ]
+        
+        for check_name, check_func in critical_checks:
+            try:
+                logger.info(f"実行中: {check_name}")
+                result = await check_func()
+                quick_results["results"][check_name] = result
+            except Exception as e:
+                logger.error(f"クイックチェック {check_name} でエラー: {str(e)}")
+                quick_results["results"][check_name] = {
+                    "status": "error",
+                    "error": str(e),
+                    "score": 0
+                }
+        
+        # 総合スコア計算
+        quick_results["duration_seconds"] = (datetime.now() - check_start).total_seconds()
+        quick_results["overall_score"] = self._calculate_security_score(quick_results["results"])
+        
+        logger.info(f"✅ クイックセキュリティチェック完了 - スコア: {quick_results['overall_score']}/100")
+        return quick_results
+
     async def _check_dependency_vulnerabilities(self) -> Dict[str, Any]:
         """依存関係の脆弱性チェック"""
         result: Dict[str, Any] = {
@@ -417,6 +470,33 @@ class SecurityAuditManager:
             logger.error(f"監査結果読み込みエラー: {str(e)}")
             return None
     
+    async def get_latest_audit_summary(self) -> Optional[Dict[str, Any]]:
+        """最新の監査結果の要約を取得"""
+        full_results = await self.get_latest_audit_results()
+        if not full_results:
+            return None
+        
+        # 要約情報を作成
+        summary = {
+            "timestamp": full_results.get("timestamp"),
+            "overall_score": full_results.get("overall_score", 0),
+            "duration_seconds": full_results.get("duration_seconds", 0),
+            "audit_id": full_results.get("timestamp", "").replace(":", "-"),
+            "results_count": len(full_results.get("results", {})),
+            "issues_summary": {}
+        }
+        
+        # 各監査項目の要約
+        for task_name, result in full_results.get("results", {}).items():
+            if isinstance(result, dict):
+                summary["issues_summary"][task_name] = {
+                    "score": result.get("score", 0),
+                    "status": result.get("status", "unknown"),
+                    "issues_count": len(result.get("issues", []))
+                }
+        
+        return summary
+    
     def get_audit_status(self) -> Dict[str, Any]:
         """監査システムの状況を取得"""
         return {
@@ -451,3 +531,19 @@ def check_security_issues(results: Dict[str, Any]) -> List[str]:
         results["total_issues"] = issues_count
     
     return issues
+
+
+# モジュールレベルでインスタンスを作成
+try:
+    security_audit_manager = SecurityAuditManager()
+except Exception as e:
+    logger.error(f"Failed to initialize security_audit_manager: {e}")
+    security_audit_manager = None
+
+# エクスポートリスト
+__all__ = [
+    'SecurityAuditManager',
+    'security_audit_manager',
+    'run_security_audit',
+    'check_security_issues'
+]
