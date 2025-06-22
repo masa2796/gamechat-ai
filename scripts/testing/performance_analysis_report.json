@@ -1,0 +1,202 @@
+{
+  "timestamp": 1750572078.328248,
+  "overall_achievement_rate": 59.4108380189492,
+  "individual_issues": {
+    "レスポンス時間問題の根本解決": {
+      "目標": "全クエリ5秒以内",
+      "現状": "87.5%達成",
+      "達成率": 87.5,
+      "status": "IN_PROGRESS"
+    },
+    "30秒タイムアウト問題": {
+      "目標": "30秒以上のタイムアウト0%",
+      "現状": "タイムアウト率 0.0%",
+      "達成率": 100.0,
+      "status": "RESOLVED"
+    },
+    "キャッシュ機構の導入": {
+      "目標": "キャッシュによる高速化",
+      "現状": "キャッシュ改善 -4.6%",
+      "達成率": -9.267485943152403,
+      "status": "NOT_RESOLVED"
+    }
+  },
+  "timeout_analysis": {
+    "test_type": "timeout_analysis",
+    "total_tests": 8,
+    "successful_tests": 8,
+    "success_rate": 100.0,
+    "target_achievement_rate": 87.5,
+    "timeout_rate": 0.0,
+    "average_duration": 3.932495057117194,
+    "max_duration": 5.527835040993523,
+    "min_duration": 3.3268449580064043,
+    "performance_grades": {
+      "EXCELLENT": 0,
+      "GOOD": 0,
+      "ACCEPTABLE": 7,
+      "POOR": 1,
+      "CRITICAL": 0,
+      "TIMEOUT": 0
+    },
+    "detailed_results": [
+      {
+        "endpoint": "rag/query",
+        "question": "ゲームの基本的な遊び方を教えて",
+        "status": 200,
+        "success": true,
+        "response_size": 308,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「ゲームの基本的な遊び方を教えて」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 5.527835040993523,
+        "exceeds_target": true,
+        "exceeds_timeout": false,
+        "performance_grade": "POOR"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "最新のアップデート情報は？",
+        "status": 200,
+        "success": true,
+        "response_size": 296,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「最新のアップデート情報は？」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 3.3268449580064043,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "初心者向けのアドバイスをください",
+        "status": 200,
+        "success": true,
+        "response_size": 314,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「初心者向けのアドバイスをください」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 3.8034087919513695,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "上級者向けの戦略を教えて",
+        "status": 200,
+        "success": true,
+        "response_size": 290,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「上級者向けの戦略を教えて」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 3.849907291994896,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "ゲーム内のアイテムについて詳しく説明して",
+        "status": 200,
+        "success": true,
+        "response_size": 338,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「ゲーム内のアイテムについて詳しく説明して」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 4.256867916032206,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "コミュニティ機能の使い方は？",
+        "status": 200,
+        "success": true,
+        "response_size": 302,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「コミュニティ機能の使い方は？」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 3.6008661249652505,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "トラブルシューティング方法を教えて",
+        "status": 200,
+        "success": true,
+        "response_size": 320,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「トラブルシューティング方法を教えて」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 3.3286477079964243,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      },
+      {
+        "endpoint": "rag/query",
+        "question": "ゲームの歴史について教えて",
+        "status": 200,
+        "success": true,
+        "response_size": 296,
+        "has_answer": true,
+        "context_count": 0,
+        "cache_hit": false,
+        "response_data": {
+          "answer": "申し訳ありませんが、「ゲームの歴史について教えて」に関する回答の処理中にエラーが発生しました。"
+        },
+        "duration": 3.765582624997478,
+        "exceeds_target": false,
+        "exceeds_timeout": false,
+        "performance_grade": "ACCEPTABLE"
+      }
+    ]
+  },
+  "cache_analysis": {
+    "test_type": "cache_effectiveness",
+    "first_request": {
+      "duration": 3.1306971249869093,
+      "cache_hit": false,
+      "success": true
+    },
+    "second_request": {
+      "duration": 3.2757655829773284,
+      "cache_hit": false,
+      "success": true
+    },
+    "cache_improvement_percent": -4.6337429715762015,
+    "cache_working": false
+  },
+  "recommendations": [
+    "RAGクエリの応答時間が目標を下回っています。Vector検索の最適化が必要です。",
+    "キャッシュ機構が効果的に動作していません。Redis設定とキャッシュ戦略の見直しが必要です。",
+    "平均応答時間が3秒を超えています。データベースクエリとインデックスの最適化を検討してください。",
+    "Cloud Runのインスタンス設定（CPU/メモリ）の見直しも検討してください。"
+  ]
+}
