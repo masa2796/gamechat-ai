@@ -14,7 +14,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
-from .routers import rag, streaming
+from .routers import rag, streaming, security_admin
 from .core.exception_handlers import setup_exception_handlers
 from .core.config import settings
 from .core.security import SecurityHeadersMiddleware
@@ -379,3 +379,4 @@ async def metrics_health_check() -> dict[str, Any]:
 
 app.include_router(rag.router, prefix="/api")
 app.include_router(streaming.router, prefix="/api")
+app.include_router(security_admin.router, prefix="/api/security")

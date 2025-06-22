@@ -9,6 +9,7 @@ from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
 import logging
+from .log_security import security_audit_logger
 
 logger = logging.getLogger(__name__)
 
@@ -44,71 +45,75 @@ class APIKeyAuth:
         
         # Production API key
         prod_key = os.getenv("API_KEY_PRODUCTION")
-        logger.info(f"Loading production API key: {'Found' if prod_key else 'Not found'}")
         if prod_key:
             # Secret Managerからの改行文字を除去
             prod_key = prod_key.strip()
-            logger.info(f"Production API key loaded: {prod_key[:10]}***")
+            logger.info("Production API key loaded: ***MASKED*** (type: production)")
             api_keys[prod_key] = {
                 "name": "production",
                 "rate_limit": 1000,  # requests per hour
                 "permissions": ["read", "write"],
                 "created_at": datetime.now().isoformat()
             }
+        else:
+            logger.warning("Production API key not found in environment variables")
         
         # Development API key
         dev_key = os.getenv("API_KEY_DEVELOPMENT")
-        logger.info(f"Loading development API key: {'Found' if dev_key else 'Not found'}")
         if dev_key:
             # Secret Managerからの改行文字を除去
             dev_key = dev_key.strip()
-            logger.info(f"Development API key loaded: {dev_key[:10]}***")
+            logger.info("Development API key loaded: ***MASKED*** (type: development)")
             api_keys[dev_key] = {
                 "name": "development",
                 "rate_limit": 100,  # requests per hour
                 "permissions": ["read", "write"],
                 "created_at": datetime.now().isoformat()
             }
+        else:
+            logger.warning("Development API key not found in environment variables")
         
         # Read-only API key
         readonly_key = os.getenv("API_KEY_READONLY")
-        logger.info(f"Loading readonly API key: {'Found' if readonly_key else 'Not found'}")
         if readonly_key:
             # Secret Managerからの改行文字を除去
             readonly_key = readonly_key.strip()
-            logger.info(f"Readonly API key loaded: {readonly_key[:10]}***")
+            logger.info("Readonly API key loaded: ***MASKED*** (type: readonly)")
             api_keys[readonly_key] = {
                 "name": "readonly",
                 "rate_limit": 500,  # requests per hour
                 "permissions": ["read"],
                 "created_at": datetime.now().isoformat()
             }
+        else:
+            logger.info("Readonly API key not configured (optional)")
         
         # Frontend API key
         frontend_key = os.getenv("API_KEY_FRONTEND")
-        logger.info(f"Loading frontend API key: {'Found' if frontend_key else 'Not found'}")
         if frontend_key:
             # Secret Managerからの改行文字を除去
             frontend_key = frontend_key.strip()
-            logger.info(f"Frontend API key loaded: {frontend_key[:10]}***")
+            logger.info("Frontend API key loaded: ***MASKED*** (type: frontend)")
             api_keys[frontend_key] = {
                 "name": "frontend",
                 "rate_limit": 200,  # requests per hour
                 "permissions": ["read"],
                 "created_at": datetime.now().isoformat()
             }
+        else:
+            logger.info("Frontend API key not configured (optional)")
         
         logger.info(f"Total API keys loaded: {len(api_keys)}")
         return api_keys
     
     def verify_api_key(self, api_key: str) -> Optional[Dict[str, Any]]:
         """Verify API key and return key info."""
-        logger.info(f"Verifying API key: {api_key[:10] if api_key else 'None'}***")
+        logger.info("Verifying API key: ***MASKED***")
         logger.info(f"Available API keys count: {len(self.api_keys)}")
         
         if api_key in self.api_keys:
             key_info = self.api_keys[api_key]
-            logger.info(f"API key found: {key_info['name']}")
+            logger.info(f"API key verified successfully: {key_info['name']}")
             
             # Track usage
             current_time = time.time()
@@ -136,7 +141,7 @@ class APIKeyAuth:
             
             return key_info
         
-        logger.warning("API key not found in available keys")
+        logger.warning("API key verification failed: not found in available keys")
         return None
 
 class JWTAuth:
@@ -197,12 +202,9 @@ class EnhancedAuth:
     
     async def authenticate(self, request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))) -> Dict[str, Any]:
         """Authenticate request using multiple methods."""
-        logger.info("Starting authentication process")
+        client_ip = request.client.host if request.client else "unknown"
         
-        # リクエストの詳細をログ出力
-        logger.info(f"Request URL: {request.url}")
-        logger.info(f"Request method: {request.method}")
-        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info("Starting authentication process")
         
         # テスト環境での認証バイパス
         environment = os.getenv("ENVIRONMENT", "production")
@@ -210,6 +212,12 @@ class EnhancedAuth:
         
         if environment == "test" or is_testing:
             logger.info("Test environment detected - bypassing authentication")
+            security_audit_logger.log_auth_attempt(
+                client_ip=client_ip,
+                auth_type="test_bypass",
+                success=True,
+                details={"environment": environment, "testing": is_testing}
+            )
             return {
                 "auth_type": "test",
                 "user_info": {"name": "test_user"},
@@ -218,15 +226,23 @@ class EnhancedAuth:
         
         # Check for API key in headers
         api_key = request.headers.get("X-API-Key")
-        logger.info(f"API key in headers: {'Present' if api_key else 'Not present'}")
-        if api_key:
-            logger.info(f"API key value: {api_key[:15]}***")
         
         if api_key:
             logger.info("Attempting API key authentication")
             key_info = self.api_key_auth.verify_api_key(api_key)
             if key_info:
                 logger.info(f"API key authentication successful: {key_info['name']}")
+                security_audit_logger.log_auth_attempt(
+                    client_ip=client_ip,
+                    auth_type="api_key",
+                    success=True,
+                    details={"api_key_type": key_info['name'], "endpoint": str(request.url)}
+                )
+                security_audit_logger.log_api_key_usage(
+                    api_key_type=key_info['name'],
+                    endpoint=str(request.url.path),
+                    client_ip=client_ip
+                )
                 return {
                     "auth_type": "api_key",
                     "user_info": key_info,
@@ -234,14 +250,25 @@ class EnhancedAuth:
                 }
             else:
                 logger.warning("API key verification failed")
+                security_audit_logger.log_auth_attempt(
+                    client_ip=client_ip,
+                    auth_type="api_key",
+                    success=False,
+                    details={"reason": "invalid_api_key", "endpoint": str(request.url)}
+                )
         
         # Check for JWT token
-        logger.info(f"JWT credentials: {'Present' if credentials else 'Not present'}")
         if credentials and credentials.scheme == "Bearer":
             logger.info("Attempting JWT authentication")
             token_payload = self.jwt_auth.verify_token(credentials.credentials)
             if token_payload:
                 logger.info("JWT authentication successful")
+                security_audit_logger.log_auth_attempt(
+                    client_ip=client_ip,
+                    auth_type="jwt",
+                    success=True,
+                    details={"user_id": token_payload.get("sub"), "endpoint": str(request.url)}
+                )
                 return {
                     "auth_type": "jwt",
                     "user_info": token_payload,
@@ -249,16 +276,27 @@ class EnhancedAuth:
                 }
             else:
                 logger.warning("JWT verification failed")
+                security_audit_logger.log_auth_attempt(
+                    client_ip=client_ip,
+                    auth_type="jwt",
+                    success=False,
+                    details={"reason": "invalid_token", "endpoint": str(request.url)}
+                )
         
         # Check for basic authentication (for development)
         auth_header = request.headers.get("Authorization")
-        logger.info(f"Basic auth header: {'Present' if auth_header else 'Not present'}")
         if auth_header:
             if auth_header.startswith("Basic "):
                 logger.info("Attempting basic authentication")
                 # For development purposes only
                 if os.getenv("ENVIRONMENT") == "development":
                     logger.info("Basic authentication successful (development mode)")
+                    security_audit_logger.log_auth_attempt(
+                        client_ip=client_ip,
+                        auth_type="basic_dev",
+                        success=True,
+                        details={"environment": "development", "endpoint": str(request.url)}
+                    )
                     return {
                         "auth_type": "basic",
                         "user_info": {"name": "developer"},
@@ -266,9 +304,21 @@ class EnhancedAuth:
                     }
                 else:
                     logger.warning("Basic authentication not allowed in production")
+                    security_audit_logger.log_auth_attempt(
+                        client_ip=client_ip,
+                        auth_type="basic_rejected",
+                        success=False,
+                        details={"reason": "basic_auth_not_allowed_in_production", "endpoint": str(request.url)}
+                    )
         
         # No valid authentication found
         logger.error("Authentication failed: No valid credentials found")
+        security_audit_logger.log_auth_attempt(
+            client_ip=client_ip,
+            auth_type="none",
+            success=False,
+            details={"reason": "no_valid_credentials", "endpoint": str(request.url), "user_agent": request.headers.get("user-agent")}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
