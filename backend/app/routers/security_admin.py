@@ -10,7 +10,16 @@ from datetime import datetime
 from ..core.auth import require_read_permission
 from ..core.log_security import security_audit_logger
 from ..core.api_key_rotation import api_key_rotation_manager
-from ..core.security_audit_manager import security_audit_manager
+
+# セキュリティ監査マネージャーのインポートをより堅牢にする
+try:
+    from ..core.security_audit_manager import security_audit_manager
+except ImportError as e:
+    import logging
+    _temp_logger = logging.getLogger(__name__)
+    _temp_logger.warning(f"Failed to import security_audit_manager: {e}")
+    security_audit_manager = None
+
 from ..core.intrusion_detection import intrusion_detection_system
 
 logger = logging.getLogger(__name__)
@@ -42,7 +51,16 @@ async def get_security_status(
     try:
         # 各システムの状況を取得
         rotation_status = api_key_rotation_manager.get_rotation_status()
-        latest_audit = await security_audit_manager.get_latest_audit_summary()
+        
+        # セキュリティ監査マネージャーが利用可能かチェック
+        if security_audit_manager is not None:
+            latest_audit = await security_audit_manager.get_latest_audit_summary()
+        else:
+            latest_audit = {
+                "status": "unavailable",
+                "message": "Security audit manager not available"
+            }
+            
         ids_metrics = intrusion_detection_system.get_security_metrics()
         
         security_status = {
@@ -154,7 +172,14 @@ async def get_latest_audit(
         raise HTTPException(status_code=403, detail="Admin privileges required")
     
     try:
-        latest_audit = await security_audit_manager.get_latest_audit_summary()
+        # セキュリティ監査マネージャーが利用可能かチェック
+        if security_audit_manager is not None:
+            latest_audit = await security_audit_manager.get_latest_audit_summary()
+        else:
+            raise HTTPException(
+                status_code=503, 
+                detail="Security audit manager is not available"
+            )
         
         if not latest_audit:
             return {"message": "No audit results available", "audit_available": False}
@@ -196,8 +221,15 @@ async def run_security_audit(
         raise HTTPException(status_code=403, detail="Admin privileges required")
     
     try:
-        # セキュリティ監査を開始
-        audit_result = await security_audit_manager.run_comprehensive_audit()
+        # セキュリティ監査マネージャーが利用可能かチェック
+        if security_audit_manager is not None:
+            # セキュリティ監査を開始
+            audit_result = await security_audit_manager.run_comprehensive_audit()
+        else:
+            raise HTTPException(
+                status_code=503, 
+                detail="Security audit manager is not available"
+            )
         
         # セキュリティログに記録
         security_audit_logger.log_security_violation(
