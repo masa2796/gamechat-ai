@@ -2,9 +2,18 @@
   "name": "gamechat-ai-root",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\""
+    "dev": "concurrently \"npm run dev --prefix frontend\" \"cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001\"",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001",
+    "start": "concurrently \"npm run start --prefix frontend\" \"cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000\"",
+    "build": "npm run build --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@sentry/nextjs": "^9.30.0",
+    "@sentry/react": "^9.30.0",
+    "@sentry/vite-plugin": "^3.5.0"
   }
 }
