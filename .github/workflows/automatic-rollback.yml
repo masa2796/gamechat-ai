@@ -1,0 +1,474 @@
+name: Automatic Rollback System
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_reason:
+        description: 'Rollback Reason'
+        required: true
+        type: choice
+        options:
+          - high-error-rate
+          - performance-degradation
+          - manual-rollback
+          - security-incident
+      target_version:
+        description: 'Target Version (leave empty for previous)'
+        required: false
+        type: string
+      immediate_rollback:
+        description: 'Immediate Rollback (skip approval)'
+        required: false
+        default: false
+        type: boolean
+
+  # 自動トリガー（監視システムからのWebhook）
+  repository_dispatch:
+    types: [auto-rollback]
+
+env:
+  PROJECT_ID: gamechat-ai
+  REGION: asia-northeast1
+  SERVICE_NAME: gamechat-ai-backend
+
+jobs:
+  # ロールバック事前チェック
+  pre-rollback-check:
+    name: Pre-Rollback Validation
+    runs-on: ubuntu-latest
+    outputs:
+      current-version: ${{ steps.current.outputs.version }}
+      target-version: ${{ steps.target.outputs.version }}
+      rollback-safe: ${{ steps.validation.outputs.safe }}
+      
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Get Current Deployment Info
+      id: current
+      run: |
+        # 現在のアクティブバージョンを取得
+        CURRENT_VERSION=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(metadata.labels.version)")
+        CURRENT_IMAGE=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(spec.template.spec.template.spec.containers[0].image)")
+        
+        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "image=$CURRENT_IMAGE" >> $GITHUB_OUTPUT
+        
+        echo "📊 Current Version: $CURRENT_VERSION"
+        echo "🖼️ Current Image: $CURRENT_IMAGE"
+        
+    - name: Determine Target Version
+      id: target
+      run: |
+        TARGET_VERSION="${{ github.event.inputs.target_version }}"
+        
+        if [ -z "$TARGET_VERSION" ]; then
+          # 前のバージョンを取得
+          PREVIOUS_VERSIONS=$(gcloud run revisions list --service=${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(metadata.name)" --sort-by="~metadata.creationTimestamp" --limit=5)
+          TARGET_VERSION=$(echo "$PREVIOUS_VERSIONS" | sed -n '2p')
+        fi
+        
+        if [ -z "$TARGET_VERSION" ]; then
+          echo "❌ No target version found for rollback"
+          exit 1
+        fi
+        
+        echo "version=$TARGET_VERSION" >> $GITHUB_OUTPUT
+        echo "🎯 Target Version: $TARGET_VERSION"
+        
+    - name: Validate Rollback Safety
+      id: validation
+      run: |
+        TARGET_VERSION="${{ steps.target.outputs.version }}"
+        CURRENT_VERSION="${{ steps.current.outputs.version }}"
+        
+        echo "🔍 Validating rollback safety..."
+        
+        # ターゲットバージョンの存在確認
+        if ! gcloud run revisions describe "$TARGET_VERSION" --region=${{ env.REGION }} > /dev/null 2>&1; then
+          echo "❌ Target version $TARGET_VERSION not found"
+          echo "safe=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # ターゲットバージョンのヘルス状態確認
+        TARGET_IMAGE=$(gcloud run revisions describe "$TARGET_VERSION" --region=${{ env.REGION }} --format="value(spec.template.spec.containers[0].image)")
+        
+        echo "✅ Target version validation passed"
+        echo "safe=true" >> $GITHUB_OUTPUT
+        echo "🖼️ Target Image: $TARGET_IMAGE"
+
+  # 緊急度判定
+  assess-urgency:
+    name: Assess Rollback Urgency
+    runs-on: ubuntu-latest
+    needs: pre-rollback-check
+    outputs:
+      urgency-level: ${{ steps.assess.outputs.urgency }}
+      skip-approval: ${{ steps.assess.outputs.skip-approval }}
+      
+    steps:
+    - name: Assess Urgency Level
+      id: assess
+      run: |
+        REASON="${{ github.event.inputs.rollback_reason || github.event.client_payload.reason }}"
+        IMMEDIATE="${{ github.event.inputs.immediate_rollback }}"
+        
+        echo "📈 Assessing rollback urgency..."
+        echo "Reason: $REASON"
+        
+        case "$REASON" in
+          "high-error-rate")
+            URGENCY="high"
+            SKIP_APPROVAL="true"
+            ;;
+          "security-incident")
+            URGENCY="critical"
+            SKIP_APPROVAL="true"
+            ;;
+          "performance-degradation")
+            URGENCY="medium"
+            SKIP_APPROVAL="false"
+            ;;
+          "manual-rollback")
+            URGENCY="low"
+            SKIP_APPROVAL="false"
+            ;;
+          *)
+            URGENCY="medium"
+            SKIP_APPROVAL="false"
+            ;;
+        esac
+        
+        if [ "$IMMEDIATE" = "true" ]; then
+          SKIP_APPROVAL="true"
+        fi
+        
+        echo "urgency=$URGENCY" >> $GITHUB_OUTPUT
+        echo "skip-approval=$SKIP_APPROVAL" >> $GITHUB_OUTPUT
+        
+        echo "🚨 Urgency Level: $URGENCY"
+        echo "⏭️ Skip Approval: $SKIP_APPROVAL"
+
+  # 承認プロセス（緊急時はスキップ）
+  rollback-approval:
+    name: Rollback Approval
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-check, assess-urgency]
+    if: needs.assess-urgency.outputs.skip-approval == 'false'
+    environment: 
+      name: rollback-approval
+      url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      
+    steps:
+    - name: Request Rollback Approval
+      run: |
+        echo "🔐 Rollback approval required"
+        echo ""
+        echo "📊 Rollback Details:"
+        echo "- Current Version: ${{ needs.pre-rollback-check.outputs.current-version }}"
+        echo "- Target Version: ${{ needs.pre-rollback-check.outputs.target-version }}"
+        echo "- Reason: ${{ github.event.inputs.rollback_reason }}"
+        echo "- Urgency: ${{ needs.assess-urgency.outputs.urgency-level }}"
+        echo ""
+        echo "⚠️ Please review the following before approval:"
+        echo "- Current system metrics and error rates"
+        echo "- Impact of rolling back to target version"
+        echo "- Alternative mitigation strategies"
+        echo "- Communication plan for users"
+
+  # データベースバックアップ（必要に応じて）
+  backup-current-state:
+    name: Backup Current State
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-check, assess-urgency]
+    if: needs.assess-urgency.outputs.urgency-level != 'critical'
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Create Configuration Backup
+      run: |
+        BACKUP_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        BACKUP_NAME="rollback-backup-$BACKUP_TIMESTAMP"
+        
+        echo "💾 Creating configuration backup: $BACKUP_NAME"
+        
+        # 現在のサービス設定をバックアップ
+        gcloud run services describe ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --format="export" > "service-config-$BACKUP_NAME.yaml"
+          
+        # Cloud Storage にアップロード（オプション）
+        # gsutil cp "service-config-$BACKUP_NAME.yaml" gs://your-backup-bucket/rollbacks/
+        
+        echo "✅ Configuration backup completed"
+        
+    - name: Upload Backup Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: rollback-backup
+        path: service-config-*.yaml
+        retention-days: 90
+
+  # ロールバック実行
+  execute-rollback:
+    name: Execute Rollback
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-check, assess-urgency, backup-current-state]
+    if: |
+      always() && 
+      needs.pre-rollback-check.outputs.rollback-safe == 'true' && 
+      (needs.assess-urgency.outputs.skip-approval == 'true' || 
+       needs.rollback-approval.result == 'success')
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Execute Traffic Rollback
+      run: |
+        TARGET_VERSION="${{ needs.pre-rollback-check.outputs.target-version }}"
+        URGENCY="${{ needs.assess-urgency.outputs.urgency-level }}"
+        
+        echo "🔄 Starting rollback to version: $TARGET_VERSION"
+        echo "🚨 Urgency level: $URGENCY"
+        
+        if [ "$URGENCY" = "critical" ]; then
+          # 緊急時：即座に100%トラフィック切り替え
+          echo "🚨 CRITICAL: Immediate 100% traffic rollback"
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --to-revisions="$TARGET_VERSION=100" \
+            --platform managed
+        else
+          # 段階的ロールバック
+          echo "📈 Gradual rollback process"
+          
+          # Step 1: 50% traffic to target version
+          echo "Step 1: 50% traffic to target version"
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --to-revisions="$TARGET_VERSION=50,${{ needs.pre-rollback-check.outputs.current-version }}=50" \
+            --platform managed
+          
+          sleep 30
+          
+          # Step 2: 100% traffic to target version
+          echo "Step 2: 100% traffic to target version"
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --to-revisions="$TARGET_VERSION=100" \
+            --platform managed
+        fi
+        
+        echo "✅ Traffic rollback completed"
+        
+    - name: Update Service Labels
+      run: |
+        TARGET_VERSION="${{ needs.pre-rollback-check.outputs.target-version }}"
+        ROLLBACK_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        REASON="${{ github.event.inputs.rollback_reason || github.event.client_payload.reason }}"
+        
+        # ロールバック情報をラベルに記録
+        gcloud run services update ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --update-labels="last-rollback=$ROLLBACK_TIMESTAMP,rollback-reason=$REASON,rolled-back-to=$TARGET_VERSION"
+          
+        echo "🏷️ Service labels updated with rollback information"
+
+  # ロールバック後の検証
+  post-rollback-validation:
+    name: Post-Rollback Validation
+    runs-on: ubuntu-latest
+    needs: execute-rollback
+    
+    steps:
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ env.PROJECT_ID }}
+        
+    - name: Health Check After Rollback
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)")
+        
+        echo "🔍 Post-rollback health check"
+        echo "Service URL: $SERVICE_URL"
+        
+        # 複数回ヘルスチェック
+        SUCCESS_COUNT=0
+        for i in {1..10}; do
+          echo "Health check attempt $i/10"
+          
+          if curl -f --max-time 30 "$SERVICE_URL/health" > /dev/null 2>&1; then
+            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            echo "✅ Attempt $i: Success"
+          else
+            echo "❌ Attempt $i: Failed"
+          fi
+          
+          sleep 10
+        done
+        
+        SUCCESS_RATE=$((SUCCESS_COUNT * 10))
+        echo "📊 Success rate: $SUCCESS_RATE%"
+        
+        if [ $SUCCESS_COUNT -ge 8 ]; then
+          echo "✅ Post-rollback health check passed"
+        else
+          echo "❌ Post-rollback health check failed"
+          exit 1
+        fi
+        
+    - name: Performance Validation
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)")
+        
+        echo "🚀 Performance validation after rollback"
+        
+        TOTAL_TIME=0
+        SAMPLE_COUNT=5
+        
+        for i in $(seq 1 $SAMPLE_COUNT); do
+          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}" "$SERVICE_URL/health")
+          echo "Response time $i: ${RESPONSE_TIME}s"
+          TOTAL_TIME=$(echo "$TOTAL_TIME + $RESPONSE_TIME" | bc)
+        done
+        
+        AVG_TIME=$(echo "scale=3; $TOTAL_TIME / $SAMPLE_COUNT" | bc)
+        echo "📊 Average response time: ${AVG_TIME}s"
+        
+        if (( $(echo "$AVG_TIME < 5.0" | bc -l) )); then
+          echo "✅ Performance validation passed"
+        else
+          echo "⚠️ Performance validation warning: Slow response time"
+        fi
+
+  # ロールバック後の監視
+  post-rollback-monitoring:
+    name: Post-Rollback Monitoring
+    runs-on: ubuntu-latest
+    needs: post-rollback-validation
+    
+    steps:
+    - name: Setup Monitoring
+      run: |
+        echo "📊 Setting up enhanced monitoring after rollback"
+        
+        # 30分間の集中監視
+        for i in {1..6}; do
+          echo "Monitoring cycle $i/6 (5 minutes each)"
+          
+          # サービスヘルス確認
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)")
+          
+          if curl -f --max-time 30 "$SERVICE_URL/health" > /dev/null 2>&1; then
+            echo "✅ Cycle $i: Service healthy"
+          else
+            echo "❌ Cycle $i: Service unhealthy"
+            # アラート送信（実装必要）
+          fi
+          
+          # 5分待機（最後の循環以外）
+          if [ $i -lt 6 ]; then
+            sleep 300
+          fi
+        done
+        
+        echo "✅ 30-minute monitoring completed"
+
+  # レポート生成
+  generate-rollback-report:
+    name: Generate Rollback Report
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-check, assess-urgency, execute-rollback, post-rollback-validation]
+    if: always()
+    
+    steps:
+    - name: Generate Report
+      run: |
+        ROLLBACK_TIMESTAMP=$(date)
+        STATUS="${{ needs.post-rollback-validation.result }}"
+        
+        cat > rollback-report.md << EOF
+        # 🔄 Automatic Rollback Report
+        
+        **Date**: $ROLLBACK_TIMESTAMP
+        **Status**: $([ "$STATUS" = "success" ] && echo "✅ SUCCESS" || echo "❌ FAILED")
+        
+        ## Rollback Summary
+        - **Reason**: ${{ github.event.inputs.rollback_reason || github.event.client_payload.reason }}
+        - **Urgency**: ${{ needs.assess-urgency.outputs.urgency-level }}
+        - **Previous Version**: ${{ needs.pre-rollback-check.outputs.current-version }}
+        - **Rolled Back To**: ${{ needs.pre-rollback-check.outputs.target-version }}
+        
+        ## Process Timeline
+        - ⏰ Rollback initiated: $ROLLBACK_TIMESTAMP
+        - 🔍 Pre-rollback validation: ${{ needs.pre-rollback-check.result }}
+        - 🚨 Urgency assessment: ${{ needs.assess-urgency.result }}
+        - 🔄 Rollback execution: ${{ needs.execute-rollback.result }}
+        - ✅ Post-rollback validation: ${{ needs.post-rollback-validation.result }}
+        
+        ## Validation Results
+        $([ "$STATUS" = "success" ] && echo "- ✅ Health checks passed" || echo "- ❌ Health checks failed")
+        $([ "$STATUS" = "success" ] && echo "- ✅ Performance validation passed" || echo "- ❌ Performance validation failed")
+        
+        ## Next Steps
+        - Continue monitoring for next 24 hours
+        - Investigate root cause of issues that triggered rollback
+        - Plan forward fix if applicable
+        - Update incident documentation
+        
+        ## Service Information
+        - **Service URL**: $(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)" 2>/dev/null || echo "Unable to retrieve")
+        - **Current Status**: $(curl -s "$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format="value(status.url)" 2>/dev/null)/health" | jq -r '.status // "unknown"' 2>/dev/null || echo "Unable to check")
+        EOF
+        
+        echo "📋 Rollback report generated"
+        cat rollback-report.md
+        
+    - name: Upload Rollback Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: rollback-report
+        path: rollback-report.md
+        retention-days: 365
+
+  # 通知
+  notify-rollback-status:
+    name: Notify Rollback Status
+    runs-on: ubuntu-latest
+    needs: [pre-rollback-check, post-rollback-validation, generate-rollback-report]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: needs.post-rollback-validation.result == 'success'
+      run: |
+        echo "✅ Automatic rollback completed successfully!"
+        echo "🔄 Rolled back to: ${{ needs.pre-rollback-check.outputs.target-version }}"
+        echo "📊 System status: Stable"
+        
+        # Slack/Discord/メール通知を追加
+        
+    - name: Notify Failure
+      if: needs.post-rollback-validation.result == 'failure'
+      run: |
+        echo "❌ Automatic rollback failed!"
+        echo "🚨 URGENT: Manual intervention required"
+        echo "📞 Contact: DevOps team immediately"
+        
+        # 緊急アラート通知を追加

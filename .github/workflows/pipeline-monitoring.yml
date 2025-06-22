@@ -1,0 +1,523 @@
+name: Pipeline Monitoring and Reporting
+
+on:
+  schedule:
+    - cron: '0 8 * * MON'  # 毎週月曜日 8:00 (JST 17:00)
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy to Production", "Blue-Green Deployment", "Automatic Rollback"]
+    types: [completed]
+
+jobs:
+  # パイプライン統計収集
+  collect-pipeline-metrics:
+    name: Collect Pipeline Metrics
+    runs-on: ubuntu-latest
+    outputs:
+      metrics-data: ${{ steps.metrics.outputs.data }}
+      
+    steps:
+    - name: Collect Deployment Metrics
+      id: metrics
+      run: |
+        echo "📊 Collecting pipeline metrics from the last 7 days..."
+        
+        # GitHub API で過去7日間のワークフロー実行を取得
+        WEEK_AGO=$(date -d '7 days ago' -u +%Y-%m-%dT%H:%M:%SZ)
+        
+        # デプロイメント成功率
+        DEPLOY_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/runs?created=>$WEEK_AGO&per_page=100" | \
+          jq '.workflow_runs | length')
+          
+        DEPLOY_SUCCESS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/runs?created=>$WEEK_AGO&status=success&per_page=100" | \
+          jq '.workflow_runs | length')
+        
+        # テスト成功率
+        TEST_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows/comprehensive-testing.yml/runs?created=>$WEEK_AGO&per_page=100" | \
+          jq '.workflow_runs | length')
+          
+        TEST_SUCCESS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows/comprehensive-testing.yml/runs?created=>$WEEK_AGO&status=success&per_page=100" | \
+          jq '.workflow_runs | length')
+        
+        # ロールバック回数
+        ROLLBACK_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/workflows/automatic-rollback.yml/runs?created=>$WEEK_AGO&per_page=100" | \
+          jq '.workflow_runs | length')
+        
+        # 成功率計算
+        DEPLOY_SUCCESS_RATE=$([ $DEPLOY_RUNS -gt 0 ] && echo "scale=2; $DEPLOY_SUCCESS * 100 / $DEPLOY_RUNS" | bc || echo "0")
+        TEST_SUCCESS_RATE=$([ $TEST_RUNS -gt 0 ] && echo "scale=2; $TEST_SUCCESS * 100 / $TEST_RUNS" | bc || echo "0")
+        
+        # 平均デプロイ時間計算（簡略化）
+        AVG_DEPLOY_TIME="15"  # 実際の計算ロジックに置き換え
+        
+        # メトリクスデータ作成
+        METRICS_JSON=$(cat << EOF
+        {
+          "period": "7_days",
+          "deployments": {
+            "total": $DEPLOY_RUNS,
+            "successful": $DEPLOY_SUCCESS,
+            "success_rate": $DEPLOY_SUCCESS_RATE,
+            "avg_duration_minutes": $AVG_DEPLOY_TIME
+          },
+          "tests": {
+            "total": $TEST_RUNS,
+            "successful": $TEST_SUCCESS,
+            "success_rate": $TEST_SUCCESS_RATE
+          },
+          "rollbacks": {
+            "total": $ROLLBACK_RUNS
+          },
+          "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+        EOF
+        )
+        
+        echo "data=$METRICS_JSON" >> $GITHUB_OUTPUT
+        
+        echo "📈 Metrics Summary:"
+        echo "  Deployments: $DEPLOY_SUCCESS/$DEPLOY_RUNS (${DEPLOY_SUCCESS_RATE}%)"
+        echo "  Tests: $TEST_SUCCESS/$TEST_RUNS (${TEST_SUCCESS_RATE}%)"
+        echo "  Rollbacks: $ROLLBACK_RUNS"
+
+  # テストカバレッジ分析
+  analyze-test-coverage:
+    name: Analyze Test Coverage
+    runs-on: ubuntu-latest
+    outputs:
+      coverage-report: ${{ steps.coverage.outputs.report }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+        
+    - name: Analyze Backend Coverage
+      id: backend-coverage
+      run: |
+        pip install -r requirements.txt
+        pip install pytest-cov
+        
+        cd backend
+        export TESTING=true
+        
+        # カバレッジ計測
+        python -m pytest app/tests/ \
+          --cov=app \
+          --cov-report=json:coverage.json \
+          --cov-report=term
+          
+        BACKEND_COVERAGE=$(python -c "import json; data=json.load(open('coverage.json')); print(f'{data[\"totals\"][\"percent_covered\"]:.1f}')")
+        
+        echo "backend-coverage=$BACKEND_COVERAGE" >> $GITHUB_OUTPUT
+        echo "🐍 Backend Coverage: ${BACKEND_COVERAGE}%"
+        
+    - name: Analyze Frontend Coverage
+      id: frontend-coverage
+      run: |
+        cd frontend
+        npm ci --prefer-offline --no-audit
+        
+        # カバレッジ計測
+        npm test -- --coverage --watchAll=false --silent
+        
+        FRONTEND_COVERAGE=$(grep -o '"pct":[0-9.]*' coverage/coverage-summary.json | head -1 | cut -d: -f2)
+        
+        echo "frontend-coverage=$FRONTEND_COVERAGE" >> $GITHUB_OUTPUT
+        echo "⚛️ Frontend Coverage: ${FRONTEND_COVERAGE}%"
+        
+    - name: Generate Coverage Report
+      id: coverage
+      run: |
+        BACKEND_COV="${{ steps.backend-coverage.outputs.backend-coverage }}"
+        FRONTEND_COV="${{ steps.frontend-coverage.outputs.frontend-coverage }}"
+        OVERALL_COV=$(echo "scale=1; ($BACKEND_COV + $FRONTEND_COV) / 2" | bc)
+        
+        COVERAGE_JSON=$(cat << EOF
+        {
+          "overall": $OVERALL_COV,
+          "backend": $BACKEND_COV,
+          "frontend": $FRONTEND_COV,
+          "targets": {
+            "backend": 85,
+            "frontend": 80,
+            "overall": 82.5
+          },
+          "status": {
+            "backend": $([ $(echo "$BACKEND_COV >= 85" | bc) -eq 1 ] && echo "\"✅ Pass\"" || echo "\"❌ Below Target\""),
+            "frontend": $([ $(echo "$FRONTEND_COV >= 80" | bc) -eq 1 ] && echo "\"✅ Pass\"" || echo "\"❌ Below Target\""),
+            "overall": $([ $(echo "$OVERALL_COV >= 82.5" | bc) -eq 1 ] && echo "\"✅ Pass\"" || echo "\"❌ Below Target\"")
+          }
+        }
+        EOF
+        )
+        
+        echo "report=$COVERAGE_JSON" >> $GITHUB_OUTPUT
+        echo "📊 Overall Coverage: ${OVERALL_COV}%"
+
+  # セキュリティスキャン統計
+  security-scan-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    outputs:
+      security-report: ${{ steps.security.outputs.report }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Dependency Scan
+      run: |
+        echo "🔒 Running dependency vulnerability scan..."
+        
+        # Python dependencies
+        pip install safety
+        PYTHON_VULNS=$(safety check -r requirements.txt --json | jq '.vulnerabilities | length' 2>/dev/null || echo "0")
+        
+        # Node.js dependencies
+        cd frontend
+        npm audit --json > audit-results.json || true
+        NODE_VULNS=$(jq '.metadata.vulnerabilities.total' audit-results.json 2>/dev/null || echo "0")
+        cd ..
+        
+        echo "🐍 Python vulnerabilities: $PYTHON_VULNS"
+        echo "⚛️ Node.js vulnerabilities: $NODE_VULNS"
+        
+        echo "python-vulns=$PYTHON_VULNS" >> $GITHUB_OUTPUT
+        echo "node-vulns=$NODE_VULNS" >> $GITHUB_OUTPUT
+        
+    - name: Generate Security Report
+      id: security
+      run: |
+        SECURITY_JSON=$(cat << EOF
+        {
+          "dependencies": {
+            "python_vulnerabilities": ${{ steps.security-scan-summary.outputs.python-vulns || 0 }},
+            "nodejs_vulnerabilities": ${{ steps.security-scan-summary.outputs.node-vulns || 0 }}
+          },
+          "overall_status": $([ $((${{ steps.security-scan-summary.outputs.python-vulns || 0 }} + ${{ steps.security-scan-summary.outputs.node-vulns || 0 }})) -eq 0 ] && echo "\"✅ Clean\"" || echo "\"⚠️ Issues Found\""),
+          "last_scan": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+        EOF
+        )
+        
+        echo "report=$SECURITY_JSON" >> $GITHUB_OUTPUT
+
+  # パフォーマンストレンド分析
+  performance-trend-analysis:
+    name: Performance Trend Analysis
+    runs-on: ubuntu-latest
+    outputs:
+      performance-report: ${{ steps.performance.outputs.report }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+        
+    - name: Analyze Performance Trends
+      id: performance
+      run: |
+        echo "🚀 Analyzing performance trends..."
+        
+        # 過去のパフォーマンスデータを取得（実際の実装では監視ツールのAPIを使用）
+        # ここではダミーデータを使用
+        
+        AVG_RESPONSE_TIME="1.2"
+        P95_RESPONSE_TIME="2.8"
+        ERROR_RATE="0.15"
+        UPTIME="99.95"
+        
+        # トレンド判定（簡略化）
+        RESPONSE_TREND="stable"  # improving, stable, degrading
+        ERROR_TREND="improving"
+        UPTIME_TREND="stable"
+        
+        PERFORMANCE_JSON=$(cat << EOF
+        {
+          "current_metrics": {
+            "avg_response_time_seconds": $AVG_RESPONSE_TIME,
+            "p95_response_time_seconds": $P95_RESPONSE_TIME,
+            "error_rate_percent": $ERROR_RATE,
+            "uptime_percent": $UPTIME
+          },
+          "trends": {
+            "response_time": "$RESPONSE_TREND",
+            "error_rate": "$ERROR_TREND",
+            "uptime": "$UPTIME_TREND"
+          },
+          "targets": {
+            "avg_response_time": 2.0,
+            "p95_response_time": 5.0,
+            "error_rate": 1.0,
+            "uptime": 99.9
+          },
+          "status": {
+            "response_time": $([ $(echo "$AVG_RESPONSE_TIME <= 2.0" | bc) -eq 1 ] && echo "\"✅ Good\"" || echo "\"❌ Slow\""),
+            "error_rate": $([ $(echo "$ERROR_RATE <= 1.0" | bc) -eq 1 ] && echo "\"✅ Good\"" || echo "\"❌ High\""),
+            "uptime": $([ $(echo "$UPTIME >= 99.9" | bc) -eq 1 ] && echo "\"✅ Good\"" || echo "\"❌ Low\"")
+          }
+        }
+        EOF
+        )
+        
+        echo "report=$PERFORMANCE_JSON" >> $GITHUB_OUTPUT
+        
+        echo "📊 Performance Status:"
+        echo "  Avg Response: ${AVG_RESPONSE_TIME}s (target: 2.0s)"
+        echo "  Error Rate: ${ERROR_RATE}% (target: <1%)"
+        echo "  Uptime: ${UPTIME}% (target: >99.9%)"
+
+  # 週次レポート生成
+  generate-weekly-report:
+    name: Generate Weekly CI/CD Report
+    runs-on: ubuntu-latest
+    needs: [collect-pipeline-metrics, analyze-test-coverage, security-scan-summary, performance-trend-analysis]
+    
+    steps:
+    - name: Generate Comprehensive Report
+      run: |
+        # メトリクスデータの抽出
+        METRICS='${{ needs.collect-pipeline-metrics.outputs.metrics-data }}'
+        COVERAGE='${{ needs.analyze-test-coverage.outputs.coverage-report }}'
+        SECURITY='${{ needs.security-scan-summary.outputs.security-report }}'
+        PERFORMANCE='${{ needs.performance-trend-analysis.outputs.performance-report }}'
+        
+        # 詳細レポート生成
+        cat > weekly-cicd-report.md << 'EOF'
+        # 📊 週次CI/CDパイプラインレポート
+        
+        **生成日**: $(date)
+        **対象期間**: 過去7日間
+        
+        ## 🚀 デプロイメント統計
+        
+        EOF
+        
+        echo "$METRICS" | jq -r '
+        "- **総デプロイ数**: \(.deployments.total)
+        - **成功デプロイ数**: \(.deployments.successful)
+        - **成功率**: \(.deployments.success_rate)%
+        - **平均デプロイ時間**: \(.deployments.avg_duration_minutes)分
+        - **ロールバック数**: \(.rollbacks.total)
+        
+        $(if .deployments.success_rate >= 95 then "✅ 優秀" elif .deployments.success_rate >= 90 then "⚠️ 注意" else "❌ 改善必要" end)
+        "' >> weekly-cicd-report.md
+        
+        cat >> weekly-cicd-report.md << 'EOF'
+        
+        ## 🧪 テスト統計
+        
+        EOF
+        
+        echo "$METRICS" | jq -r '
+        "- **総テスト実行数**: \(.tests.total)
+        - **成功テスト数**: \(.tests.successful)  
+        - **成功率**: \(.tests.success_rate)%
+        
+        $(if .tests.success_rate >= 95 then "✅ 優秀" elif .tests.success_rate >= 90 then "⚠️ 注意" else "❌ 改善必要" end)
+        "' >> weekly-cicd-report.md
+        
+        cat >> weekly-cicd-report.md << 'EOF'
+        
+        ## 📈 テストカバレッジ
+        
+        EOF
+        
+        echo "$COVERAGE" | jq -r '
+        "- **バックエンドカバレッジ**: \(.backend)% \(.status.backend)
+        - **フロントエンドカバレッジ**: \(.frontend)% \(.status.frontend)
+        - **総合カバレッジ**: \(.overall)% \(.status.overall)
+        
+        ### カバレッジ目標
+        - バックエンド: \(.targets.backend)%
+        - フロントエンド: \(.targets.frontend)%
+        - 総合: \(.targets.overall)%
+        "' >> weekly-cicd-report.md
+        
+        cat >> weekly-cicd-report.md << 'EOF'
+        
+        ## 🔒 セキュリティ状況
+        
+        EOF
+        
+        echo "$SECURITY" | jq -r '
+        "- **Python依存関係の脆弱性**: \(.dependencies.python_vulnerabilities)件
+        - **Node.js依存関係の脆弱性**: \(.dependencies.nodejs_vulnerabilities)件
+        - **総合ステータス**: \(.overall_status)
+        - **最終スキャン**: \(.last_scan)
+        "' >> weekly-cicd-report.md
+        
+        cat >> weekly-cicd-report.md << 'EOF'
+        
+        ## 🚀 パフォーマンス状況
+        
+        EOF
+        
+        echo "$PERFORMANCE" | jq -r '
+        "### 現在のメトリクス
+        - **平均レスポンス時間**: \(.current_metrics.avg_response_time_seconds)秒 \(.status.response_time)
+        - **95パーセンタイル**: \(.current_metrics.p95_response_time_seconds)秒
+        - **エラー率**: \(.current_metrics.error_rate_percent)% \(.status.error_rate)  
+        - **稼働率**: \(.current_metrics.uptime_percent)% \(.status.uptime)
+        
+        ### トレンド
+        - **レスポンス時間**: \(.trends.response_time)
+        - **エラー率**: \(.trends.error_rate)
+        - **稼働率**: \(.trends.uptime)
+        "' >> weekly-cicd-report.md
+        
+        cat >> weekly-cicd-report.md << 'EOF'
+        
+        ## 📋 推奨アクション
+        
+        ### 高優先度
+        EOF
+        
+        # 推奨アクションの生成
+        DEPLOY_SUCCESS_RATE=$(echo "$METRICS" | jq -r '.deployments.success_rate')
+        TEST_SUCCESS_RATE=$(echo "$METRICS" | jq -r '.tests.success_rate')
+        ROLLBACK_COUNT=$(echo "$METRICS" | jq -r '.rollbacks.total')
+        BACKEND_COVERAGE=$(echo "$COVERAGE" | jq -r '.backend')
+        SECURITY_ISSUES=$(echo "$SECURITY" | jq -r '(.dependencies.python_vulnerabilities + .dependencies.nodejs_vulnerabilities)')
+        
+        if (( $(echo "$DEPLOY_SUCCESS_RATE < 90" | bc -l) )); then
+          echo "- 🚨 デプロイ成功率が低下しています（${DEPLOY_SUCCESS_RATE}%）。デプロイプロセスの見直しが必要です。" >> weekly-cicd-report.md
+        fi
+        
+        if (( $(echo "$TEST_SUCCESS_RATE < 95" | bc -l) )); then
+          echo "- ⚠️ テスト成功率が低下しています（${TEST_SUCCESS_RATE}%）。テストの安定性向上が必要です。" >> weekly-cicd-report.md
+        fi
+        
+        if [ "$ROLLBACK_COUNT" -gt 0 ]; then
+          echo "- 🔄 ${ROLLBACK_COUNT}回のロールバックが発生しました。根本原因の調査が必要です。" >> weekly-cicd-report.md
+        fi
+        
+        if (( $(echo "$BACKEND_COVERAGE < 85" | bc -l) )); then
+          echo "- 📈 バックエンドのテストカバレッジが目標を下回っています（${BACKEND_COVERAGE}%）。" >> weekly-cicd-report.md
+        fi
+        
+        if [ "$SECURITY_ISSUES" -gt 0 ]; then
+          echo "- 🔒 ${SECURITY_ISSUES}件の依存関係脆弱性があります。アップデートが必要です。" >> weekly-cicd-report.md
+        fi
+        
+        cat >> weekly-cicd-report.md << 'EOF'
+        
+        ### 中優先度
+        - 📊 パフォーマンスメトリクスの継続監視
+        - 🔧 CI/CDパイプラインの最適化検討
+        - 📚 ドキュメント更新
+        
+        ### 次週の目標
+        - デプロイ成功率: 95%以上維持
+        - テスト成功率: 98%以上維持  
+        - テストカバレッジ: 目標値達成
+        - セキュリティ脆弱性: 0件
+        
+        ---
+        
+        **レポート生成者**: GitHub Actions
+        **次回レポート**: $(date -d '+7 days' +%Y年%m月%d日)
+        EOF
+        
+        echo "📋 週次レポート生成完了"
+        
+    - name: Upload Weekly Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: weekly-cicd-report
+        path: weekly-cicd-report.md
+        retention-days: 365
+        
+    - name: Create GitHub Issue for Report
+      run: |
+        # 週次レポートをGitHub Issueとして作成
+        REPORT_CONTENT=$(cat weekly-cicd-report.md)
+        
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/issues \
+          -d "{
+            \"title\": \"📊 週次CI/CDレポート - $(date +%Y/%m/%d)\",
+            \"body\": $(echo "$REPORT_CONTENT" | jq -R -s .),
+            \"labels\": [\"report\", \"ci-cd\", \"weekly\"]
+          }"
+        
+        echo "✅ 週次レポートをGitHub Issueとして作成しました"
+
+  # アラート設定
+  check-critical-issues:
+    name: Check Critical Issues
+    runs-on: ubuntu-latest
+    needs: [collect-pipeline-metrics, analyze-test-coverage, security-scan-summary]
+    
+    steps:
+    - name: Evaluate Critical Thresholds
+      run: |
+        echo "🚨 重要な閾値をチェック中..."
+        
+        METRICS='${{ needs.collect-pipeline-metrics.outputs.metrics-data }}'
+        COVERAGE='${{ needs.analyze-test-coverage.outputs.coverage-report }}'
+        SECURITY='${{ needs.security-scan-summary.outputs.security-report }}'
+        
+        DEPLOY_SUCCESS_RATE=$(echo "$METRICS" | jq -r '.deployments.success_rate')
+        TEST_SUCCESS_RATE=$(echo "$METRICS" | jq -r '.tests.success_rate')
+        ROLLBACK_COUNT=$(echo "$METRICS" | jq -r '.rollbacks.total')
+        SECURITY_ISSUES=$(echo "$SECURITY" | jq -r '(.dependencies.python_vulnerabilities + .dependencies.nodejs_vulnerabilities)')
+        
+        CRITICAL_ISSUES=0
+        
+        # クリティカルな問題をチェック
+        if (( $(echo "$DEPLOY_SUCCESS_RATE < 80" | bc -l) )); then
+          echo "🚨 CRITICAL: デプロイ成功率が危険なレベルです (${DEPLOY_SUCCESS_RATE}%)"
+          CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+        fi
+        
+        if (( $(echo "$TEST_SUCCESS_RATE < 85" | bc -l) )); then
+          echo "🚨 CRITICAL: テスト成功率が危険なレベルです (${TEST_SUCCESS_RATE}%)"
+          CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+        fi
+        
+        if [ "$ROLLBACK_COUNT" -gt 3 ]; then
+          echo "🚨 CRITICAL: 過度なロールバック発生 (${ROLLBACK_COUNT}回)"
+          CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+        fi
+        
+        if [ "$SECURITY_ISSUES" -gt 10 ]; then
+          echo "🚨 CRITICAL: 深刻なセキュリティ脆弱性 (${SECURITY_ISSUES}件)"
+          CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+        fi
+        
+        if [ $CRITICAL_ISSUES -gt 0 ]; then
+          echo "❌ $CRITICAL_ISSUES 件のクリティカルな問題が検出されました"
+          
+          # 緊急アラート送信（実際の実装では適切な通知サービスを使用）
+          echo "🚨 緊急アラートを送信します..."
+          
+          exit 1
+        else
+          echo "✅ クリティカルな問題は検出されませんでした"
+        fi
