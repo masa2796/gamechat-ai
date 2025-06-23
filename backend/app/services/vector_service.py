@@ -5,10 +5,8 @@ from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
 from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
-from ..core.performance import async_timer
 import os
 import asyncio
-import concurrent.futures
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -18,17 +16,37 @@ class VectorService:
     def __init__(self) -> None:
         upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
+        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        environment = os.getenv("ENVIRONMENT", "development")
+        
+        # テスト環境では設定不要
+        if is_test_mode:
+            GameChatLogger.log_info("vector_service", "テストモード: Vector検索は無効化されています")
+            self.vector_index = None
+            return
         
         # 本番環境では設定が必須
         if not upstash_url or not upstash_token:
-            GameChatLogger.log_warning(
-                "vector_service", 
-                "Upstash Vector設定が不完全です。一部機能が制限されます。",
-                {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
-            )
+            if environment == "production":
+                GameChatLogger.log_error(
+                    "vector_service", 
+                    "本番環境でUpstash Vector設定が不完全です",
+                    {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
+                )
+            else:
+                GameChatLogger.log_warning(
+                    "vector_service", 
+                    "Upstash Vector設定が不完全です。一部機能が制限されます。",
+                    {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
+                )
             self.vector_index = None
         else:
-            self.vector_index = Index(url=upstash_url, token=upstash_token)
+            try:
+                self.vector_index = Index(url=upstash_url, token=upstash_token)
+                GameChatLogger.log_info("vector_service", "Upstash Vector初期化完了")
+            except Exception as e:
+                GameChatLogger.log_error("vector_service", f"Upstash Vector初期化失敗: {e}")
+                self.vector_index = None
     
     @handle_service_exceptions("vector", fallback_return=[])
     async def search(

@@ -19,7 +19,7 @@ class APIKeyRotationManager:
     def __init__(self, 
                  rotation_interval_days: int = 30,
                  overlap_period_hours: int = 24,
-                 backup_directory: str = "/app/security/key_backups"):
+                 backup_directory: Optional[str] = None):
         """
         Args:
             rotation_interval_days: ローテーション間隔（日）
@@ -28,16 +28,54 @@ class APIKeyRotationManager:
         """
         self.rotation_interval = timedelta(days=rotation_interval_days)
         self.overlap_period = timedelta(hours=overlap_period_hours)
-        self.backup_dir = Path(backup_directory)
         self.logger = logging.getLogger(__name__)
         
-        # バックアップディレクトリの作成
+        # バックアップディレクトリの設定と作成
+        self.backup_dir = self._setup_backup_directory(backup_directory)
+    
+    def _setup_backup_directory(self, backup_directory: Optional[str]) -> Optional[Path]:
+        """バックアップディレクトリを安全に設定"""
+        if not backup_directory:
+            # 環境変数から取得を試行
+            backup_directory = os.getenv("BACKUP_DIRECTORY")
+        
+        if not backup_directory:
+            # デフォルトパスの候補
+            candidates = [
+                "/tmp/gamechat_backups",
+                "./backups",
+                "./tmp"
+            ]
+            
+            for candidate in candidates:
+                try:
+                    backup_path = Path(candidate)
+                    backup_path.mkdir(parents=True, exist_ok=True)
+                    # 書き込み権限をテスト
+                    test_file = backup_path / "test_write.tmp"
+                    test_file.write_text("test")
+                    test_file.unlink()
+                    self.logger.info(f"Using backup directory: {backup_path}")
+                    return backup_path
+                except (PermissionError, OSError) as e:
+                    self.logger.debug(f"Cannot use {candidate}: {e}")
+                    continue
+            
+            self.logger.warning("No writable backup directory found, backup disabled")
+            return None
+        
         try:
-            self.backup_dir.mkdir(parents=True, exist_ok=True)
+            backup_path = Path(backup_directory)
+            backup_path.mkdir(parents=True, exist_ok=True)
+            # 書き込み権限をテスト
+            test_file = backup_path / "test_write.tmp"
+            test_file.write_text("test")
+            test_file.unlink()
+            self.logger.info(f"Using backup directory: {backup_path}")
+            return backup_path
         except (PermissionError, OSError) as e:
-            self.logger.warning(f"Cannot create backup directory: {e}")
-            # バックアップディレクトリが作成できない場合は現在のディレクトリを使用
-            self.backup_dir = Path(".")
+            self.logger.warning(f"Cannot create backup directory {backup_directory}: {e}")
+            return None
     
     def generate_api_key(self, key_type: str) -> str:
         """

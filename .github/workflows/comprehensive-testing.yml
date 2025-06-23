@@ -177,21 +177,64 @@ jobs:
         npm ci --prefer-offline --no-audit
         npx playwright install
 
-    - name: Start Application
+    - name: Setup test environment
       run: |
-        # バックエンド起動
-        cd backend
+        # テスト環境設定をコピー
+        cp .env.ci .env
+        
+        # 必要なディレクトリとファイルを作成
+        mkdir -p /tmp/test_storage
+        mkdir -p data
+        mkdir -p logs
+        
+        # テストデータファイル作成
+        echo '{"test": "data"}' > data/data.json
+        echo '{"test": "embeddings"}' > data/embedding_list.jsonl
+        echo '{"test": "query_data"}' > data/query_data.json
+        echo 'Mock results for top-k queries' > data/result_top_k.txt
+
+    - name: Start Backend
+      run: |
+        # バックエンド起動（ワーキングディレクトリを維持）
         export TESTING=true
         export LOG_LEVEL=WARNING
-        python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        export SKIP_STARTUP_CHECKS=true
+        export MOCK_EXTERNAL_SERVICES=true
         
-        # フロントエンド起動
+        # バックエンドをバックグラウンドで起動
+        cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        
+        # バックエンドの起動を待機
+        echo "Waiting for backend to start..."
+        for i in {1..30}; do
+          if curl -f -s http://localhost:8000/health >/dev/null 2>&1; then
+            echo "✅ Backend is ready!"
+            break
+          fi
+          echo "Waiting... ($i/30)"
+          sleep 2
+        done
+
+    - name: Start Frontend
+      run: |
+        # フロントエンドディレクトリに移動してビルド・起動
         cd frontend
+        echo "Building frontend..."
         npm run build
+        
+        echo "Starting frontend..."
         npm run start &
         
-        # サービス起動待機
-        sleep 30
+        # フロントエンドの起動を待機
+        echo "Waiting for frontend to start..."
+        for i in {1..30}; do
+          if curl -f -s http://localhost:3000 >/dev/null 2>&1; then
+            echo "✅ Frontend is ready!"
+            break
+          fi
+          echo "Waiting... ($i/30)"
+          sleep 2
+        done
 
     - name: Run E2E Tests
       run: |

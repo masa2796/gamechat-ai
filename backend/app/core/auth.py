@@ -43,6 +43,13 @@ class APIKeyAuth:
         """Load API keys from environment variables."""
         api_keys = {}
         
+        # テスト環境の確認
+        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        environment = os.getenv("ENVIRONMENT", "development")
+        
+        if is_test_mode:
+            logger.info("Test mode detected, using test API keys")
+        
         # Production API key
         prod_key = os.getenv("API_KEY_PRODUCTION")
         if prod_key:
@@ -55,8 +62,10 @@ class APIKeyAuth:
                 "permissions": ["read", "write"],
                 "created_at": datetime.now().isoformat()
             }
-        else:
+        elif not is_test_mode and environment == "production":
             logger.warning("Production API key not found in environment variables")
+        else:
+            logger.info("Production API key not required in current environment")
         
         # Development API key
         dev_key = os.getenv("API_KEY_DEVELOPMENT")
@@ -70,8 +79,10 @@ class APIKeyAuth:
                 "permissions": ["read", "write"],
                 "created_at": datetime.now().isoformat()
             }
-        else:
+        elif not is_test_mode:
             logger.warning("Development API key not found in environment variables")
+        else:
+            logger.info("Development API key not required in test mode")
         
         # Read-only API key
         readonly_key = os.getenv("API_KEY_READONLY")
@@ -159,8 +170,13 @@ class JWTAuth:
     
     def _generate_secret_key(self) -> str:
         """Generate a secret key if not provided."""
-        logger.warning("JWT_SECRET_KEY not set, generating random key")
-        return secrets.token_urlsafe(32)
+        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        if is_test_mode:
+            logger.info("Using test JWT secret key")
+            return "test-jwt-secret-key-for-testing-only"
+        else:
+            logger.warning("JWT_SECRET_KEY not set, generating random key")
+            return secrets.token_urlsafe(32)
     
     def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
         """Create JWT access token."""

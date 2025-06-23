@@ -36,10 +36,17 @@ jobs:
       - run:
           name: Install dependencies with retry
           command: |
-            cd frontend
-            npm ci --prefer-offline --no-audit --progress=false || \
-            (sleep 10 && npm ci --prefer-offline --no-audit --progress=false) || \
-            (sleep 30 && npm ci --no-audit --progress=false)
+            echo "Checking frontend directory..."
+            ls -la
+            if [ -d "frontend" ]; then
+              cd frontend
+              npm ci --prefer-offline --no-audit --progress=false || \
+              (sleep 10 && npm ci --prefer-offline --no-audit --progress=false) || \
+              (sleep 30 && npm ci --no-audit --progress=false)
+            else
+              echo "⚠️ Frontend directory not found"
+              exit 1
+            fi
       - save_cache:
           key: v2-dependencies-{{ checksum "frontend/package-lock.json" }}
           paths:
@@ -57,7 +64,14 @@ jobs:
           at: frontend
       - run:
           name: Build
-          command: cd frontend && npm run build:ci
+          command: |
+            echo "Checking frontend directory..."
+            if [ -d "frontend" ]; then
+              cd frontend && npm run build:ci
+            else
+              echo "⚠️ Frontend directory not found"
+              exit 1
+            fi
 
   start-server:
     executor: node-executor
@@ -68,15 +82,21 @@ jobs:
       - run:
           name: Build
           command: |
-            cd frontend
-            echo "Node.js version: $(node --version)"
-            echo "npm version: $(npm --version)"
-            echo "Environment variables:"
-            env | grep -E "(CI|NODE_ENV|NEXT_)" || echo "No relevant env vars found"
-            echo "Building application..."
-            npm run build
-            echo "Build completed. Checking output..."
-            ls -la .next/ || echo ".next directory not created"
+            echo "Checking frontend directory..."
+            if [ -d "frontend" ]; then
+              cd frontend
+              echo "Node.js version: $(node --version)"
+              echo "npm version: $(npm --version)"
+              echo "Environment variables:"
+              env | grep -E "(CI|NODE_ENV|NEXT_)" || echo "No relevant env vars found"
+              echo "Building application..."
+              npm run build
+              echo "Build completed. Checking output..."
+              ls -la .next/ || echo ".next directory not created"
+            else
+              echo "⚠️ Frontend directory not found"
+              exit 1
+            fi
       - run:
           name: Start server in background
           command: |
