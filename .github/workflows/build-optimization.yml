@@ -79,8 +79,51 @@ jobs:
     - name: Setup test environment
       run: |
         echo "Setting up test environment variables..."
-        # Use the CI environment file and enhance it
-        cp .env.ci .env
+        
+        # .env.ciファイルの存在確認とフォールバック
+        if [ -f ".env.ci" ]; then
+          echo "Using existing .env.ci file"
+          cp .env.ci .env
+        else
+          echo "Creating .env.ci file (fallback)"
+          cat > .env.ci << EOF
+        # CI/CD Test Environment Configuration
+        ENVIRONMENT=test
+        DEBUG=false
+        
+        # Database URLs (test/mock values)
+        DATABASE_URL=sqlite:///tmp/test.db
+        UPSTASH_VECTOR_URL=mock://localhost
+        UPSTASH_VECTOR_TOKEN=test_token
+        
+        # API Keys (test values)
+        OPENAI_API_KEY=sk-test_openai_key
+        ANTHROPIC_API_KEY=sk-ant-test_key
+        
+        # JWT Configuration
+        JWT_SECRET_KEY=test_jwt_secret_key_for_github_actions
+        JWT_ALGORITHM=HS256
+        JWT_EXPIRE_MINUTES=30
+        
+        # Storage Configuration
+        STORAGE_TYPE=local
+        LOCAL_STORAGE_PATH=/tmp/test_storage
+        
+        # Mock data paths
+        DATA_FILE_PATH=./data/data.json
+        EMBEDDING_FILE_PATH=./data/embedding_list.jsonl
+        
+        # Test flags
+        SKIP_STARTUP_CHECKS=true
+        MOCK_EXTERNAL_SERVICES=true
+        TESTING=true
+        
+        # Health check settings
+        HEALTH_CHECK_TIMEOUT=10
+        LOG_LEVEL=WARNING
+        EOF
+          cp .env.ci .env
+        fi
         
         # Create test data directories
         mkdir -p /tmp/test_storage

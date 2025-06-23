@@ -322,7 +322,7 @@ async def detailed_health_check() -> dict[str, Any]:
     # ストレージサービス状況を確認
     try:
         storage_service = StorageService()
-        storage_health = {
+        storage_health: dict[str, Any] = {
             "status": "healthy" if not is_test_mode else "test_mode",
             "gcs_configured": bool(storage_service.bucket_name) if not is_test_mode else False,
             "environment": settings.ENVIRONMENT,
@@ -361,8 +361,6 @@ async def detailed_health_check() -> dict[str, Any]:
             "storage": storage_health
         }
     }
-    
-    return health_data
     
     return health_data
 

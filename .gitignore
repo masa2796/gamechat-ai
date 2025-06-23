@@ -1,5 +1,4 @@
 # .env files - 機密情報を含むファイル
-.env*
 .env
 .env.local
 .env.*.local
@@ -8,7 +7,11 @@ backend/.env.production
 frontend/.env.local
 frontend/.env.firebase
 frontend/.env.production
-# テンプレートファイルは除外しない（.env.example, .env.firebase.example等）
+# テンプレートファイルは除外しない（.env.example, .env.firebase.example, .env.ci等）
+# CI用の設定ファイルは含める
+!.env.ci
+!.env.example
+!.env.*.example
 
 # Cloud Run機密設定ファイル
 cloud-run-env.yaml

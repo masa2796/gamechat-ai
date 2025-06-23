@@ -28,16 +28,16 @@ class VectorService:
         # 本番環境では設定が必須
         if not upstash_url or not upstash_token:
             if environment == "production":
+                error = Exception(f"Upstash Vector設定が不完全です。URL: {bool(upstash_url)}, Token: {bool(upstash_token)}")
                 GameChatLogger.log_error(
                     "vector_service", 
                     "本番環境でUpstash Vector設定が不完全です",
-                    {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
+                    error
                 )
             else:
                 GameChatLogger.log_warning(
                     "vector_service", 
-                    "Upstash Vector設定が不完全です。一部機能が制限されます。",
-                    {"has_url": bool(upstash_url), "has_token": bool(upstash_token)}
+                    "🟡 Upstash Vector設定が不完全です。一部機能が制限されます。"
                 )
             self.vector_index = None
         else:
@@ -45,7 +45,7 @@ class VectorService:
                 self.vector_index = Index(url=upstash_url, token=upstash_token)
                 GameChatLogger.log_info("vector_service", "Upstash Vector初期化完了")
             except Exception as e:
-                GameChatLogger.log_error("vector_service", f"Upstash Vector初期化失敗: {e}")
+                GameChatLogger.log_error("vector_service", f"Upstash Vector初期化失敗: {e}", e)
                 self.vector_index = None
     
     @handle_service_exceptions("vector", fallback_return=[])
