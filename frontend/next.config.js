@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Docker環境ではstandalone、Firebase Hosting用の静的エクスポート設定（本番ビルド時のみ）
-  output: process.env.DOCKER_BUILD || process.env.CI 
+  output: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true'
     ? 'standalone' 
     : process.env.NODE_ENV === 'production' 
       ? 'export' 
       : undefined,
   
   // 基本設定
-  distDir: process.env.DOCKER_BUILD || process.env.CI 
+  distDir: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true'
     ? '.next'
     : process.env.NODE_ENV === 'production' 
       ? 'out' 
@@ -16,14 +16,7 @@ const nextConfig = {
   generateEtags: false,
   trailingSlash: false,
   
-  // 環境変数設定
-  env: {
-    NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
-    NEXT_PUBLIC_DISABLE_RECAPTCHA: process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  },
-  
-  // パフォーマンス最適化
+
   
   // パフォーマンス最適化
   experimental: {
@@ -31,11 +24,15 @@ const nextConfig = {
     optimizePackageImports: ['@radix-ui/react-dialog', '@radix-ui/react-separator', '@radix-ui/react-slot', '@radix-ui/react-tooltip'],
     webVitalsAttribution: ['CLS', 'LCP'],
     // esmExternals: 'loose', // 外部ESMパッケージの最適化
+    // バンドル分析（開発時のみ）
+    ...(process.env.ANALYZE === 'true' && {
+      bundlePagesRouterDependencies: true,
+    }),
   },
   
   // 画像最適化設定
   images: {
-    unoptimized: process.env.NODE_ENV === 'production' && !process.env.DOCKER_BUILD && !process.env.CI, // Firebase Hosting用の静的エクスポート時のみ画像最適化を無効化
+    unoptimized: process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD !== 'true' && process.env.CI !== 'true', // Firebase Hosting用の静的エクスポート時のみ画像最適化を無効化
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 31536000, // 1年
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -45,12 +42,7 @@ const nextConfig = {
   // 静的ファイル最適化
   assetPrefix: process.env.CDN_URL || '',
   
-  // バンドル分析（開発時のみ）
-  ...(process.env.ANALYZE === 'true' && {
-    experimental: {
-      bundlePagesRouterDependencies: true,
-    },
-  }),
+
   
   // Webpack最適化
   webpack: (config, { dev }) => {
@@ -72,7 +64,7 @@ const nextConfig = {
   },
   
   // セキュリティ設定（standalone モードでのみ有効）
-  ...(process.env.DOCKER_BUILD || process.env.CI ? {
+  ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
     async headers() {
       const headers = [
         {
@@ -136,7 +128,7 @@ const nextConfig = {
   },
 
   // PWA対応設定（export モードでは無効化）
-  ...(!(process.env.DOCKER_BUILD || process.env.CI) ? {} : {
+  ...((process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true') && !(process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD !== 'true' && process.env.CI !== 'true') ? {
     async rewrites() {
       return [
         {
@@ -149,7 +141,7 @@ const nextConfig = {
         },
       ];
     },
-  }),
+  } : {}),
 }
 
 // Injected content via Sentry wizard below
@@ -159,7 +151,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 
 // CI環境または開発環境でSENTRY_AUTH_TOKENが設定されていない場合はSentryを無効化
 const shouldUseSentry = process.env.NODE_ENV === 'production' && 
-                       !process.env.CI && 
+                       process.env.CI !== 'true' && 
                        process.env.SENTRY_AUTH_TOKEN;
 
 module.exports = shouldUseSentry ? withSentryConfig(
@@ -181,7 +173,7 @@ module.exports = shouldUseSentry ? withSentryConfig(
     widenClientFileUpload: true,
 
     // tunnelRoute を export モードでは無効化
-    tunnelRoute: process.env.DOCKER_BUILD || process.env.CI ? "/monitoring" : undefined,
+    tunnelRoute: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? "/monitoring" : undefined,
 
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     disableLogger: true,
@@ -190,6 +182,6 @@ module.exports = shouldUseSentry ? withSentryConfig(
     // See the following for more information:
     // https://docs.sentry.io/product/crons/
     // https://vercel.com/docs/cron-jobs
-    automaticVercelMonitors: process.env.DOCKER_BUILD || process.env.CI || false,
+    automaticVercelMonitors: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' || false,
   }
 ) : nextConfig;
