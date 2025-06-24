@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
-from backend.app.services.database_service import DatabaseService
-from backend.app.models.rag_models import ContextItem
+from app.services.database_service import DatabaseService
+from app.models.rag_models import ContextItem
 
 
 class TestDatabaseService:
@@ -11,13 +11,13 @@ class TestDatabaseService:
     @pytest.fixture
     def database_service(self):
         # StorageServiceの初期化をモックして、テスト用に安全な環境を作る
-        with patch('backend.app.services.database_service.StorageService'):
+        with patch('app.services.database_service.StorageService'):
             return DatabaseService()
 
     @pytest.fixture
     def mock_settings(self, monkeypatch):
         """設定をモックするフィクスチャ"""
-        from backend.app.core.config import settings
+        from app.core.config import settings
         
         # テスト用のパスを設定
         monkeypatch.setattr(settings, "DATA_FILE_PATH", "/test/path/data.json")
@@ -262,7 +262,7 @@ class TestDatabaseService:
                 return_value=[]
             )
             
-            from backend.app.core.exceptions import DatabaseException
+            from app.core.exceptions import DatabaseException
             
             with mock_storage_service, mock_placeholder:
                 with pytest.raises(DatabaseException) as exc_info:

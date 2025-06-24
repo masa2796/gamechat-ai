@@ -140,8 +140,8 @@ jobs:
     - name: Analyze Python dependencies
       run: |
         echo "=== Python Dependencies Analysis ==="
-        if [ -f "requirements.txt" ]; then
-          echo "📋 Total packages: $(wc -l < requirements.txt)"
+        if [ -f "backend/requirements.txt" ]; then
+          echo "📋 Total packages: $(wc -l < backend/requirements.txt)"
           echo "🔍 Security scan suggestions:"
           echo "  - Consider using poetry or pipenv for better dependency management"
           echo "  - Regularly update dependencies with: pip-review --auto"
@@ -269,7 +269,7 @@ jobs:
         
         # Python依存関係のインストール
         echo "Installing Python dependencies..."
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
         
         # バックエンド起動
         echo "Starting backend..."

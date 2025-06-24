@@ -7,6 +7,13 @@ test.describe('GameChat AI - Basic Navigation', () => {
     // ページの読み込み完了を待機
     await page.waitForLoadState('networkidle');
     
+    // モバイルビューの場合、サイドバーを開く
+    const viewport = page.viewportSize();
+    if (viewport && viewport.width < 768) {
+      await page.locator('[data-testid="sidebar-trigger"]').click();
+      await page.waitForTimeout(500); // サイドバーアニメーション待機
+    }
+    
     // アプリタイトルが表示されることを確認
     await expect(page.locator('[data-testid="app-title"]')).toHaveText('GameChat AI');
     
@@ -44,5 +51,10 @@ test.describe('GameChat AI - Basic Navigation', () => {
     // モバイルサイズ
     await page.setViewportSize({ width: 375, height: 667 });
     await expect(page.locator('[data-testid="message-input"]')).toBeVisible();
+    
+    // モバイルビューでサイドバーを開いてapp-titleを確認
+    await page.locator('[data-testid="sidebar-trigger"]').click();
+    await page.waitForTimeout(500); // サイドバーアニメーション待機
+    await expect(page.locator('[data-testid="app-title"]')).toHaveText('GameChat AI');
   });
 });

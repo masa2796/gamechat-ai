@@ -2,8 +2,8 @@
 ファクトリーパターンでのテストデータ生成
 """
 from typing import List
-from backend.app.models.rag_models import ContextItem
-from backend.app.models.classification_models import ClassificationResult, QueryType
+from app.models.rag_models import ContextItem
+from app.models.classification_models import ClassificationResult, QueryType
 
 
 class ContextItemFactory:

@@ -112,7 +112,7 @@ jobs:
     - name: Analyze Backend Coverage
       id: backend-coverage
       run: |
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
         pip install pytest-cov
         
         cd backend
@@ -201,7 +201,7 @@ jobs:
         
         # Python dependencies
         pip install safety
-        PYTHON_VULNS=$(safety check -r requirements.txt --json | jq '.vulnerabilities | length' 2>/dev/null || echo "0")
+        PYTHON_VULNS=$(safety check -r backend/requirements.txt --json | jq '.vulnerabilities | length' 2>/dev/null || echo "0")
         
         # Node.js dependencies
         cd frontend

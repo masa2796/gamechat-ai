@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Production stage
@@ -32,7 +32,7 @@ COPY --from=builder /root/.local /home/app/.local
 # Copy application code and configuration
 COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Create data directory for cache/temporary files
 RUN mkdir -p ./data /tmp/gamechat-data && \

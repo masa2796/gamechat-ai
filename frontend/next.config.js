@@ -1,13 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Docker環境またはCI環境では standalone モードを使用
-  // ローカル開発でも standalone モードを使用（API Routesが必要なため）
-  output: 'standalone',
+  // Firebase Hosting用の静的エクスポート設定（本番ビルド時のみ）
+  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
   
   // 基本設定
-  distDir: '.next',
+  distDir: process.env.NODE_ENV === 'production' ? 'out' : '.next',
   generateEtags: false,
-  trailingSlash: true,
+  trailingSlash: false,
+  
+  // 環境変数設定
+  env: {
+    NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
+    NEXT_PUBLIC_DISABLE_RECAPTCHA: process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
   
   // パフォーマンス最適化
   

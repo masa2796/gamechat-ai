@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt --timeout 300 --retries 3
+        pip install -r backend/requirements.txt --timeout 300 --retries 3
         
     - name: Run comprehensive type check
       run: |

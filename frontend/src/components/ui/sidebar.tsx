@@ -259,6 +259,7 @@ function SidebarTrigger({
         onClick?.(event)
         toggleSidebar()
       }}
+      style={{ pointerEvents: 'auto' }}
       {...props}
     >
       <PanelLeftIcon />

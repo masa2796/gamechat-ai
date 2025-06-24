@@ -3,8 +3,8 @@ VectorService用のモッククラス
 """
 from typing import List, Optional
 from unittest.mock import MagicMock
-from backend.app.models.rag_models import ContextItem
-from backend.app.models.classification_models import ClassificationResult
+from app.models.rag_models import ContextItem
+from app.models.classification_models import ClassificationResult
 
 
 class MockVectorService:

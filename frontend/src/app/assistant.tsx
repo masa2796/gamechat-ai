@@ -36,6 +36,21 @@ export const Assistant = () => {
     setSentryTag("component", "assistant");
     setSentryTag("environment", process.env.NEXT_PUBLIC_ENVIRONMENT || "development");
     
+    console.log('Environment check:', {
+      NEXT_PUBLIC_DISABLE_RECAPTCHA: process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA,
+      NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
+      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+    });
+    
+    // テスト環境またはreCAPTCHA無効化フラグが設定されている場合はスクリプトを読み込まない
+    if (process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" || 
+        process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
+        !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+      console.log("reCAPTCHA disabled in test environment");
+      setRecaptchaReady(true);
+      return;
+    }
+    
     if (typeof window !== "undefined" && !window.grecaptcha) {
       const script = document.createElement("script");
       script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
@@ -50,14 +65,20 @@ export const Assistant = () => {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
     
-    const userMessage: Message = { role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage: Message = { role: "user", content: input.trim() };
     
     // Sentryにユーザーアクションを記録
     captureUserAction("message_sent", { messageLength: input.length });
     
-    setInput("");
+    // 状態を更新（ローディング開始、入力クリア、メッセージ追加）
     setLoading(true);
+    setInput("");
+    setMessages(prev => [...prev, userMessage]);
+
+    // API URLを環境変数から取得（テスト環境では外部API、本番では内部API Routes）
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
+      : "/api/rag/query";
 
     try {
       let idToken = "";
@@ -70,13 +91,19 @@ export const Assistant = () => {
       }
       let recaptchaToken = "";
       // reCAPTCHA認証をスキップするかチェック
-      if (process.env.NEXT_PUBLIC_SKIP_RECAPTCHA === "true") {
+      console.log('DISABLE_RECAPTCHA', process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA);
+      if (process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" || 
+          process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
+          !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
         recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
-        console.log("reCAPTCHA verification skipped due to NEXT_PUBLIC_SKIP_RECAPTCHA=true");
+        console.log("reCAPTCHA verification skipped due to test environment");
       } else if (window.grecaptcha && recaptchaReady) {
         recaptchaToken = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: "submit" });
       }
-      const res = await fetch("/api/rag/query", {
+      
+      console.log('API URL:', apiUrl);
+      
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,10 +112,10 @@ export const Assistant = () => {
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
         body: JSON.stringify({ 
-          query: input,
+          question: userMessage.content,
           top_k: 5,
           with_context: true,
-          recaptcha_token: recaptchaToken
+          recaptchaToken: recaptchaToken
         }),
         credentials: "include"
       });
@@ -109,7 +136,7 @@ export const Assistant = () => {
       
       // Sentryにエラーを報告
       captureAPIError(error as Error, {
-        endpoint: "/api/rag/query",
+        endpoint: apiUrl,
         userMessage: userMessage.content,
         timestamp: new Date().toISOString()
       });
@@ -199,7 +226,7 @@ export const Assistant = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  onKeyDown={(e) => e.key === 'Enter' && !loading && input.trim().length > 0 && sendMessage()}
                   className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ゲームについて質問してください..."
                   disabled={loading}
@@ -207,7 +234,7 @@ export const Assistant = () => {
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={loading || !input.trim()}
+                  disabled={loading || input.trim().length === 0}
                   className="px-6 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
                   data-testid="send-button"
                 >

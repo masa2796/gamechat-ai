@@ -63,8 +63,8 @@ echo ""
 echo "📦 Step 6: 依存関係分析"
 echo "------------------------------------------"
 echo "Python dependencies:"
-if [ -f "requirements.txt" ]; then
-    echo "  Total packages: $(wc -l < requirements.txt)"
+if [ -f "backend/requirements.txt" ]; then
+    echo "  Total packages: $(wc -l < backend/requirements.txt)"
     echo "  Python version check:"
     python3 --version
 fi

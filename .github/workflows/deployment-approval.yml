@@ -160,9 +160,9 @@ jobs:
         echo "🔒 Running security validation..."
         
         # Dependency vulnerability scan
-        if [ -f "requirements.txt" ]; then
+        if [ -f "backend/requirements.txt" ]; then
           pip install safety
-          safety check -r requirements.txt --json > security-report.json || true
+          safety check -r backend/requirements.txt --json > security-report.json || true
         fi
         
         # Secret scanning
@@ -209,8 +209,8 @@ jobs:
         echo "🧪 Running comprehensive test suite..."
         
         # Backend tests
-        if [ -f "requirements.txt" ]; then
-          pip install -r requirements.txt
+        if [ -f "backend/requirements.txt" ]; then
+          pip install -r backend/requirements.txt
           cd backend
           export TESTING=true
           python -m pytest app/tests/ --tb=short -q

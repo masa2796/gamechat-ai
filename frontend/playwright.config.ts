@@ -38,7 +38,7 @@ export default defineConfig({
   },
 
   /* Environment variables for testing */
-  // globalSetup: './tests/e2e/global-setup.ts',
+  globalSetup: './tests/e2e/global-setup.ts',
 
   /* Configure projects for major browsers */
   projects: [
@@ -87,8 +87,8 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: 'cd ../backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000',
-      port: 8000,
+      command: 'cd ../backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8001',
+      port: 8001,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
     }

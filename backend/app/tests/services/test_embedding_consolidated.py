@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from backend.app.models.classification_models import ClassificationResult, QueryType
+from app.models.classification_models import ClassificationResult, QueryType
 
 
 class TestEmbeddingService:
@@ -299,7 +299,7 @@ class TestEmbeddingPerformance:
         query = "テストクエリ"
         
         # EmbeddingExceptionが発生することを確認
-        from backend.app.core.exceptions import EmbeddingException
+        from app.core.exceptions import EmbeddingException
         
         with pytest.raises(EmbeddingException) as exc_info:
             await embedding_service.get_embedding_from_classification(query, classification)

@@ -15,21 +15,21 @@ from unittest.mock import MagicMock, patch
 
 
 # アプリケーションモジュールのインポート
-from backend.app.services.classification_service import ClassificationService
-from backend.app.services.embedding_service import EmbeddingService
-from backend.app.services.database_service import DatabaseService
-from backend.app.services.hybrid_search_service import HybridSearchService
-from backend.app.services.rag_service import RagService
-from backend.app.services.llm_service import LLMService
-from backend.app.models.classification_models import ClassificationResult, QueryType
-from backend.app.tests.mocks.vector_service_mock import MockVectorService
+from app.services.classification_service import ClassificationService
+from app.services.embedding_service import EmbeddingService
+from app.services.database_service import DatabaseService
+from app.services.hybrid_search_service import HybridSearchService
+from app.services.rag_service import RagService
+from app.services.llm_service import LLMService
+from app.models.classification_models import ClassificationResult, QueryType
+from app.tests.mocks.vector_service_mock import MockVectorService
 
 # ヘルパークラスのインポート
-from backend.app.tests.fixtures.mock_factory import TestDataFactory, MockResponseFactory
-from backend.app.tests.fixtures.test_helpers import TestAssertions
+from app.tests.fixtures.mock_factory import TestDataFactory, MockResponseFactory
+from app.tests.fixtures.test_helpers import TestAssertions
 
 # 新しいモックシステムのインポート
-from backend.app.tests.mocks import (
+from app.tests.mocks import (
     MockUpstashResult,
     MockClassificationResult,
     MockOpenAIResponse,
@@ -327,7 +327,7 @@ def mock_openai_api_key(monkeypatch):
     # 環境変数のOPENAI_API_KEYを削除
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     # configからも削除
-    monkeypatch.setattr("backend.app.core.config.settings.OPENAI_API_KEY", None)
+    monkeypatch.setattr("app.core.config.settings.OPENAI_API_KEY", None)
 
 
 # ==============================================================================
@@ -371,7 +371,7 @@ def mock_openai_client():
 def mock_classification_service(mock_openai_client):
     """モック化されたClassificationServiceのフィクスチャ"""
     
-    with patch('backend.app.services.classification_service.ClassificationService') as mock_cls:
+    with patch('app.services.classification_service.ClassificationService') as mock_cls:
         # モックインスタンスを作成
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
@@ -392,7 +392,7 @@ def mock_classification_service(mock_openai_client):
 def mock_embedding_service(mock_openai_client):
     """モック化されたEmbeddingServiceのフィクスチャ"""
     
-    with patch('backend.app.services.embedding_service.EmbeddingService') as mock_cls:
+    with patch('app.services.embedding_service.EmbeddingService') as mock_cls:
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
         
@@ -409,7 +409,7 @@ def mock_embedding_service(mock_openai_client):
 def mock_llm_service(mock_openai_client):
     """モック化されたLLMServiceのフィクスチャ"""
     
-    with patch('backend.app.services.llm_service.LLMService') as mock_cls:
+    with patch('app.services.llm_service.LLMService') as mock_cls:
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
         
@@ -436,7 +436,7 @@ def mock_all_services(mock_classification_service, mock_embedding_service, mock_
 def mock_rag_service(mock_all_services):
     """モック化されたRagServiceのフィクスチャ"""
     
-    with patch('backend.app.services.rag_service.RagService') as mock_cls:
+    with patch('app.services.rag_service.RagService') as mock_cls:
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
         

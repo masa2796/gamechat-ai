@@ -479,7 +479,7 @@ enhanced_prompt = f"""
 
 - `.nvmrc` により Node.js バージョンを統一（例: `18`）
 - `.env.example` を `.env` にコピーして環境変数を設定
-- `requirements.txt` により Python パッケージのバージョンを固定
+- `backend/requirements.txt` により Python パッケージのバージョンを固定
 - `package-lock.json` や `package.json` は**バックエンドでは不要**（FastAPI運用時）
 
 | ツール / 言語          | バージョン例    | 備考                                      |
@@ -498,7 +498,7 @@ enhanced_prompt = f"""
 
 - `.nvmrc`: Node.js のバージョン指定
 - `.venv/`: Python 仮想環境ディレクトリ（`python -m venv .venv` で作成）
-- `requirements.txt`: Python の依存パッケージ一覧（開発・本番両用）
+- `backend/requirements.txt`: Python の依存パッケージ一覧（開発・本番両用）
 - `.env.example`: 環境変数の統合テンプレート（開発・本番例を含む）
 - `backend/.env.production.template`: バックエンド本番環境用テンプレート
 - `frontend/.env.production.template`: フロントエンド本番環境用テンプレート  
@@ -506,7 +506,7 @@ enhanced_prompt = f"""
 
 ### 依存関係管理
 
-- **統一requirements.txt**: 開発環境と本番環境で同じ依存関係ファイルを使用
+- **統一requirements.txt**: 開発環境と本番環境で同じ依存関係ファイルを使用（backend/requirements.txt）
 - **全機能対応**: JWT認証、Redis、Gunicorn等の本番機能も含む
 - **堅牢な設計**: 必要なパッケージが不足している場合は適切にフォールバック
 
@@ -558,26 +558,17 @@ docker-compose up --build -d backend
 
 **⚠️ 重要**: 実際のAPIキーは絶対にGitにコミットしないでください。
 
-**開発環境セットアップ**:
+**統一環境設定テンプレート**:
 ```bash
+# 統一環境設定テンプレートを確認
+cat .env.template
+
 # バックエンド環境変数を作成
-cp .env.example backend/.env
+cp .env.template backend/.env
 # backend/.env を編集して実際のAPIキーを設定
 
-# フロントエンド環境変数を作成（通常はデフォルトで動作）
-cp frontend/.env.local.template frontend/.env.local
-```
-
-**本番環境セットアップ**:
-```bash
-# 本番環境用設定（バックエンドのみ）
-cp backend/.env.production.template backend/.env.production
-```
-
-**Firebase Hosting用**:
-```bash
-# Firebase Hosting専用設定
-cp frontend/.env.firebase.example frontend/.env.firebase
+# フロントエンド環境変数（通常はデフォルトで動作、必要に応じて作成）
+# cp .env.template frontend/.env.local
 ```
 
 **必須設定項目**:
@@ -585,29 +576,39 @@ cp frontend/.env.firebase.example frontend/.env.firebase
 - `UPSTASH_VECTOR_REST_URL`: Upstash Vector URL
 - `UPSTASH_VECTOR_REST_TOKEN`: Upstash Vectorトークン
 
-詳細は [`docs/guides/environment-setup.md`](docs/guides/environment-setup.md) を参照してください。
+詳細は [`.env.template`](.env.template) および [`docs/guides/environment-setup.md`](docs/guides/environment-setup.md) を参照してください。
 
 #### 開発サーバーの起動
 
-**フロントエンド（Next.js + Firebase Hosting）**:
+**一括起動（推奨）**:
 ```bash
 cd frontend
 npm install
-npm run dev          # 開発サーバー（http://localhost:3000）
-npm run build:firebase   # Firebase Hosting用ビルド
-firebase deploy --only hosting  # Firebase Hostingにデプロイ
+npm run dev:full  # フロントエンド + バックエンドを同時起動
 ```
 
-**バックエンド（FastAPI + Docker）**:
+**個別起動**:
 ```bash
-# Dockerで起動（推奨）
+# フロントエンドのみ（Next.js）
+cd frontend
+npm run dev          # 開発サーバー（http://localhost:3000）
+
+# バックエンドのみ（FastAPI）
+cd frontend  
+npm run dev:backend  # バックエンド（http://localhost:8001）
+
+# または Dockerで起動
+# 開発環境（基本）
 docker-compose up --build -d backend
 
-# または直接起動
-source .venv/bin/activate  # Windowsの場合は .venv\Scripts\activate
-uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
+# 本番環境（Redis + 最適化設定）
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+
+# 監視システム付き（オプショナル）
+docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d
+
+# Docker構成の詳細はこちら: docs/deployment/DOCKER_USAGE.md
 ```
-→ http://localhost:8000
 
 **注意**: サーバー起動は必ずプロジェクトルートディレクトリから行ってください。相対インポートが正しく動作します。
 
@@ -641,7 +642,13 @@ gamechat-ai/
 │   │   │   └── ng_words.py
 │   │   ├── core/
 │   │   │   ├── config.py          # 環境変数・設定
-│   │   │   └── exception_handlers.py
+│   │   │   ├── exception_handlers.py
+│   │   │   ├── security.py        # セキュリティ設定
+│   │   │   ├── database.py        # データベース接続
+│   │   │   ├── background_tasks.py # バックグラウンドタスク
+│   │   │   ├── intrusion_detection.py  # 侵入検知
+│   │   │   ├── security_audit.py  # セキュリティ監査
+│   │   │   └── logging.py         # ログ設定
 │   │   ├── models/
 │   │   │   ├── rag_models.py      # Pydanticモデル
 │   │   │   └── classification_models.py  # 分類関連モデル
@@ -655,7 +662,8 @@ gamechat-ai/
 │   │       ├── embedding_service.py  # エンベディング
 │   │       ├── vector_service.py  # ベクトル検索
 │   │       ├── rag_service.py     # RAG処理
-│   │       └── llm_service.py     # LLM処理
+│   │       ├── llm_service.py     # LLM処理
+│   │       └── storage_service.py # ストレージサービス
 │   └── tests/                       # テストディレクトリ（機能別構成）
 │       ├── conftest.py            # 共通フィクスチャ・設定
 │       ├── fixtures/              # テストデータ・モック・ヘルパー
@@ -671,55 +679,93 @@ gamechat-ai/
 │       │   └── test_llm_service.py
 │       ├── api/                   # API層テスト
 │       │   ├── test_api.py
-│       │   └── test_rag_service_responses.py
+│       │   ├── test_api_safety.py
+│       │   └── __init__.py
 │       ├── integration/           # 統合テスト
-│       │   └── test_full_flow_integration.py
+│       │   ├── test_full_flow_integration.py
+│       │   ├── test_rag_service_responses.py
+│       │   └── __init__.py
 │       ├── performance/           # パフォーマンステスト
-│       │   └── test_performance_quality_metrics.py
-│       ├── security/              # セキュリティテスト
-│       │   └── test_api_safety.py
+│       │   ├── test_performance_quality_metrics.py
+│       │   └── __init__.py
+│       ├── test_security_implementation.py  # セキュリティテスト
 │       └── README.md              # テスト構成・実行方法の詳細
 │
 ├── data/                         # 攻略データ（git管理外）
 │
-├── scripts/                      # Pythonスクリプト
-│   ├── convert_to_format.py  
-│   ├── embedding.py
-│   └── upstash_connection.py
+├── scripts/                      # 開発・運用ツール
+│   ├── README.md                 # スクリプト使用ガイド
+│   ├── data-processing/          # データ処理
+│   │   ├── convert_to_format.py  # データ形式変換
+│   │   ├── embedding.py          # 埋め込み生成
+│   │   └── upstash_connection.py # Vector DBアップロード
+│   ├── deployment/               # デプロイメント
+│   │   ├── prod-deploy.sh        # 本番環境デプロイ
+│   │   ├── cloud-run-deploy.sh   # Cloud Runデプロイ
+│   │   ├── firebase-deploy.sh    # Firebase Hostingデプロイ
+│   │   ├── migrate-to-firebase.sh # Firebase移行
+│   │   └── upload_data_to_gcs.py # GCSデータアップロード
+│   ├── testing/                  # テスト・検証
+│   │   ├── test_greeting_detection.py  # 挨拶検出テスト
+│   │   ├── test_performance.py   # パフォーマンステスト
+│   │   ├── simple_performance_test.py  # 簡易性能テスト
+│   │   ├── performance_optimization_test.py  # 最適化テスト
+│   │   ├── test-pipeline.sh      # CI/CDパイプラインテスト
+│   │   ├── test-pipeline-local.sh # ローカルテスト
+│   │   └── lighthouse-audit.sh   # フロントエンド監査
+│   └── utilities/                # ユーティリティ
+│       ├── dev-setup.sh          # 開発環境セットアップ
+│       ├── diagnose-config.py    # 設定診断ツール
+│       ├── check-env-security.sh # 環境変数セキュリティチェック
+│       ├── security-check.sh     # システムセキュリティ監査
+│       └── verify-api-keys.sh    # APIキー検証
 │
 ├── docs/                         # ドキュメント
 │   ├── README.md                 # ドキュメント全体の案内
+│   ├── project-status.md         # プロジェクト状況・計画
 │   ├── api/                      # API仕様・設計ドキュメント
 │   │   ├── README.md             # API設計原則・拡張予定
 │   │   └── rag_api_spec.md       # RAG API仕様書
 │   ├── guides/                   # 実装ガイド・チュートリアル
 │   │   ├── README.md             # ガイド使用方法・更新ルール
 │   │   ├── dependencies.md       # 依存関係と開発ガイド
-│   │   ├── environment-setup.md  # 環境セットアップガイド
 │   │   ├── hybrid_search_guide.md    # ハイブリッド検索実装ガイド
 │   │   ├── llm_response_enhancement.md  # LLM応答生成改修ドキュメント
 │   │   ├── vector_search_optimization_guide.md  # ベクトル検索最適化ガイド
 │   │   ├── talk-guidelines.md    # 雑談対応ガイドライン
-│   │   └── assistant-ui-notes.md # UIデザイン・実装メモ
+│   │   ├── assistant-ui-notes.md # UIデザイン・実装メモ
+│   │   └── recaptcha-setup.md    # reCAPTCHA設定ガイド
+│   ├── deployment/               # デプロイメント・インフラ
+│   │   ├── README.md             # デプロイメント全体ガイド
+│   │   ├── deployment-guide.md   # 包括的デプロイガイド
+│   │   ├── cloud-services-overview.md  # クラウドサービス全体概要
+│   │   ├── DOCKER_USAGE.md       # Docker利用ガイド
+│   │   ├── cloud-run-openai-setup.md   # OpenAI設定
+│   │   ├── api-key-authentication-implementation-report.md  # 認証実装レポート
+│   │   ├── cloud-storage-implementation-report.md  # ストレージ実装レポート
+│   │   ├── frontend-sentry-implementation-report.md  # Sentry実装レポート
+│   │   └── firebase-api-key-regeneration-report.md  # Firebase APIキー更新レポート
 │   ├── performance/              # パフォーマンス関連
 │   │   ├── README.md             # パフォーマンス監視・最適化目標
-│   │   └── performance_results.json  # パフォーマンス測定結果
-│   ├── scripts/                  # ユーティリティスクリプト
-│   │   ├── README.md             # スクリプト使用方法・設定
-│   │   ├── convert_to_format.py  # データ形式変換
-│   │   ├── embedding.py          # 埋め込み生成
-│   │   ├── upstash_connection.py # Upstash Vector接続
-│   │   ├── test_greeting_detection.py  # 挨拶検出テスト
-│   │   └── test_performance.py   # パフォーマンステスト
-│   ├── sphinx/                   # Sphinxドキュメント生成
+│   │   ├── performance_results.json  # パフォーマンス測定結果
+│   │   └── frontend-optimization.md  # フロントエンド最適化
+│   ├── security/                 # セキュリティドキュメント
+│   │   ├── README.md             # セキュリティ全体ガイド
+│   │   ├── comprehensive-security-report.md  # 包括的セキュリティレポート
+│   │   ├── security-assessment-report.md     # セキュリティ評価レポート
+│   │   ├── security-enhancement-implementation-report.md  # セキュリティ強化実装レポート
+│   │   └── firebase-security-audit-report.md  # Firebase セキュリティ監査レポート
+│   ├── testing/                  # テスト・品質保証
+│   │   ├── e2e-test-issues.md    # E2Eテスト問題レポート
+│   │   ├── e2e-test-final-report.md  # E2Eテスト修正最終レポート
+│   │   └── github-issues-proposal.md  # GitHub Issue提案
+│   └── sphinx/                   # Sphinxドキュメント生成
 │       ├── conf.py               # Sphinx設定ファイル
 │       ├── index.rst             # メインドキュメント
 │       ├── Makefile              # ビルド用Makefile
 │       └── services/             # サービス層APIドキュメント
 │
 ├── .nvmrc
-├── pytest.ini
-├── requirements.txt
 ├── README.md
 ├── .env.example
 └── .gitignore
@@ -837,22 +883,24 @@ backend/app/tests/
 
 **🌐 API層テスト (`api/`)**
 - **APIエンドポイントテスト** (`test_api.py`): エンドポイントの動作確認
-- **RAGサービステスト** (`test_rag_service_responses.py`): 応答生成の品質テスト
+- **API安全性テスト** (`test_api_safety.py`): OpenAI API呼び出し防ぎ・モック確認・環境変数テスト
 
 **🔗 統合テスト (`integration/`)**
 - **フルフロー統合テスト** (`test_full_flow_integration.py`): 入力→分類→検索→応答生成の完全フローテスト
+- **RAGサービステスト** (`test_rag_service_responses.py`): 応答生成の品質テスト
 
 **⚡ パフォーマンステスト (`performance/`)**
 - **パフォーマンス・品質測定テスト** (`test_performance_quality_metrics.py`): メモリ効率化・応答時間・検索品質・同時処理テスト
 
-**🔒 セキュリティテスト (`security/`)**
-- **API安全性テスト** (`test_api_safety.py`): OpenAI API呼び出し防ぎ・モック確認・環境変数テスト
+**🔒 セキュリティテスト**
+- **セキュリティ実装テスト** (`test_security_implementation.py`): システム全体のセキュリティ実装確認
 
 #### テスト結果（最新 - 統合・整理後）
 - **🎯 統合テスト**: **44/44 PASSED** (分類12 + 埋め込み11 + ハイブリッド12 + ベクトル9)
-- **🌐 API層テスト**: **10/10 PASSED** (エンドポイント4 + RAG応答3 + フルフロー5 + パフォーマンス1)
-- **🔒 セキュリティテスト**: **6/6 PASSED** (API安全性確認)
-- **📊 全体**: **60/60 PASSED** (🎉 100%成功達成)
+- **🌐 API層テスト**: **10/10 PASSED** (エンドポイント4 + RAG応答3 + フルフロー5 + API安全性3)
+- **⚡ パフォーマンステスト**: **5/5 PASSED** (パフォーマンス・品質測定)
+- **🔒 セキュリティテスト**: **8/8 PASSED** (セキュリティ実装確認)
+- **📊 全体**: **67/67 PASSED** (🎉 100%成功達成)
 
 #### テスト品質向上の成果
 - ✅ **重複排除**: 複数の類似テストファイルを機能別に統合
@@ -874,7 +922,7 @@ pytest backend/app/tests/services/        # サービス層テスト
 pytest backend/app/tests/api/            # API層テスト
 pytest backend/app/tests/integration/   # 統合テスト
 pytest backend/app/tests/performance/   # パフォーマンステスト
-pytest backend/app/tests/security/      # セキュリティテスト
+pytest backend/app/tests/test_security_implementation.py  # セキュリティテスト
 
 # 統合済みテストファイル実行
 pytest backend/app/tests/services/test_*_consolidated.py
@@ -913,8 +961,8 @@ pytest backend/app/tests/services/test_*_consolidated.py --tb=no -q
 # ドキュメント生成に必要なパッケージをインストール
 pip install sphinx sphinx-rtd-theme myst-parser sphinx-autobuild
 
-# または、requirements.txtに含まれている場合
-pip install -r requirements.txt
+# または、backend/requirements.txtに含まれている場合
+pip install -r backend/requirements.txt
 ```
 
 ### ドキュメントの生成

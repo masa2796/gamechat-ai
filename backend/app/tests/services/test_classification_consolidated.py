@@ -1,5 +1,5 @@
 import pytest
-from backend.app.models.classification_models import (
+from app.models.classification_models import (
     ClassificationRequest, 
     ClassificationResult, 
     QueryType
