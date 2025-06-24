@@ -133,7 +133,7 @@ jobs:
         path: |
           ~/.npm
           frontend/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
 
@@ -143,17 +143,8 @@ jobs:
         ls -la frontend/ || echo "Frontend directory not found"
         if [ -d "frontend" ]; then
           cd frontend
-          echo "Files in frontend directory:"
-          ls -la
-          echo "Checking for dependency files..."
-          # package-lock.jsonが存在しない場合はnpm installを使用
-          if [ -f "package-lock.json" ]; then
-            echo "Using npm ci with package-lock.json"
-            npm ci --prefer-offline --no-audit
-          else
-            echo "Using npm install (no package-lock.json found)"
-            npm install --prefer-offline --no-audit
-          fi
+          echo "Installing dependencies with npm ci..."
+          npm ci --prefer-offline --no-audit
         else
           echo "⚠️ Frontend directory not found, skipping npm install"
         fi

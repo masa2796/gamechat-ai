@@ -23,7 +23,7 @@ jobs:
             ls -l frontend
       - restore_cache:
           keys:
-            - v2-dependencies-{{ checksum "frontend/package.json" }}
+            - v2-dependencies-{{ checksum "frontend/package-lock.json" }}
             - v2-dependencies-
       - run:
           name: Configure npm for better network reliability
@@ -40,26 +40,16 @@ jobs:
             ls -la
             if [ -d "frontend" ]; then
               cd frontend
-              echo "Checking for dependency files..."
-              ls -la package*.json
-              # package-lock.jsonが存在しない場合はnpm installを使用
-              if [ -f "package-lock.json" ]; then
-                echo "Using npm ci with package-lock.json"
-                npm ci --prefer-offline --no-audit --progress=false || \
-                (sleep 10 && npm ci --prefer-offline --no-audit --progress=false) || \
-                (sleep 30 && npm ci --no-audit --progress=false)
-              else
-                echo "Using npm install (no package-lock.json found)"
-                npm install --prefer-offline --no-audit --progress=false || \
-                (sleep 10 && npm install --prefer-offline --no-audit --progress=false) || \
-                (sleep 30 && npm install --no-audit --progress=false)
-              fi
+              echo "Installing with npm ci..."
+              npm ci --prefer-offline --no-audit --progress=false || \
+              (sleep 10 && npm ci --prefer-offline --no-audit --progress=false) || \
+              (sleep 30 && npm ci --no-audit --progress=false)
             else
               echo "⚠️ Frontend directory not found"
               exit 1
             fi
       - save_cache:
-          key: v2-dependencies-{{ checksum "frontend/package.json" }}
+          key: v2-dependencies-{{ checksum "frontend/package-lock.json" }}
           paths:
             - frontend/node_modules
       - persist_to_workspace:

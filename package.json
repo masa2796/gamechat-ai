@@ -29,9 +29,6 @@
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  "workspaces": [
-    "frontend"
-  ],
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"

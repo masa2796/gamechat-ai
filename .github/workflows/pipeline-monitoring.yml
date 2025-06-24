@@ -113,7 +113,7 @@ jobs:
         path: |
           ~/.npm
           frontend/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
         

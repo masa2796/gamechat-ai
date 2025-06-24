@@ -78,7 +78,7 @@ jobs:
         path: |
           ~/.npm
           frontend/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
 
@@ -86,12 +86,7 @@ jobs:
       if: matrix.component == 'frontend'
       run: |
         cd frontend
-        # package-lock.jsonが存在しない場合はnpm installを使用
-        if [ -f "package-lock.json" ]; then
-          npm ci --prefer-offline --no-audit
-        else
-          npm install --prefer-offline --no-audit
-        fi
+        npm ci --prefer-offline --no-audit
 
     - name: Run Frontend Unit Tests
       if: matrix.component == 'frontend'
@@ -178,7 +173,7 @@ jobs:
         path: |
           ~/.npm
           frontend/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
 
