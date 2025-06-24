@@ -120,7 +120,7 @@ jobs:
 
     - name: Run type check
       run: |
-        python -m mypy backend/app --config-file mypy.ini --exclude 'backend/app/tests'
+        python -m mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests'
 
     - name: Set up Node.js
       uses: actions/setup-node@v4

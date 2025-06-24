@@ -26,10 +26,10 @@ jobs:
         
     - name: Run comprehensive type check
       run: |
-        python -m mypy backend/app --config-file mypy.ini --exclude 'backend/app/tests'
+        python -m mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests'
         
     - name: Type check summary
       run: |
         echo "Type checking completed successfully!"
         echo "Checked files: backend/app (excluding tests)"
-        echo "Configuration: mypy.ini"
+        echo "Configuration: backend/mypy.ini"

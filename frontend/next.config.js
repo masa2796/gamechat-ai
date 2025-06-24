@@ -1,10 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Firebase Hosting用の静的エクスポート設定（本番ビルド時のみ）
-  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  // Docker環境ではstandalone、Firebase Hosting用の静的エクスポート設定（本番ビルド時のみ）
+  output: process.env.DOCKER_BUILD || process.env.CI 
+    ? 'standalone' 
+    : process.env.NODE_ENV === 'production' 
+      ? 'export' 
+      : undefined,
   
   // 基本設定
-  distDir: process.env.NODE_ENV === 'production' ? 'out' : '.next',
+  distDir: process.env.DOCKER_BUILD || process.env.CI 
+    ? '.next'
+    : process.env.NODE_ENV === 'production' 
+      ? 'out' 
+      : '.next',
   generateEtags: false,
   trailingSlash: false,
   
@@ -27,7 +35,7 @@ const nextConfig = {
   
   // 画像最適化設定
   images: {
-    unoptimized: true, // Docker/CI環境では画像最適化を無効化
+    unoptimized: process.env.NODE_ENV === 'production' && !process.env.DOCKER_BUILD && !process.env.CI, // Firebase Hosting用の静的エクスポート時のみ画像最適化を無効化
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 31536000, // 1年
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

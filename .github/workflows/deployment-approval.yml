@@ -182,7 +182,7 @@ jobs:
           cd backend
           
           # Type checking
-          python -m mypy app --config-file ../mypy.ini --exclude 'app/tests' || true
+          python -m mypy app --config-file mypy.ini --exclude 'app/tests' || true
           
           # Linting
           flake8 app --exclude=app/tests --max-line-length=100 --statistics || true

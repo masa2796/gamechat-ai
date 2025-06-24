@@ -22,7 +22,7 @@ COPY . .
 # Build the application
 ENV DOCKER_BUILD=true
 ENV NODE_ENV=production
-RUN npm run build:ci
+RUN npm run build:ci || (echo "Build failed!" && exit 1)
 
 # Debug: Check build output
 RUN echo "=== Build completed ===" && \
@@ -43,7 +43,7 @@ RUN adduser --system --uid 1001 nextjs
 # Copy the built application
 COPY --from=builder /app/public ./public
 
-# Try to copy standalone build, fall back to regular build
+# Copy standalone build
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 

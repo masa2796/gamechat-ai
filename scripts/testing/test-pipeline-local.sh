@@ -13,7 +13,7 @@ echo "=========================================="
 echo ""
 echo "📋 Step 1: Python型チェック"
 echo "------------------------------------------"
-python3 -m mypy backend/app --config-file mypy.ini --exclude 'backend/app/tests' || {
+python3 -m mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests' || {
     echo "❌ 型チェックに失敗しました"
     exit 1
 }
