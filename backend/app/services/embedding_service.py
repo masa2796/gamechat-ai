@@ -23,12 +23,16 @@ class EmbeddingService:
             # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
             api_key = os.getenv("OPENAI_API_KEY")
             
-            if not api_key or api_key in ["sk-test_openai_key", "test-api-key"]:
+            # テスト用のダミーキーの除外
+            invalid_keys = ["sk-test_openai_key", "test-api-key"]
+            
+            if not api_key or api_key in invalid_keys:
                 raise EmbeddingException(
                     message="OpenAI APIキーが設定されていません",
                     code="API_KEY_NOT_SET"
                 )
-                
+            
+            # テスト用のダミーAPIキーの場合はそのまま通す
             self.client = openai.OpenAI(api_key=api_key)
             self.is_mocked = False
 

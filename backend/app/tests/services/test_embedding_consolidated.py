@@ -15,6 +15,7 @@ class TestEmbeddingService:
         """基本的な埋め込み作成テスト"""
         # OpenAIクライアントをモックに置き換え
         embedding_service.client = mock_openai_client
+        embedding_service.is_mocked = False  # 実際のOpenAI呼び出しをシミュレート
         
         text = "テスト用のテキスト"
         embedding = await embedding_service.get_embedding(text)
@@ -39,6 +40,7 @@ class TestEmbeddingService:
         """分類結果を使った埋め込み作成テスト"""
         # OpenAIクライアントをモックに置き換え
         embedding_service.client = mock_openai_client
+        embedding_service.is_mocked = False  # 実際のOpenAI呼び出しをシミュレート
         
         query = "強いカードを教えて"
         embedding = await embedding_service.get_embedding_from_classification(
@@ -61,6 +63,7 @@ class TestEmbeddingService:
         mock_client = MagicMock()
         mock_client.embeddings.create.side_effect = Exception("API Error")
         embedding_service.client = mock_client
+        embedding_service.is_mocked = False  # 実際のOpenAI呼び出しをシミュレート
         
         with pytest.raises(Exception):
             await embedding_service.get_embedding("テストテキスト")
@@ -73,22 +76,29 @@ class TestEmbeddingService:
         """APIキーなしの場合のハンドリングテスト"""
         # クライアントをNoneに設定（APIキーなしの状態をシミュレート）
         embedding_service.client = None
+        embedding_service.is_mocked = False  # 実際のOpenAI呼び出しをシミュレート
         
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             await embedding_service.get_embedding("テストテキスト")
+        
+        # エラーメッセージの確認
+        error_msg = str(exc_info.value)
+        assert "OpenAI APIキーが設定されていません" in error_msg or "API_KEY_NOT_SET" in error_msg
 
     @pytest.mark.asyncio
     async def test_api_safety_verification(self, embedding_service):
         """API安全性検証 - 実際のOpenAI APIが呼び出されないことを確認"""
         # クライアントがNoneの場合の動作確認
         embedding_service.client = None
+        embedding_service.is_mocked = False  # 実際のOpenAI呼び出しをシミュレート
         
         with pytest.raises(Exception) as exc_info:
             await embedding_service.get_embedding("テストテキスト")
         
         # OpenAI APIキーが設定されていないことによるエラーであることを確認
-        assert "OpenAI APIキーが設定されていません" in str(exc_info.value) or \
-               "API_KEY_NOT_SET" in str(exc_info.value)
+        error_msg = str(exc_info.value)
+        assert "OpenAI APIキーが設定されていません" in error_msg or \
+               "API_KEY_NOT_SET" in error_msg
 
 
 class TestEmbeddingOptimization:

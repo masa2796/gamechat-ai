@@ -131,8 +131,23 @@ def classification_service():
 
 @pytest.fixture
 def embedding_service():
-    """埋め込みサービスのインスタンス"""
-    return EmbeddingService()
+    """埋め込みサービスのインスタンス（テスト用の非モックモード）"""
+    # 直接サービスインスタンスを作成し、必要なプロパティを設定
+    service = EmbeddingService()
+    
+    # 強制的に非モック状態に設定
+    service.is_mocked = False
+    
+    # ダミーのOpenAIクライアントを設定（実際のAPIは呼び出されない）
+    import openai
+    try:
+        service.client = openai.OpenAI(api_key="sk-test-dummy-key-for-testing")
+    except Exception:
+        # OpenAIクライアント作成に失敗した場合もダミークライアントを設定
+        from unittest.mock import MagicMock
+        service.client = MagicMock()
+    
+    return service
 
 
 @pytest.fixture
