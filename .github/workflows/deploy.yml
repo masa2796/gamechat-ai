@@ -126,8 +126,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: './frontend/package-lock.json'
+
+    - name: Cache Node.js dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
 
     - name: Install Node.js dependencies
       run: |
@@ -135,7 +143,17 @@ jobs:
         ls -la frontend/ || echo "Frontend directory not found"
         if [ -d "frontend" ]; then
           cd frontend
-          npm ci --prefer-offline --no-audit
+          echo "Files in frontend directory:"
+          ls -la
+          echo "Checking for dependency files..."
+          # package-lock.jsonが存在しない場合はnpm installを使用
+          if [ -f "package-lock.json" ]; then
+            echo "Using npm ci with package-lock.json"
+            npm ci --prefer-offline --no-audit
+          else
+            echo "Using npm install (no package-lock.json found)"
+            npm install --prefer-offline --no-audit
+          fi
         else
           echo "⚠️ Frontend directory not found, skipping npm install"
         fi

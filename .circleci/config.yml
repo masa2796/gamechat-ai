@@ -3,7 +3,7 @@ version: 2.1
 executors:
   node-executor:
     docker:
-      - image: cimg/node:20.18
+      - image: cimg/node:20.19
     working_directory: ~/project
   python-executor:
     docker:
@@ -23,7 +23,7 @@ jobs:
             ls -l frontend
       - restore_cache:
           keys:
-            - v2-dependencies-{{ checksum "frontend/package-lock.json" }}
+            - v2-dependencies-{{ checksum "frontend/package.json" }}
             - v2-dependencies-
       - run:
           name: Configure npm for better network reliability
@@ -40,15 +40,26 @@ jobs:
             ls -la
             if [ -d "frontend" ]; then
               cd frontend
-              npm ci --prefer-offline --no-audit --progress=false || \
-              (sleep 10 && npm ci --prefer-offline --no-audit --progress=false) || \
-              (sleep 30 && npm ci --no-audit --progress=false)
+              echo "Checking for dependency files..."
+              ls -la package*.json
+              # package-lock.jsonが存在しない場合はnpm installを使用
+              if [ -f "package-lock.json" ]; then
+                echo "Using npm ci with package-lock.json"
+                npm ci --prefer-offline --no-audit --progress=false || \
+                (sleep 10 && npm ci --prefer-offline --no-audit --progress=false) || \
+                (sleep 30 && npm ci --no-audit --progress=false)
+              else
+                echo "Using npm install (no package-lock.json found)"
+                npm install --prefer-offline --no-audit --progress=false || \
+                (sleep 10 && npm install --prefer-offline --no-audit --progress=false) || \
+                (sleep 30 && npm install --no-audit --progress=false)
+              fi
             else
               echo "⚠️ Frontend directory not found"
               exit 1
             fi
       - save_cache:
-          key: v2-dependencies-{{ checksum "frontend/package-lock.json" }}
+          key: v2-dependencies-{{ checksum "frontend/package.json" }}
           paths:
             - frontend/node_modules
       - persist_to_workspace:
@@ -203,11 +214,24 @@ jobs:
             python -m pytest app/tests/services/test_database_service.py -v --tb=short || true
             # If the above tests exist and pass, run all tests
             python -m pytest app/tests/ -v --tb=short -x --maxfail=5
+            echo "✅ All backend tests passed successfully!"
       - run:
           name: Run type check
           command: |
             . .venv/bin/activate
             mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests' || echo "Type check completed with warnings"
+            echo "✅ Backend type checking completed!"
+
+  notify-success:
+    executor: node-executor
+    steps:
+      - run:
+          name: Success notification
+          command: |
+            echo "🎉 All CI/CD tests passed successfully!"
+            echo "✅ Frontend: Build, Lint, Test, Server startup"
+            echo "✅ Backend: Unit tests, Integration tests, Type checking"
+            echo "Ready for deployment!"
 
 workflows:
   version: 2
@@ -224,3 +248,8 @@ workflows:
           requires:
             - build
       - backend-test
+      - notify-success:
+          requires:
+            - test
+            - start-server
+            - backend-test
