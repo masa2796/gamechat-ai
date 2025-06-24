@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import openai
 import os
 from dotenv import load_dotenv
@@ -11,19 +11,46 @@ load_dotenv()
 
 class EmbeddingService:
     def __init__(self) -> None:
-        # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
-        api_key = os.getenv("OPENAI_API_KEY")
+        # モック環境のチェック
+        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
         is_testing = os.getenv("TESTING", "false").lower() == "true"
         
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
+            api_key = os.getenv("OPENAI_API_KEY")
             
-        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
+            if not api_key or api_key in ["sk-test_openai_key", "test-api-key"]:
+                raise EmbeddingException(
+                    message="OpenAI APIキーが設定されていません",
+                    code="API_KEY_NOT_SET"
+                )
+                
+            self.client = openai.OpenAI(api_key=api_key)
+            self.is_mocked = False
 
     @handle_service_exceptions("embedding")
     async def get_embedding(self, query: str) -> List[float]:
         """質問文をOpenAI APIでエンベディングに変換"""
+        # モック環境での処理
+        if self.is_mocked:
+            GameChatLogger.log_info("embedding_service", "モック環境で埋め込み生成", {
+                "query_length": len(query),
+                "query_preview": query[:50]
+            })
+            # 固定のダミー埋め込みベクトル（1536次元）を返す
+            import hashlib
+            hash_object = hashlib.md5(query.encode())
+            hash_hex = hash_object.hexdigest()
+            # ハッシュから決定論的にベクトルを生成
+            dummy_embedding = []
+            for i in range(1536):
+                dummy_embedding.append((int(hash_hex[i % len(hash_hex)], 16) - 7.5) / 7.5)
+            return dummy_embedding
+        
         if not self.client:
             raise EmbeddingException(
                 message="OpenAI APIキーが設定されていません",

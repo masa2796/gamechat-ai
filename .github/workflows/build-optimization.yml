@@ -102,12 +102,15 @@ jobs:
         
         # Database URLs (test/mock values)
         DATABASE_URL=sqlite:///tmp/test.db
-        UPSTASH_VECTOR_URL=mock://localhost
-        UPSTASH_VECTOR_TOKEN=test_token
+        UPSTASH_VECTOR_REST_URL=mock://localhost
+        UPSTASH_VECTOR_REST_TOKEN=test_token
         
         # API Keys (test values)
         OPENAI_API_KEY=sk-test_openai_key
         ANTHROPIC_API_KEY=sk-ant-test_key
+        
+        # Mock external services in CI
+        MOCK_EXTERNAL_SERVICES=true
         
         # JWT Configuration
         JWT_SECRET_KEY=test_jwt_secret_key_for_github_actions
@@ -199,12 +202,15 @@ jobs:
         
         # Database URLs (test/mock values)
         DATABASE_URL=sqlite:///tmp/test.db
-        UPSTASH_VECTOR_URL=mock://localhost
-        UPSTASH_VECTOR_TOKEN=test_token
+        UPSTASH_VECTOR_REST_URL=mock://localhost
+        UPSTASH_VECTOR_REST_TOKEN=test_token
         
         # API Keys (test values)
         OPENAI_API_KEY=sk-test_openai_key
         ANTHROPIC_API_KEY=sk-ant-test_key
+        
+        # Mock external services in CI
+        MOCK_EXTERNAL_SERVICES=true
         
         # JWT Configuration
         JWT_SECRET_KEY=test_jwt_secret_key_for_github_actions_startup

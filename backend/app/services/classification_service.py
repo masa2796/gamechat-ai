@@ -35,23 +35,26 @@ class ClassificationService:
     """
     
     def __init__(self) -> None:
-        # OpenAI クライアントを初期化
-        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        
-        # テスト環境では厳密なAPIキーチェックをスキップ
+        # モック環境のチェック
+        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
         is_testing = os.getenv("TESTING", "false").lower() == "true"
         
-        # APIキーの検証
-        if not is_testing and (not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here"]):
-            raise ClassificationException(
-                "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
-            )
-        
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
-        
-        self.client = openai.OpenAI(api_key=api_key)
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化
+            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+            
+            # APIキーの検証
+            if not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here", "sk-test_openai_key"]:
+                raise ClassificationException(
+                    "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
+                )
+            
+            self.client = openai.OpenAI(api_key=api_key)
+            self.is_mocked = False
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -130,12 +133,9 @@ class ClassificationService:
             ['HP', '100以上']
         """
         
-        # テスト環境・開発環境での簡易対応
-        environment = os.getenv("ENVIRONMENT", "production")
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
-        
-        if environment in ["test", "development"] or is_testing:
-            GameChatLogger.log_info("classification_service", f"テスト環境で実行 - environment: {environment}")
+        # モック環境の処理
+        if self.is_mocked:
+            GameChatLogger.log_info("classification_service", "モック環境で実行")
             
             # 簡単な分類ロジック
             query_lower = request.query.lower()

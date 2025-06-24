@@ -10,15 +10,26 @@ from ..core.logging import GameChatLogger
 
 class LLMService:
     def __init__(self) -> None:
-        # OpenAI クライアントを初期化
-        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        # モック環境のチェック
+        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
         is_testing = os.getenv("TESTING", "false").lower() == "true"
         
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化
+            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
             
-        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
+            if not api_key or api_key in ["sk-test_openai_key", "test-api-key"]:
+                raise LLMException(
+                    message="OpenAI APIキーが設定されていません",
+                    code="API_KEY_NOT_SET"
+                )
+                
+            self.client = openai.OpenAI(api_key=api_key)
+            self.is_mocked = False
 
     async def generate_answer(
         self, 
@@ -33,20 +44,19 @@ class LLMService:
         開発・テスト環境では、OpenAI APIを使用せずにモックレスポンスを返します。
         """
         try:
-            # 開発・テスト環境での簡易対応
-            environment = os.getenv("ENVIRONMENT", "production")
-            GameChatLogger.log_info("llm_service", f"回答生成開始 - environment: {environment}")
-            
-            if environment in ["development", "test"]:
+            # モック環境での処理
+            if self.is_mocked:
+                GameChatLogger.log_info("llm_service", "モック環境で回答生成")
+                
                 # 挨拶の場合は専用の応答を生成
                 if classification and classification.query_type == QueryType.GREETING:
                     return "こんにちは！GameChat AIです。ゲームに関する質問をお気軽にどうぞ！"
                 
                 # その他の質問には簡易回答を返す
                 if context_items:
-                    return f"「{query}」に関して、{len(context_items)}件の情報を見つけました。現在はテスト環境で動作しています。"
+                    return f"「{query}」に関して、{len(context_items)}件の情報を見つけました。現在はモック環境で動作しています。"
                 else:
-                    return f"「{query}」について、テスト環境からお答えします。具体的な質問をお聞かせください！"
+                    return f"「{query}」について、モック環境からお答えします。具体的な質問をお聞かせください！"
             
             # 本番環境の場合は通常のOpenAI API処理を続行
             if not self.client:

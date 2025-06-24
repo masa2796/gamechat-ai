@@ -45,101 +45,108 @@ const nextConfig = {
 
   // パフォーマンス最適化
   experimental,
-  
-  // 画像最適化設定
-  images: {
-    unoptimized: process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD !== 'true' && process.env.CI !== 'true', // Firebase Hosting用の静的エクスポート時のみ画像最適化を無効化
-    formats: ['image/webp', 'image/avif'],
-    minimumCacheTTL: 31536000, // 1年
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-  },
-  
-  // 静的ファイル最適化
-  assetPrefix: process.env.CDN_URL || '',
-  
-  // Webpack最適化
-  webpack: (config, { dev, isServer }) => {
-    // プロダクションビルドの最適化
-    if (!dev) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
+    
+    // 画像最適化設定
+    images: {
+      unoptimized: process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD !== 'true' && process.env.CI !== 'true', // Firebase Hosting用の静的エクスポート時のみ画像最適化を無効化
+      formats: ['image/webp', 'image/avif'],
+      minimumCacheTTL: 31536000, // 1年
+      deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+      imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    },
+    
+    // 静的ファイル最適化
+    assetPrefix: process.env.CDN_URL || '',
+    
+    // CI/ビルド環境でのエラー対策
+    ...(process.env.CI === 'true' || process.env.NODE_ENV === 'test' ? {
+      // ビルド時にFirebaseエラーを無視
+      transpilePackages: ['firebase'],
+    } : {}),
+
+    // Webpack最適化
+    webpack: (config, { dev, isServer }) => {
+      // プロダクションビルドの最適化
+      if (!dev) {
+        config.optimization.splitChunks = {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
           },
-        },
-      };
-    }
-    
-    // CI環境やサーバーサイドビルドでFirebaseエラーを無視
-    if (process.env.CI === 'true' || isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
-      };
+        };
+      }
       
-      // Firebaseモジュールをサーバーサイドでは無視
-      config.externals = [...(config.externals || []), 'firebase'];
-    }
+      // CI環境やサーバーサイドビルドでFirebaseエラーを無視
+      if (process.env.CI === 'true' || isServer) {
+        config.resolve.fallback = {
+          ...config.resolve.fallback,
+          fs: false,
+          net: false,
+          tls: false,
+          crypto: false,
+        };
+        
+        // Firebaseモジュールをサーバーサイドでは無視
+        config.externals = [...(config.externals || []), 'firebase'];
+      }
+      
+      return config;
+    },
     
-    return config;
-  },
-  
-  // セキュリティ設定（standalone モードでのみ有効）
-  ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
-    async headers() {
-      const headers = [
-        {
-          key: 'X-Frame-Options',
-          value: 'SAMEORIGIN',
-        },
-        {
-          key: 'X-Content-Type-Options',
-          value: 'nosniff',
-        },
-        {
-          key: 'Referrer-Policy',
-          value: 'origin-when-cross-origin',
-        },
-        {
-          key: 'Permissions-Policy',
-          value: 'camera=(), microphone=(), geolocation=()',
-        },
-      ];
+    // セキュリティ設定（standalone モードでのみ有効）
+    ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
+      async headers() {
+        const headers = [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ];
 
-      return [
-        {
-          source: '/(.*)',
-          headers: headers,
-        },
-      ];
-    },
-  } : {}),
-  
-  // ルーティング最適化（standalone モードでのみ有効）
-  ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
-    async rewrites() {
-      return [
-        {
-          source: '/api/:path*',
-          destination: '/api/:path*',
-        },
-      ];
-    },
-  } : {}),
-};
+        return [
+          {
+            source: '/(.*)',
+            headers: headers,
+          },
+        ];
+      },
+    } : {}),
+    
+    // ルーティング最適化（standalone モードでのみ有効）
+    ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
+      async rewrites() {
+        return [
+          {
+            source: '/api/:path*',
+            destination: '/api/:path*',
+          },
+        ];
+      },
+    } : {}),
+  };
 
-// CI/テスト環境での追加設定を後から適用
-if (process.env.CI === 'true' || process.env.NODE_ENV === 'test') {
-  // ビルド時にFirebaseエラーを無視
-  nextConfig.transpilePackages = ['firebase'];
+  return config;
 }
+
+const nextConfig = createNextConfig();
+
+// Injected content via Sentry wizard below
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
