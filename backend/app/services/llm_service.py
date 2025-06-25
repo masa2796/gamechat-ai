@@ -232,7 +232,7 @@ class LLMService:
                 # レート制限エラーの検出と処理
                 if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
                     if attempt == max_retries:
-                        GameChatLogger.log_error("llm_service", f"OpenAI APIレート制限、全リトライ試行完了: {error_str}")
+                        GameChatLogger.log_error("llm_service", f"OpenAI APIレート制限、全リトライ試行完了: {error_str}", e)
                         return "申し訳ありませんが、現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。"
                     else:
                         # 指数バックオフ + ジッター
@@ -242,7 +242,7 @@ class LLMService:
                         continue
                 
                 # その他のエラーは即座に失敗
-                GameChatLogger.log_error("llm_service", f"OpenAI API呼び出しエラー (試行 {attempt + 1}): {error_str}")
+                GameChatLogger.log_error("llm_service", f"OpenAI API呼び出しエラー (試行 {attempt + 1}): {error_str}", e)
                 error_message = f"OpenAI APIでエラーが発生しました: {error_str}"
                 raise LLMException(
                     message=error_message,
@@ -541,7 +541,7 @@ class LLMService:
                     # レート制限エラーの検出
                     if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
                         if attempt == max_retries:
-                            GameChatLogger.log_error("llm_service", f"OpenAI Streaming APIレート制限、全リトライ試行完了: {error_str}")
+                            GameChatLogger.log_error("llm_service", f"OpenAI Streaming APIレート制限、全リトライ試行完了: {error_str}", e)
                             yield "申し訳ありませんが、現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。"
                             return
                         else:
@@ -552,7 +552,7 @@ class LLMService:
                             time.sleep(delay)
                             continue
                     else:
-                        GameChatLogger.log_error("llm_service", f"Streaming error (試行 {attempt + 1}): {error_str}")
+                        GameChatLogger.log_error("llm_service", f"Streaming error (試行 {attempt + 1}): {error_str}", e)
                         yield f"申し訳ありませんが、回答の生成中にエラーが発生しました: {error_str}"
                         return
             

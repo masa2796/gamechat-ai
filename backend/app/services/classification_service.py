@@ -242,7 +242,7 @@ class ClassificationService:
                 # その他のOpenAIエラーもレート制限の可能性があるかチェック
                 if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
                     if attempt == max_retries:
-                        GameChatLogger.log_error("classification_service", f"OpenAI APIレート制限（その他）、全リトライ試行完了: {error_str}")
+                        GameChatLogger.log_error("classification_service", f"OpenAI APIレート制限（その他）、全リトライ試行完了: {error_str}", e)
                         raise ClassificationException(
                             message="現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。",
                             code="RATE_LIMIT_EXCEEDED"

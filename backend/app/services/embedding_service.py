@@ -107,7 +107,7 @@ class EmbeddingService:
                 # その他のエラーもレート制限の可能性があるかチェック
                 if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
                     if attempt == max_retries:
-                        GameChatLogger.log_error("embedding_service", f"OpenAI Embedding APIレート制限（その他）、全リトライ試行完了: {error_str}")
+                        GameChatLogger.log_error("embedding_service", f"OpenAI Embedding APIレート制限（その他）、全リトライ試行完了: {error_str}", e)
                         raise EmbeddingException(
                             message="現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。",
                             code="RATE_LIMIT_EXCEEDED"
@@ -118,7 +118,7 @@ class EmbeddingService:
                         asyncio.run(asyncio.sleep(delay))
                         continue
                 else:
-                    GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー (試行 {attempt + 1}): {error_str}")
+                    GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー (試行 {attempt + 1}): {error_str}", e)
                     raise EmbeddingException(
                         message=f"埋め込み生成中にエラーが発生しました: {error_str}",
                         code="EMBEDDING_ERROR"
@@ -240,7 +240,7 @@ class EmbeddingService:
                 error_str = str(e)
                 if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
                     if attempt == max_retries:
-                        GameChatLogger.log_error("embedding_service", f"OpenAI Embedding APIレート制限（分類ベース・その他）、全リトライ試行完了: {error_str}")
+                        GameChatLogger.log_error("embedding_service", f"OpenAI Embedding APIレート制限（分類ベース・その他）、全リトライ試行完了: {error_str}", e)
                         # レート制限の場合はフォールバックを試行
                         GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
                         fallback_result = await self.get_embedding(original_query)
@@ -251,7 +251,7 @@ class EmbeddingService:
                         asyncio.run(asyncio.sleep(delay))
                         continue
                 else:
-                    GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー（分類ベース） (試行 {attempt + 1}): {error_str}")
+                    GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー（分類ベース） (試行 {attempt + 1}): {error_str}", e)
                     # 通常のエラーの場合もフォールバックを試行
                     GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
                     fallback_result = await self.get_embedding(original_query)

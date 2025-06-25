@@ -27,7 +27,8 @@ class TestEmbeddingService:
         # API呼び出しが行われたことを確認（モック経由）
         mock_openai_client.embeddings.create.assert_called_once_with(
             input=text,
-            model="text-embedding-3-small"
+            model="text-embedding-3-small",
+            timeout=10
         )
 
     @pytest.mark.asyncio
