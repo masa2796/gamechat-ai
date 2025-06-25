@@ -25,7 +25,7 @@ from ..core.logging import GameChatLogger
 
 class StorageService:
     _instance = None
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: object, **kwargs: object) -> "StorageService":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -33,7 +33,8 @@ class StorageService:
     """Google Cloud Storageとローカルファイルシステムの統合管理"""
     
     def __init__(self) -> None:
-        if hasattr(self, 'initialized') and self.initialized:
+        self.initialized: bool = getattr(self, 'initialized', False)
+        if self.initialized:
             return  # すでに初期化済みの場合は何もしない
         
         self.bucket_name = settings.GCS_BUCKET_NAME

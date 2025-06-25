@@ -1,0 +1,36 @@
+import { NextResponse } from 'next/server';
+export async function POST(request) {
+    try {
+        const body = await request.json();
+        const { query } = body;
+        // テスト環境用のシンプルなモック応答
+        if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'test') {
+            // 少し遅延を入れてローディング状態をテストできるように
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return NextResponse.json({
+                answer: `テストモック応答: ${query}について回答します。これはテスト用のダミー応答です。`,
+                context: [],
+                confidence: 0.95
+            });
+        }
+        // 本番環境では外部APIにプロキシ
+        const apiUrl = process.env.API_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiUrl}/rag/query`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': process.env.API_KEY || '',
+            },
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status}`);
+        }
+        const data = await response.json();
+        return NextResponse.json(data);
+    }
+    catch (error) {
+        console.error('API route error:', error);
+        return NextResponse.json({ error: { message: 'Internal server error' } }, { status: 500 });
+    }
+}

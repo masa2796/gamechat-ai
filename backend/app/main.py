@@ -23,6 +23,14 @@ from .core.database import initialize_database, close_database, database_health_
 from .core.logging import GameChatLogger
 from .services.storage_service import StorageService
 
+# 通信レイヤの冗長ログ抑制
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.INFO)  # ここはINFOでも残す価値あり
+logging.getLogger("google.cloud").setLevel(logging.WARNING)
+logging.getLogger("passlib").setLevel(logging.WARNING)
+logging.getLogger("google.cloud").setLevel(logging.WARNING)
+logging.getLogger("passlib").setLevel(logging.WARNING)
+
 # Sentry初期化
 if settings.SENTRY_DSN:
     def traces_sampler(sampling_context: dict[str, Any]) -> float:

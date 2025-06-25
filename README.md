@@ -582,7 +582,6 @@ cp .env.template backend/.env
 
 **一括起動（推奨）**:
 ```bash
-cd frontend
 npm install
 npm run dev:full  # フロントエンド + バックエンドを同時起動
 ```
