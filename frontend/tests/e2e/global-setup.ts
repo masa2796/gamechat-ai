@@ -28,6 +28,9 @@ async function globalSetup(_config: FullConfig) {
   process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = '123456789';
   process.env.NEXT_PUBLIC_FIREBASE_APP_ID = '1:123456789:web:abcdef';
   
+  // E2Eテスト用の追加環境変数（必要に応じて）
+  process.env.NEXT_PUBLIC_TEST_MODE = 'true';
+  
   console.log('E2E test environment setup completed');
   console.log('NEXT_PUBLIC_DISABLE_RECAPTCHA:', process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA);
   console.log('NEXT_PUBLIC_ENVIRONMENT:', process.env.NEXT_PUBLIC_ENVIRONMENT);

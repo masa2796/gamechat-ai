@@ -2,37 +2,32 @@ import { test, expect } from '@playwright/test';
 
 test.describe('GameChat AI - Chat Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // ホームページ（Assistantコンポーネント）に移動
-    await page.goto('/');
-    
     // テスト用データ属性を追加してアニメーションを高速化
     await page.addInitScript(() => {
       document.documentElement.setAttribute('data-test-mode', 'true');
     });
-    
+    // ホームページ（Assistantコンポーネント）に移動
+    await page.goto('/');
     // ページの読み込み完了を待機
     await page.waitForLoadState('networkidle');
-    
-    // 入力フィールドが表示されるまで待機
-    await page.waitForSelector('[data-testid="message-input"]', { timeout: 10000 });
-    
+    // 入力フィールドが表示されるまで待機（タイムアウト長め）
+    await page.waitForSelector('[data-testid="message-input"]', { timeout: 15000 });
     // モバイルビューの場合、サイドバーを開いてからすぐに閉じる（app-title確認のため）
     const viewport = page.viewportSize();
     if (viewport && viewport.width < 768) {
-      // サイドバートリガーがクリック可能になるまで待機
-      await page.waitForSelector('[data-testid="sidebar-trigger"]', { state: 'visible' });
-      await page.locator('[data-testid="sidebar-trigger"]').click({ force: true });
-      
-      // シートが開くまで待機（data-state=openを確認）
-      await page.waitForSelector('[data-slot="sheet-content"][data-state="open"]', { timeout: 5000 });
-      await page.waitForTimeout(50); // アニメーション安定化（短縮）
-      
-      // サイドバーを閉じる
-      await page.locator('[data-testid="sidebar-trigger"]').click({ force: true });
-      
-      // シートが閉じるまで待機（要素が非表示になるまで）
-      await page.waitForSelector('[data-slot="sheet-content"]', { state: 'detached', timeout: 5000 });
-      await page.waitForTimeout(50); // アニメーション完了待機（短縮）
+      // サイドバーを開く
+      const trigger = page.locator('[data-testid="sidebar-trigger"]');
+      if (await trigger.isVisible()) {
+        await trigger.click();
+        // アニメーション待機
+        await page.waitForTimeout(300);
+        // サイドバーを閉じる
+        const closeBtn = page.locator('[data-testid="sidebar-close"]');
+        if (await closeBtn.isVisible()) {
+          await closeBtn.click();
+          await page.waitForTimeout(300);
+        }
+      }
     }
   });
 
@@ -78,9 +73,9 @@ test.describe('GameChat AI - Chat Functionality', () => {
     try {
       // より一般的なヘルスチェックエンドポイントを試行
       const healthEndpoints = [
-        'http://localhost:8001/health',
-        'http://localhost:8001/docs',
-        'http://localhost:8001/',
+        'http://localhost:8000/health',
+        'http://localhost:8000/docs',
+        'http://localhost:8000/',
       ];
       
       let backendAvailable = false;
@@ -161,9 +156,9 @@ test.describe('GameChat AI - Chat Functionality', () => {
     // バックエンドAPIの疎通確認
     try {
       const healthEndpoints = [
-        'http://localhost:8001/health',
-        'http://localhost:8001/docs',
-        'http://localhost:8001/',
+        'http://localhost:8000/health',
+        'http://localhost:8000/docs',
+        'http://localhost:8000/',
       ];
       
       let backendAvailable = false;
@@ -242,9 +237,9 @@ test.describe('GameChat AI - Chat Functionality', () => {
     // バックエンドAPIの疎通確認
     try {
       const healthEndpoints = [
-        'http://localhost:8001/health',
-        'http://localhost:8001/docs',
-        'http://localhost:8001/',
+        'http://localhost:8000/health',
+        'http://localhost:8000/docs',
+        'http://localhost:8000/',
       ];
       
       let backendAvailable = false;

@@ -24,9 +24,18 @@ from ..core.logging import GameChatLogger
 
 
 class StorageService:
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     """Google Cloud Storageとローカルファイルシステムの統合管理"""
     
     def __init__(self) -> None:
+        if hasattr(self, 'initialized') and self.initialized:
+            return  # すでに初期化済みの場合は何もしない
+        
         self.bucket_name = settings.GCS_BUCKET_NAME
         self.is_cloud_environment = settings.ENVIRONMENT == "production"
         self.cache_dir = Path("/tmp/gamechat-data") if self.is_cloud_environment else None
@@ -54,6 +63,8 @@ class StorageService:
                 "bucket_configured": bool(self.bucket_name),
                 "gcs_available": GCS_AVAILABLE
             })
+        
+        self.initialized = True
     
     def _ensure_cache_directory(self) -> None:
         """キャッシュディレクトリが存在することを確認"""

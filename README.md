@@ -594,20 +594,11 @@ cd frontend
 npm run dev          # 開発サーバー（http://localhost:3000）
 
 # バックエンドのみ（FastAPI）
-cd frontend  
-npm run dev:backend  # バックエンド（http://localhost:8001）
-
-# または Dockerで起動
-# 開発環境（基本）
-docker-compose up --build -d backend
-
-# 本番環境（Redis + 最適化設定）
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-
-# 監視システム付き（オプショナル）
-docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d
-
-# Docker構成の詳細はこちら: docs/deployment/DOCKER_USAGE.md
+cd backend
+# 必要に応じて依存パッケージをインストール
+pip install -r requirements.txt
+# サーバー起動（例: uvicorn）
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000  # バックエンド（http://localhost:8000）
 ```
 
 **注意**: サーバー起動は必ずプロジェクトルートディレクトリから行ってください。相対インポートが正しく動作します。

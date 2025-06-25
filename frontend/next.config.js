@@ -60,6 +60,13 @@ const nextConfig = {
   
   // Webpack最適化
   webpack: (config, { dev, isServer }) => {
+    // Critical dependency警告を無視
+    config.ignoreWarnings = [
+      {
+        message: /the request of a dependency is an expression/,
+      },
+    ];
+
     // プロダクションビルドの最適化
     if (!dev) {
       config.optimization.splitChunks = {
@@ -73,7 +80,19 @@ const nextConfig = {
         },
       };
     }
-    
+
+    // クライアントバンドル時にNode.jsコアモジュールを除外
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        module: false,
+        path: false,
+        os: false,
+        crypto: false,
+      };
+    }
+
     // CI環境やサーバーサイドビルドでFirebaseエラーを無視
     if (process.env.CI === 'true' || isServer) {
       config.resolve.fallback = {
@@ -87,7 +106,7 @@ const nextConfig = {
       // Firebaseモジュールをサーバーサイドでは無視
       config.externals = [...(config.externals || []), 'firebase'];
     }
-    
+
     return config;
   },
   

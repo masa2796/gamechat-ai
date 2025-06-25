@@ -42,10 +42,13 @@ jobs:
       rollback-safe: ${{ steps.validation.outputs.safe }}
       
     steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Get Current Deployment Info
@@ -189,10 +192,13 @@ jobs:
     if: needs.assess-urgency.outputs.urgency-level != 'critical'
     
     steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Create Configuration Backup
@@ -231,10 +237,13 @@ jobs:
        needs.rollback-approval.result == 'success')
     
     steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Execute Traffic Rollback
@@ -295,10 +304,13 @@ jobs:
     needs: execute-rollback
     
     steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Health Check After Rollback

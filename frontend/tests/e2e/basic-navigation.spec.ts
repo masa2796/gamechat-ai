@@ -1,9 +1,16 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('GameChat AI - Basic Navigation', () => {
-  test('should display the main page', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      document.documentElement.setAttribute('data-test-mode', 'true');
+    });
     await page.goto('/');
-    
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="app-title"]', { timeout: 15000 });
+  });
+
+  test('should display the main page', async ({ page }) => {
     // ページの読み込み完了を待機
     await page.waitForLoadState('networkidle');
     
@@ -26,8 +33,6 @@ test.describe('GameChat AI - Basic Navigation', () => {
   });
 
   test('should navigate to chat interface', async ({ page }) => {
-    await page.goto('/');
-    
     // ページの読み込み完了を待機
     await page.waitForLoadState('networkidle');
     

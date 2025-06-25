@@ -104,7 +104,7 @@ docker-compose up backend redis
 ### ポート変更
 ```bash
 # カスタムポートで起動
-BACKEND_PORT=8001 docker-compose up
+BACKEND_PORT=8000 docker-compose up
 ```
 
 ## 🚨 注意事項

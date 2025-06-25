@@ -11,6 +11,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class VectorService:
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     """Upstash Vector を使用した類似検索サービス（最適化対応）"""
     
     def __init__(self) -> None:

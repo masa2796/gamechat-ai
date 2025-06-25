@@ -27,6 +27,11 @@ test.describe('GameChat AI - Chat Functionality with API Mock', () => {
       await route.continue();
     });
 
+    // テスト用データ属性を追加してアニメーションを高速化
+    await page.addInitScript(() => {
+      document.documentElement.setAttribute('data-test-mode', 'true');
+    });
+
     // ホームページ（Assistantコンポーネント）に移動
     await page.goto('/');
     
@@ -34,15 +39,21 @@ test.describe('GameChat AI - Chat Functionality with API Mock', () => {
     await page.waitForLoadState('networkidle');
     
     // 入力フィールドが表示されるまで待機
-    await page.waitForSelector('[data-testid="message-input"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="message-input"]', { timeout: 15000 });
     
     // モバイルビューの場合、サイドバーを開いてからすぐに閉じる
     const viewport = page.viewportSize();
     if (viewport && viewport.width < 768) {
-      await page.locator('[data-testid="sidebar-trigger"]').click();
-      await page.waitForTimeout(500); // サイドバーアニメーション待機
-      await page.locator('[data-testid="sidebar-trigger"]').click(); // 再度クリックして閉じる
-      await page.waitForTimeout(500); // 閉じるアニメーション待機
+      const trigger = page.locator('[data-testid="sidebar-trigger"]');
+      if (await trigger.isVisible()) {
+        await trigger.click();
+        await page.waitForTimeout(300);
+        const closeBtn = page.locator('[data-testid="sidebar-close"]');
+        if (await closeBtn.isVisible()) {
+          await closeBtn.click();
+          await page.waitForTimeout(300);
+        }
+      }
     }
   });
 

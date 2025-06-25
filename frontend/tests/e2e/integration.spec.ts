@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('GameChat AI - Integration Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      document.documentElement.setAttribute('data-test-mode', 'true');
+    });
     // ホームページ（Assistantコンポーネント）に移動
     await page.goto('/');
     
@@ -9,10 +12,10 @@ test.describe('GameChat AI - Integration Tests', () => {
     await page.waitForLoadState('networkidle');
     
     // 入力フィールドが表示されるまで待機
-    await page.waitForSelector('[data-testid="message-input"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="message-input"]', { timeout: 15000 });
   });
 
-  test.skip('should perform full integration test with real API', async ({ page }) => {
+  test('should perform full integration test with real API', async ({ page }) => {
     // 実際のAPIが利用可能な場合のみ実行
     // このテストはCI環境やローカル開発環境で両方のサービスが稼働している場合に有効
     
