@@ -174,13 +174,13 @@ jobs:
           libnss3 \
           libatk-bridge2.0-0 \
           libxss1 \
-          libasound2 \
+          libasound2t64 \
           libxshmfence1 \
           libgbm1 \
           libgtk-3-0 \
           libglu1-mesa \
-          libx264-155 \
-          libgles2-mesa
+          libx264-dev \
+          libgles2
 
     - name: Cache Node Dependencies
       uses: actions/cache@v4
