@@ -55,9 +55,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -80,10 +80,10 @@ services:
     image: nginx:alpine
     container_name: gamechat-ai-nginx-prod
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:8080"  # Main API access port
+      - "80:80"      # Redirect port
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/ssl:ro
     depends_on:
       - backend

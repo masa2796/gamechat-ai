@@ -1,0 +1,2 @@
+NAME                      IMAGE                 COMMAND                   SERVICE   CREATED        STATUS                  PORTS
+gamechat-ai-backend-dev   gamechat-ai-backend   "gunicorn -c gunicor…"   backend   14 hours ago   Up 14 hours (healthy)   8000/tcp, 0.0.0.0:8000->8001/tcp
