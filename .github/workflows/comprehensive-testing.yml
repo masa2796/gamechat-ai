@@ -167,6 +167,21 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
 
+    - name: Install browser dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libnss3 \
+          libatk-bridge2.0-0 \
+          libxss1 \
+          libasound2 \
+          libxshmfence1 \
+          libgbm1 \
+          libgtk-3-0 \
+          libglu1-mesa \
+          libx264-155 \
+          libgles2-mesa
+
     - name: Cache Node Dependencies
       uses: actions/cache@v4
       with:
@@ -193,6 +208,9 @@ jobs:
         cd frontend
         npm ci --prefer-offline --no-audit
         npx playwright install
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
 
     - name: Setup test environment
       run: |
