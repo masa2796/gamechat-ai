@@ -67,7 +67,11 @@ jobs:
       id: versions
       run: |      
         # 現在のBlue/Greenバージョンを取得
-        CURRENT_SERVICES=$(gcloud run services list --region=${{ env.REGION }} --format="value(metadata.name)" | grep "${{ env.SERVICE_NAME }}")
+        CURRENT_SERVICES=$(gcloud run services list \
+          --project=${{ env.PROJECT_ID }} \
+          --region=${{ env.REGION }} \
+          --format="value(metadata.name)" | grep "${{ env.SERVICE_NAME }}")
+
         
         if echo "$CURRENT_SERVICES" | grep -q "${{ env.SERVICE_NAME }}-blue"; then
           BLUE_EXISTS=true
