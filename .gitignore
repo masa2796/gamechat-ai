@@ -1,44 +1,26 @@
 # =============================================================================
-# GameChat AI - 統合 .gitignore
+# GameChat AI - 統合 .gitignore（Backend: Python, Frontend: Next.js）
 # =============================================================================
-# 📝 このファイルはルートディレクトリとfrontendの.gitignoreを統合したものです
-# 🗂️ プロジェクト全体（Backend Python + Frontend Next.js）をカバーします
-# 📅 最終更新: 2025年6月24日
 
-# .env files - 機密情報を含むファイル
-.env
-.env.local
-.env.*.local
-.env.production
-.env.development
-.env.test
-.env.firebase
-backend/.env
-backend/.env.production
-frontend/.env.local
-frontend/.env.firebase
-frontend/.env.production
-# テンプレートファイルは除外しない（.env.template, .env.ci等）
-!.env.ci
-!.env.template
-
-# Cloud Run機密設定ファイル
-cloud-run-env.yaml
-cloud-run-current.yaml
-
-# その他の機密ファイル
+# -----------------------------------------------------------------------------
+# 環境変数・機密情報
+# -----------------------------------------------------------------------------
+.env*
+*secret*
+*credential*
+*private*
 *.key
 *.pem
 *.p12
 *.pfx
-*secret*
-*credential*
-*private*
 
-# .venv
-.venv
+# Cloud Run 機密設定
+cloud-run-*.yaml
 
-# Python cache & coverage
+# -----------------------------------------------------------------------------
+# Python 関連（Backend）
+# -----------------------------------------------------------------------------
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -51,109 +33,86 @@ backend/.mypy_cache/
 backend/.coverage
 backend/htmlcov/
 
-# Dependencies
+# -----------------------------------------------------------------------------
+# Node.js / Next.js 関連（Frontend）
+# -----------------------------------------------------------------------------
 node_modules/
 frontend/node_modules/
-/.pnp
+.pnp
 .pnp.js
 .yarn/
-
-# Package locks (keep frontend lock only)
-package-lock.json
-!frontend/package-lock.json
-
-# Build output / cache
-.next/
-out/
-build/
-dist/
-frontend/dist/
-frontend/coverage/
-frontend/test-results/
-frontend/playwright-report/
-
-# Runtime data
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-htmlcov/
-backend/htmlcov/
-.coverage
-backend/.coverage
-
-# Test results and reports
-test-results/
-test-results.json
-test-results.xml
-playwright-report/
-junit.xml
-
-# Performance & debug files
-performance_analysis_report.json
-debug-*.log
-
-# Firebase
-.firebase/
-.firebaserc
-firebase-debug.log
-ui-debug.log
-
-# Sphinx documentation
-docs/sphinx/_build/
-docs/sphinx/_static/
-docs/sphinx/_templates/
-
-# Log files
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-firebase-debug.log
-ui-debug.log
-debug-*.log
-docs/scripts/logs/
-logs/
-
-# Docker
-docker-compose.override.yml
-
-# Cache directories
+.yarn-integrity
 .npm
 .eslintcache
 .stylelintcache
 .cache
 .parcel-cache
+.next/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
 
-# Optional npm cache directory
-.npm
+# ロックファイル
+package-lock.json
+!frontend/package-lock.json
 
-# Optional REPL history
-.node_repl_history
+# 実行ログ・一時ファイル
+*.log
+debug-*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log
+frontend/ui-debug.log
 
-# Output of 'npm pack'
-*.tgz
+# テスト結果
+test-results/
+*.lcov
+junit.xml
+test-results.* 
+playwright-report/
 
-# Yarn Integrity file
-.yarn-integrity
+# ビルド出力
+build/
+dist/
+out/
+.out
+.storybook-out
 
-# Temporary folders
-tmp/
-temp/
+# -----------------------------------------------------------------------------
+# Firebase 関連
+# -----------------------------------------------------------------------------
+.firebase/
+.firebaserc
+firebase-debug.log
 
-# Editor/IDE settings
+# -----------------------------------------------------------------------------
+# ドキュメント（Sphinx など）
+# -----------------------------------------------------------------------------
+docs/sphinx/_build/
+docs/sphinx/_static/
+docs/sphinx/_templates/
+docs/scripts/logs/
+docs/.DS_Store
+docs/**/.DS_Store
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+# エディタ・OS・テンポラリ
+# -----------------------------------------------------------------------------
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS files
 .DS_Store
 .DS_Store?
 ._*
@@ -161,24 +120,18 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
-docs/.DS_Store
-docs/**/.DS_Store
+tmp/
+temp/
+.node_repl_history
 
-# data
+# -----------------------------------------------------------------------------
+# その他
+# -----------------------------------------------------------------------------
 data/
+*.tgz
 
-# Sentry Config Files
+# -----------------------------------------------------------------------------
+# Sentry
+# -----------------------------------------------------------------------------
 .env.sentry-build-plugin
 .sentryclirc
-
-# Next.js specific
-frontend/.next/
-frontend/out/
-
-# Nuxt.js build / generate output
-.nuxt
-frontend/.nuxt/
-
-# Storybook build outputs
-.out
-.storybook-out

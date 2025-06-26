@@ -45,15 +45,9 @@ export const Assistant = () => {
     setSentryTag("component", "assistant");
     setSentryTag("environment", process.env.NEXT_PUBLIC_ENVIRONMENT || "development");
     
-    console.log('Environment check:', {
-      NEXT_PUBLIC_DISABLE_RECAPTCHA: process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA,
-      NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
-      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-    });
     
     // テスト環境またはreCAPTCHA無効化フラグが設定されている場合はスクリプトを読み込まない
     if (isRecaptchaDisabled()) {
-      console.log("reCAPTCHA disabled in test environment");
       setRecaptchaReady(true);
       return;
     }
@@ -97,22 +91,15 @@ export const Assistant = () => {
         }
       }
       let recaptchaToken = "";
-      // reCAPTCHA認証をスキップするかチェック
-      console.log('DISABLE_RECAPTCHA', process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA);
+    
       if (isRecaptchaDisabled()) {
         recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
-        console.log("reCAPTCHA verification skipped due to test environment");
+    
       } else if (window.grecaptcha && recaptchaReady) {
         recaptchaToken = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: "submit" });
       }
-      
-      console.log('API URL:', apiUrl);
-      // デバッグ用にAPIキーとIDトークンをログ出力
-      console.log('Sending with API Key:', 
-        process.env.NEXT_PUBLIC_API_KEY ? `(length: ${process.env.NEXT_PUBLIC_API_KEY.length}) ...${process.env.NEXT_PUBLIC_API_KEY.slice(-8)}` : 'missing or empty'
-      );
-      console.log('Sending with ID Token:', idToken ? 'present' : 'missing');
-      
+
+     
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: {

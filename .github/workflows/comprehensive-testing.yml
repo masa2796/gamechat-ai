@@ -18,6 +18,10 @@ permissions:
 env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.13'
+  # External API credentials (from GitHub Secrets)
+  UPSTASH_VECTOR_REST_URL: ${{ secrets.UPSTASH_VECTOR_REST_URL }}
+  UPSTASH_VECTOR_REST_TOKEN: ${{ secrets.UPSTASH_VECTOR_REST_TOKEN }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
   # ユニットテスト

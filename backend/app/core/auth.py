@@ -3,8 +3,8 @@ Enhanced API authentication and authorization module.
 """
 import os
 import time
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Callable, List
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any, Callable, List, TypedDict
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
@@ -32,6 +32,12 @@ except ImportError:
     CryptContext = None
     logger.warning("passlib not available, password hashing disabled")
 
+class ApiKeyConfig(TypedDict):
+    """Structure for API key configuration."""
+    name: str
+    rate_limit: int
+    permissions: List[str]
+
 class APIKeyAuth:
     """API Key based authentication."""
     
@@ -49,7 +55,7 @@ class APIKeyAuth:
         if is_test_mode:
             logger.info("Test mode detected, using test API keys")
         
-        key_configs = {
+        key_configs: Dict[str, ApiKeyConfig] = {
             "API_KEY_PRODUCTION": {"name": "production", "rate_limit": 1000, "permissions": ["read", "write"]},
             "API_KEY_DEVELOPMENT": {"name": "development", "rate_limit": 100, "permissions": ["read", "write"]},
             "API_KEY_READONLY": {"name": "readonly", "rate_limit": 500, "permissions": ["read"]},
@@ -61,10 +67,10 @@ class APIKeyAuth:
             if key_value:
                 # Secret Managerからの改行文字を除去
                 key_value = key_value.strip()
-                logger.info(f"{config['name'].capitalize()} API key loaded: ***MASKED*** (type: {config['name']})")
+                logger.info(f"{str(config['name']).capitalize()} API key loaded: ***MASKED*** (type: {config['name']})")
                 api_keys[key_value] = {
                     **config,
-                    "created_at": datetime.now().isoformat()
+                    "created_at": datetime.now(timezone.utc).isoformat()
                 }
             else:
                 # 環境に応じたログ出力
@@ -73,9 +79,9 @@ class APIKeyAuth:
                     (env_var == "API_KEY_DEVELOPMENT" and environment == "development")
                 )
                 if is_required and not is_test_mode:
-                    logger.warning(f"{config['name'].capitalize()} API key not found in environment variables, but it might be required.")
+                    logger.warning(f"{str(config['name']).capitalize()} API key not found in environment variables, but it might be required.")
                 else:
-                    logger.info(f"{config['name'].capitalize()} API key not configured (optional or not required in this env)")
+                    logger.info(f"{str(config['name']).capitalize()} API key not configured (optional or not required in this env)")
         
         logger.info(f"Total API keys loaded: {len(api_keys)}")
         return api_keys

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | GameChat AI"
   },
   description: "AIを活用したゲーム攻略支援サービス。ゲームの質問に素早く正確に回答します。",
-  keywords: ["ゲーム", "攻略", "AI", "アシスタント", "ポケモンカード", "チャットボット"],
+  keywords: ["ゲーム", "攻略", "AI", "アシスタント", "チャットボット"],
   authors: [{ name: "GameChat AI Team" }],
   creator: "GameChat AI",
   publisher: "GameChat AI",

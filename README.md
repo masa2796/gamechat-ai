@@ -1208,7 +1208,7 @@ firebase login
 firebase init hosting
 
 # 3. フロントエンドビルド & デプロイ
-./scripts/firebase-deploy.sh
+./scripts/deployment/firebase-deploy.sh
 
 # 4. Firebase Hosting URL確認
 firebase hosting:sites:list
