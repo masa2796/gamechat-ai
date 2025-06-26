@@ -43,76 +43,39 @@ class APIKeyAuth:
         """Load API keys from environment variables."""
         api_keys = {}
         
-        # テスト環境の確認
         is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
         environment = os.getenv("ENVIRONMENT", "development")
         
         if is_test_mode:
             logger.info("Test mode detected, using test API keys")
         
-        # Production API key
-        prod_key = os.getenv("API_KEY_PRODUCTION")
-        if prod_key:
-            # Secret Managerからの改行文字を除去
-            prod_key = prod_key.strip()
-            logger.info("Production API key loaded: ***MASKED*** (type: production)")
-            api_keys[prod_key] = {
-                "name": "production",
-                "rate_limit": 1000,  # requests per hour
-                "permissions": ["read", "write"],
-                "created_at": datetime.now().isoformat()
-            }
-        elif not is_test_mode and environment == "production":
-            logger.warning("Production API key not found in environment variables")
-        else:
-            logger.info("Production API key not required in current environment")
-        
-        # Development API key
-        dev_key = os.getenv("API_KEY_DEVELOPMENT")
-        if dev_key:
-            # Secret Managerからの改行文字を除去
-            dev_key = dev_key.strip()
-            logger.info("Development API key loaded: ***MASKED*** (type: development)")
-            api_keys[dev_key] = {
-                "name": "development",
-                "rate_limit": 100,  # requests per hour
-                "permissions": ["read", "write"],
-                "created_at": datetime.now().isoformat()
-            }
-        elif not is_test_mode:
-            logger.warning("Development API key not found in environment variables")
-        else:
-            logger.info("Development API key not required in test mode")
-        
-        # Read-only API key
-        readonly_key = os.getenv("API_KEY_READONLY")
-        if readonly_key:
-            # Secret Managerからの改行文字を除去
-            readonly_key = readonly_key.strip()
-            logger.info("Readonly API key loaded: ***MASKED*** (type: readonly)")
-            api_keys[readonly_key] = {
-                "name": "readonly",
-                "rate_limit": 500,  # requests per hour
-                "permissions": ["read"],
-                "created_at": datetime.now().isoformat()
-            }
-        else:
-            logger.info("Readonly API key not configured (optional)")
-        
-        # Frontend API key
-        frontend_key = os.getenv("API_KEY_FRONTEND")
-        if frontend_key:
-            # Secret Managerからの改行文字を除去
-            frontend_key = frontend_key.strip()
-            logger.info("Frontend API key loaded: ***MASKED*** (type: frontend)")
-            api_keys[frontend_key] = {
-                "name": "frontend",
-                "rate_limit": 200,  # requests per hour
-                "permissions": ["read"],
-                "created_at": datetime.now().isoformat()
-            }
-        else:
-            logger.info("Frontend API key not configured (optional)")
+        key_configs = {
+            "API_KEY_PRODUCTION": {"name": "production", "rate_limit": 1000, "permissions": ["read", "write"]},
+            "API_KEY_DEVELOPMENT": {"name": "development", "rate_limit": 100, "permissions": ["read", "write"]},
+            "API_KEY_READONLY": {"name": "readonly", "rate_limit": 500, "permissions": ["read"]},
+            "API_KEY_FRONTEND": {"name": "frontend", "rate_limit": 200, "permissions": ["read"]},
+        }
+
+        for env_var, config in key_configs.items():
+            key_value = os.getenv(env_var)
+            if key_value:
+                # Secret Managerからの改行文字を除去
+                key_value = key_value.strip()
+                logger.info(f"{config['name'].capitalize()} API key loaded: ***MASKED*** (type: {config['name']})")
+                api_keys[key_value] = {
+                    **config,
+                    "created_at": datetime.now().isoformat()
+                }
+            else:
+                # 環境に応じたログ出力
+                is_required = (
+                    (env_var == "API_KEY_PRODUCTION" and environment == "production") or
+                    (env_var == "API_KEY_DEVELOPMENT" and environment == "development")
+                )
+                if is_required and not is_test_mode:
+                    logger.warning(f"{config['name'].capitalize()} API key not found in environment variables, but it might be required.")
+                else:
+                    logger.info(f"{config['name'].capitalize()} API key not configured (optional or not required in this env)")
         
         logger.info(f"Total API keys loaded: {len(api_keys)}")
         return api_keys

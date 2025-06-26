@@ -38,9 +38,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         
         # Rate limiting rules
         self.rate_limits = {
-            "/api/rag/query": (10, 60),  # 10 requests per minute
-            "/api/rag/health": (30, 60), # 30 requests per minute
-            "default": (30, 60)          # Default: 30 requests per minute
+            "/api/rag/query": (60, 60),  # 60 requests per minute
+            "/api/rag/health": (100, 60), # 100 requests per minute
+            "default": (100, 60)          # Default: 100 requests per minute
         }
         
         # Initialize Redis connection

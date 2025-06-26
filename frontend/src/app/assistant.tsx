@@ -24,6 +24,15 @@ declare global {
   }
 }
 
+// reCAPTCHAが無効かどうかを判定するヘルパー関数
+const isRecaptchaDisabled = () => {
+  return (
+    process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" ||
+    process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
+    !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+  );
+};
+
 export const Assistant = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -43,9 +52,7 @@ export const Assistant = () => {
     });
     
     // テスト環境またはreCAPTCHA無効化フラグが設定されている場合はスクリプトを読み込まない
-    if (process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" || 
-        process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
-        !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+    if (isRecaptchaDisabled()) {
       console.log("reCAPTCHA disabled in test environment");
       setRecaptchaReady(true);
       return;
@@ -92,9 +99,7 @@ export const Assistant = () => {
       let recaptchaToken = "";
       // reCAPTCHA認証をスキップするかチェック
       console.log('DISABLE_RECAPTCHA', process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA);
-      if (process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" || 
-          process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
-          !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+      if (isRecaptchaDisabled()) {
         recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
         console.log("reCAPTCHA verification skipped due to test environment");
       } else if (window.grecaptcha && recaptchaReady) {
@@ -102,6 +107,11 @@ export const Assistant = () => {
       }
       
       console.log('API URL:', apiUrl);
+      // デバッグ用にAPIキーとIDトークンをログ出力
+      console.log('Sending with API Key:', 
+        process.env.NEXT_PUBLIC_API_KEY ? `(length: ${process.env.NEXT_PUBLIC_API_KEY.length}) ...${process.env.NEXT_PUBLIC_API_KEY.slice(-8)}` : 'missing or empty'
+      );
+      console.log('Sending with ID Token:', idToken ? 'present' : 'missing');
       
       const res = await fetch(apiUrl, {
         method: "POST",
@@ -120,6 +130,12 @@ export const Assistant = () => {
         credentials: "include"
       });
       
+      if (!res.ok) {
+        // サーバーからのエラーレスポンスをより詳細に処理
+        const errorData = await res.json().catch(() => ({ error: { message: `HTTP error! status: ${res.status}` } }));
+        throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
+      }
+
       const data = await res.json();
       
       if (data.error) {
@@ -134,6 +150,15 @@ export const Assistant = () => {
     } catch (error) {
       console.error("Error:", error);
       
+      let displayMessage = "エラーが発生しました。もう一度お試しください。";
+      if (error instanceof Error) {
+        if (error.message.includes("Invalid authentication credentials") || error.message.includes("401")) {
+          displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
+        } else {
+          displayMessage = error.message;
+        }
+      }
+
       // Sentryにエラーを報告
       captureAPIError(error as Error, {
         endpoint: apiUrl,
@@ -143,7 +168,7 @@ export const Assistant = () => {
       
       const errorMessage: Message = { 
         role: "assistant", 
-        content: "エラーが発生しました。もう一度お試しください。" 
+        content: displayMessage
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {

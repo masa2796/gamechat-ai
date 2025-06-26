@@ -98,7 +98,8 @@ export default function RootLayout({
         )}
         <StructuredData data={structuredData} />
       </head>
-      <body
+      <body 
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SentryProvider>
