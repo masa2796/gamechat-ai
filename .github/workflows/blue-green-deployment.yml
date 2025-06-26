@@ -53,7 +53,6 @@ jobs:
         echo "🚀 Deployment ID: $DEPLOYMENT_ID"
         
     - name: Authenticate to Google Cloud
-      if: false
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
