@@ -161,17 +161,31 @@ class StorageService:
         # ローカル環境では直接ローカルファイルパスを返す
         if not self.is_cloud_environment:
             local_path = self._get_local_file_path(file_key)
+            abs_path = os.path.abspath(local_path)
             if os.path.exists(local_path):
-                GameChatLogger.log_info("storage_service", "ローカルファイルを使用", {
-                    "file_key": file_key,
-                    "path": local_path
-                })
+                GameChatLogger.log_info(
+                    "storage_service",
+                    f"ローカルファイルを使用: {local_path} (絶対パス: {abs_path})",
+                    {
+                        "file_key": file_key,
+                        "path": local_path,
+                        "abs_path": abs_path
+                    }
+                )
                 return local_path
             else:
-                GameChatLogger.log_warning("storage_service", "ローカルファイルが存在しません", {
-                    "file_key": file_key,
-                    "path": local_path
-                })
+                dir_exists = os.path.isdir(os.path.dirname(abs_path))
+                GameChatLogger.log_warning(
+                    "storage_service",
+                    f"ローカルファイルが存在しません: {local_path} (絶対パス: {abs_path}) ディレクトリ存在: {dir_exists}",
+                    {
+                        "file_key": file_key,
+                        "path": local_path,
+                        "abs_path": abs_path,
+                        "exists": False,
+                        "dir_exists": dir_exists
+                    }
+                )
                 return None
         
         # Cloud環境での処理

@@ -13,6 +13,7 @@ import json
 import urllib.request
 import urllib.parse
 import urllib.error
+from locust import HttpUser, task
 from typing import Dict, Any, List
 import sys
 
@@ -610,3 +611,16 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+class PerformanceUser(HttpUser):
+    host = "http://127.0.0.1:8000"
+
+    @task
+    def rag_query(self):
+        data = {
+            "question": "ゲームの基本的な遊び方を教えて",
+            "top_k": 5,
+            "with_context": True,
+            "recaptchaToken": "test_token"
+        }
+        self.client.post("/api/rag/query", json=data, headers={"X-API-Key": "dev-key-12345"})

@@ -87,12 +87,13 @@ class Settings:
     MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
     
     # データファイルパス設定
-    # Cloud Run環境では /app がプロジェクトルートになる
-    DATA_DIR: Path = PROJECT_ROOT / "data"
-    DATA_FILE_PATH: str = os.getenv("DATA_FILE_PATH", str(DATA_DIR / "data.json"))
-    CONVERTED_DATA_FILE_PATH: str = os.getenv("CONVERTED_DATA_FILE_PATH", str(DATA_DIR / "convert_data.json"))
-    EMBEDDING_FILE_PATH: str = os.getenv("EMBEDDING_FILE_PATH", str(DATA_DIR / "embedding_list.jsonl"))
-    QUERY_DATA_FILE_PATH: str = os.getenv("QUERY_DATA_FILE_PATH", str(DATA_DIR / "query_data.json"))
+    # プロジェクトルートを基準にパスを解決
+    BASE_DIR = str(PROJECT_ROOT)
+    DATA_DIR = os.path.join(BASE_DIR, "data")
+    DATA_FILE_PATH = os.path.join(DATA_DIR, "data.json")
+    EMBEDDING_FILE_PATH = os.path.join(DATA_DIR, "embedding_list.jsonl")
+    QUERY_DATA_FILE_PATH = os.path.join(DATA_DIR, "query_data.json")
+    CONVERTED_DATA_FILE_PATH = os.path.join(DATA_DIR, "convert_data.json")
     
     # Google Cloud Storage設定
     GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "gamechat-ai-data")
