@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any, AsyncGenerator
 import openai
 import os
 import asyncio
+import random
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
@@ -10,15 +11,26 @@ from ..core.logging import GameChatLogger
 
 class LLMService:
     def __init__(self) -> None:
-        # OpenAI クライアントを初期化
-        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+        # モック環境のチェック
+        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
         is_testing = os.getenv("TESTING", "false").lower() == "true"
         
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化
+            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
             
-        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
+            if not api_key or api_key in ["sk-test_openai_key", "test-api-key"]:
+                raise LLMException(
+                    message="OpenAI APIキーが設定されていません",
+                    code="API_KEY_NOT_SET"
+                )
+                
+            self.client = openai.OpenAI(api_key=api_key)
+            self.is_mocked = False
 
     async def generate_answer(
         self, 
@@ -33,20 +45,19 @@ class LLMService:
         開発・テスト環境では、OpenAI APIを使用せずにモックレスポンスを返します。
         """
         try:
-            # 開発・テスト環境での簡易対応
-            environment = os.getenv("ENVIRONMENT", "production")
-            GameChatLogger.log_info("llm_service", f"回答生成開始 - environment: {environment}")
-            
-            if environment in ["development", "test"]:
+            # モック環境での処理
+            if self.is_mocked:
+                GameChatLogger.log_info("llm_service", "モック環境で回答生成")
+                
                 # 挨拶の場合は専用の応答を生成
                 if classification and classification.query_type == QueryType.GREETING:
                     return "こんにちは！GameChat AIです。ゲームに関する質問をお気軽にどうぞ！"
                 
                 # その他の質問には簡易回答を返す
                 if context_items:
-                    return f"「{query}」に関して、{len(context_items)}件の情報を見つけました。現在はテスト環境で動作しています。"
+                    return f"「{query}」に関して、{len(context_items)}件の情報を見つけました。現在はモック環境で動作しています。"
                 else:
-                    return f"「{query}」について、テスト環境からお答えします。具体的な質問をお聞かせください！"
+                    return f"「{query}」について、モック環境からお答えします。具体的な質問をお聞かせください！"
             
             # 本番環境の場合は通常のOpenAI API処理を続行
             if not self.client:
@@ -150,7 +161,7 @@ class LLMService:
         return "\n".join(prompt_parts)
 
     async def _request_llm_response(self, system_prompt: str, user_prompt: str) -> str:
-        """LLMにリクエストを送信して回答を取得（タイムアウト制御付き）"""
+        """LLMにリクエストを送信して回答を取得（レート制限対応付き）"""
         if not self.client:
             raise LLMException(
                 message="OpenAI APIキーが設定されていません",
@@ -169,47 +180,78 @@ class LLMService:
             GameChatLogger.log_error("llm_service", "OpenAI client is not initialized", None)
             return error_msg
 
-        # OpenAI API呼び出し
-        try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: self.client.chat.completions.create(  # type: ignore[union-attr]
-                        model="gpt-4o",
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        max_tokens=250,
-                        temperature=0.2,
-                        presence_penalty=0.1,
-                        frequency_penalty=0.1,
-                        timeout=8
-                    )
-                ),
-                timeout=10.0
-            )
-            
-            # レスポンス内容の取得と検証
-            response_content = response.choices[0].message.content
-            if response_content is None:
-                GameChatLogger.log_warning("llm_service", "OpenAI APIからの応答が空です")
-                return "申し訳ありませんが、回答の生成中にエラーが発生しました。"
-            
-            return response_content.strip()
-            
-        except asyncio.TimeoutError:
-            GameChatLogger.log_warning("llm_service", "OpenAI APIタイムアウト（10秒）")
-            return "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。"
-            
-        except Exception as e:
-            GameChatLogger.log_error("llm_service", "OpenAI API呼び出しエラー", e)
-            # より詳細なエラー情報を含める
-            error_message = f"OpenAI APIでエラーが発生しました: {str(e)}"
-            raise LLMException(
-                message=error_message,
-                code="OPENAI_API_ERROR",
-                details={"error_type": type(e).__name__, "message": str(e)}
-            )
+        # レート制限対応のためのリトライ処理
+        max_retries = 3
+        base_delay = 1.0
+        
+        for attempt in range(max_retries + 1):
+            try:
+                GameChatLogger.log_info("llm_service", f"OpenAI API呼び出し開始 (試行 {attempt + 1}/{max_retries + 1})")
+                
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        lambda: self.client.chat.completions.create(  # type: ignore[union-attr]
+                            model="gpt-4o",
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt}
+                            ],
+                            max_tokens=250,
+                            temperature=0.2,
+                            presence_penalty=0.1,
+                            frequency_penalty=0.1,
+                            timeout=12  # 個別APIコールのタイムアウトを12秒に増加
+                        )
+                    ),
+                    timeout=15.0  # 全体のタイムアウトを15秒に増加
+                )
+                
+                # レスポンス内容の取得と検証
+                response_content = response.choices[0].message.content
+                if response_content is None:
+                    GameChatLogger.log_warning("llm_service", "OpenAI APIからの応答が空です")
+                    return "申し訳ありませんが、回答の生成中にエラーが発生しました。"
+                
+                GameChatLogger.log_success("llm_service", f"OpenAI API呼び出し成功 (試行 {attempt + 1})")
+                return response_content.strip()
+                
+            except asyncio.TimeoutError:
+                if attempt == max_retries:
+                    GameChatLogger.log_warning("llm_service", "OpenAI APIタイムアウト（15秒）、全リトライ試行完了")
+                    return "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。"
+                else:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    GameChatLogger.log_warning("llm_service", f"OpenAI APIタイムアウト、{delay:.1f}秒後にリトライします")
+                    await asyncio.sleep(delay)
+                    continue
+                    
+            except Exception as e:
+                error_str = str(e)
+                error_type = type(e).__name__
+                
+                # レート制限エラーの検出と処理
+                if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
+                    if attempt == max_retries:
+                        GameChatLogger.log_error("llm_service", f"OpenAI APIレート制限、全リトライ試行完了: {error_str}", e)
+                        return "申し訳ありませんが、現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。"
+                    else:
+                        # 指数バックオフ + ジッター
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 2)
+                        GameChatLogger.log_warning("llm_service", f"OpenAI APIレート制限エラー、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                        await asyncio.sleep(delay)
+                        continue
+                
+                # その他のエラーは即座に失敗
+                GameChatLogger.log_error("llm_service", f"OpenAI API呼び出しエラー (試行 {attempt + 1}): {error_str}", e)
+                error_message = f"OpenAI APIでエラーが発生しました: {error_str}"
+                raise LLMException(
+                    message=error_message,
+                    code="OPENAI_API_ERROR",
+                    details={"error_type": error_type, "message": error_str, "attempt": attempt + 1}
+                )
+        
+        # ここには到達しないはずだが、フォールバック
+        return "申し訳ありませんが、回答の生成中にエラーが発生しました。"
 
     def _generate_greeting_response(self, query: str, classification: ClassificationResult) -> str:
         """挨拶専用の応答を生成"""
@@ -466,22 +508,57 @@ class LLMService:
 
 上記の情報を参考に、質問に対する適切な回答を生成してください。"""
             
-            # OpenAI API ストリーミング呼び出し
-            stream = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                stream=True,
-                max_tokens=1000,
-                temperature=0.7
-            )
+            # レート制限対応のためのリトライ処理
+            max_retries = 3
+            base_delay = 1.0
             
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    yield chunk.choices[0].delta.content
+            for attempt in range(max_retries + 1):
+                try:
+                    GameChatLogger.log_info("llm_service", f"OpenAI Streaming API呼び出し開始 (試行 {attempt + 1}/{max_retries + 1})")
+                    
+                    # OpenAI API ストリーミング呼び出し
+                    stream = self.client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        stream=True,
+                        max_tokens=1000,
+                        temperature=0.7,
+                        timeout=15  # ストリーミングタイムアウト
+                    )
+                    
+                    GameChatLogger.log_success("llm_service", f"OpenAI Streaming API呼び出し成功 (試行 {attempt + 1})")
+                    
+                    for chunk in stream:
+                        if chunk.choices[0].delta.content is not None:
+                            yield chunk.choices[0].delta.content
+                    return  # 成功したら関数を終了
+                    
+                except Exception as e:
+                    error_str = str(e)
+                    # レート制限エラーの検出
+                    if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
+                        if attempt == max_retries:
+                            GameChatLogger.log_error("llm_service", f"OpenAI Streaming APIレート制限、全リトライ試行完了: {error_str}", e)
+                            yield "申し訳ありませんが、現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。"
+                            return
+                        else:
+                            delay = base_delay * (2 ** attempt) + random.uniform(0, 2)
+                            GameChatLogger.log_warning("llm_service", f"OpenAI Streaming APIレート制限エラー、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                            # ストリーミングでは同期スリープを使用
+                            import time
+                            time.sleep(delay)
+                            continue
+                    else:
+                        GameChatLogger.log_error("llm_service", f"Streaming error (試行 {attempt + 1}): {error_str}", e)
+                        yield f"申し訳ありませんが、回答の生成中にエラーが発生しました: {error_str}"
+                        return
+            
+            # ここには到達しないはずだが、フォールバック
+            yield "申し訳ありませんが、回答の生成中にエラーが発生しました。"
             
         except Exception as e:
-            GameChatLogger.log_error("llm_service", "Streaming error", e)
-            yield f"申し訳ありませんが、回答の生成中にエラーが発生しました: {str(e)}"
+            GameChatLogger.log_error("llm_service", "Stream response error", e)
+            yield f"申し訳ありませんが、ストリーミング中にエラーが発生しました: {str(e)}"

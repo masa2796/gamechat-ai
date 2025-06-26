@@ -165,11 +165,11 @@ run_unit_tests() {
     log_info "ユニットテストを実行中..."
     
     # Pythonテスト
-    if [ -f "requirements.txt" ]; then
+    if [ -f "backend/requirements.txt" ]; then
         log_info "Pythonテストを実行中..."
         python -m venv test_venv
         source test_venv/bin/activate
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
         cd backend && python -m pytest app/tests/ -v || log_warning "Pythonテスト失敗"
         deactivate
         rm -rf test_venv

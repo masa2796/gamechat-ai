@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from backend.app.services.hybrid_search_service import HybridSearchService
-from backend.app.services.rag_service import RagService
-from backend.app.models.rag_models import RagRequest, ContextItem
-from backend.app.models.classification_models import ClassificationResult, QueryType
+from app.services.hybrid_search_service import HybridSearchService
+from app.services.rag_service import RagService
+from app.models.rag_models import RagRequest, ContextItem
+from app.models.classification_models import ClassificationResult, QueryType
 
 class TestFullFlowIntegration:
     """フルフロー統合テスト（入力→分類→検索→応答生成）"""

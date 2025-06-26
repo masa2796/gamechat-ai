@@ -1,6 +1,8 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import openai
 import os
+import asyncio
+import random
 from dotenv import load_dotenv
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.exceptions import EmbeddingException
@@ -11,19 +13,50 @@ load_dotenv()
 
 class EmbeddingService:
     def __init__(self) -> None:
-        # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
-        api_key = os.getenv("OPENAI_API_KEY")
+        # モック環境のチェック
+        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
         is_testing = os.getenv("TESTING", "false").lower() == "true"
         
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
+            api_key = os.getenv("OPENAI_API_KEY")
             
-        self.client: Optional[openai.OpenAI] = openai.OpenAI(api_key=api_key) if api_key else None
+            # テスト用のダミーキーの除外
+            invalid_keys = ["sk-test_openai_key", "test-api-key"]
+            
+            if not api_key or api_key in invalid_keys:
+                raise EmbeddingException(
+                    message="OpenAI APIキーが設定されていません",
+                    code="API_KEY_NOT_SET"
+                )
+            
+            # テスト用のダミーAPIキーの場合はそのまま通す
+            self.client = openai.OpenAI(api_key=api_key)
+            self.is_mocked = False
 
     @handle_service_exceptions("embedding")
     async def get_embedding(self, query: str) -> List[float]:
         """質問文をOpenAI APIでエンベディングに変換"""
+        # モック環境での処理
+        if self.is_mocked:
+            GameChatLogger.log_info("embedding_service", "モック環境で埋め込み生成", {
+                "query_length": len(query),
+                "query_preview": query[:50]
+            })
+            # 固定のダミー埋め込みベクトル（1536次元）を返す
+            import hashlib
+            hash_object = hashlib.md5(query.encode())
+            hash_hex = hash_object.hexdigest()
+            # ハッシュから決定論的にベクトルを生成
+            dummy_embedding = []
+            for i in range(1536):
+                dummy_embedding.append((int(hash_hex[i % len(hash_hex)], 16) - 7.5) / 7.5)
+            return dummy_embedding
+        
         if not self.client:
             raise EmbeddingException(
                 message="OpenAI APIキーが設定されていません",
@@ -35,16 +68,67 @@ class EmbeddingService:
             "query_preview": query[:50]
         })
         
-        response = self.client.embeddings.create(
-            input=query,
-            model="text-embedding-3-small"
+        # レート制限対応のためのリトライ処理
+        max_retries = 3
+        base_delay = 1.0
+        
+        for attempt in range(max_retries + 1):
+            try:
+                GameChatLogger.log_info("embedding_service", f"OpenAI Embedding API呼び出し開始 (試行 {attempt + 1}/{max_retries + 1})")
+                
+                response = self.client.embeddings.create(
+                    input=query,
+                    model="text-embedding-3-small",
+                    timeout=10  # API呼び出しタイムアウト
+                )
+                
+                GameChatLogger.log_success("embedding_service", "埋め込み生成完了", {
+                    "embedding_dimension": len(response.data[0].embedding),
+                    "attempt": attempt + 1
+                })
+                
+                return response.data[0].embedding
+                
+            except openai.RateLimitError as e:
+                if attempt == max_retries:
+                    GameChatLogger.log_error("embedding_service", "OpenAI Embedding APIレート制限、全リトライ試行完了", e)
+                    raise EmbeddingException(
+                        message="OpenAI APIのレート制限に達しました。しばらく待ってから再試行してください。",
+                        code="RATE_LIMIT_EXCEEDED"
+                    ) from e
+                else:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    GameChatLogger.log_warning("embedding_service", f"OpenAI Embedding APIレート制限エラー、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                    asyncio.run(asyncio.sleep(delay))
+                    continue
+                    
+            except Exception as e:
+                error_str = str(e)
+                # その他のエラーもレート制限の可能性があるかチェック
+                if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
+                    if attempt == max_retries:
+                        GameChatLogger.log_error("embedding_service", f"OpenAI Embedding APIレート制限（その他）、全リトライ試行完了: {error_str}", e)
+                        raise EmbeddingException(
+                            message="現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。",
+                            code="RATE_LIMIT_EXCEEDED"
+                        ) from e
+                    else:
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                        GameChatLogger.log_warning("embedding_service", f"OpenAI Embedding APIレート制限エラー（その他）、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                        asyncio.run(asyncio.sleep(delay))
+                        continue
+                else:
+                    GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー (試行 {attempt + 1}): {error_str}", e)
+                    raise EmbeddingException(
+                        message=f"埋め込み生成中にエラーが発生しました: {error_str}",
+                        code="EMBEDDING_ERROR"
+                    ) from e
+        
+        # ここには到達しないはずだが、フォールバック
+        raise EmbeddingException(
+            message="埋め込み生成中に予期しないエラーが発生しました",
+            code="UNEXPECTED_ERROR"
         )
-        
-        GameChatLogger.log_success("embedding_service", "埋め込み生成完了", {
-            "embedding_dimension": len(response.data[0].embedding)
-        })
-        
-        return response.data[0].embedding
 
     @handle_service_exceptions("embedding", fallback_return=None)
     async def get_embedding_from_classification(
@@ -110,20 +194,73 @@ class EmbeddingService:
             "confidence": classification.confidence
         })
         
-        response = self.client.embeddings.create(
-            input=embedding_text,
-            model="text-embedding-3-small"
-        )
+        # レート制限対応のためのリトライ処理
+        max_retries = 3
+        base_delay = 1.0
         
-        result = response.data[0].embedding
+        for attempt in range(max_retries + 1):
+            try:
+                GameChatLogger.log_info("embedding_service", f"OpenAI Embedding API呼び出し開始 (分類ベース) (試行 {attempt + 1}/{max_retries + 1})")
+                
+                response = self.client.embeddings.create(
+                    input=embedding_text,
+                    model="text-embedding-3-small",
+                    timeout=10  # API呼び出しタイムアウト
+                )
+                
+                result = response.data[0].embedding
+                
+                # フォールバック処理
+                if not result:
+                    GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
+                    fallback_result = await self.get_embedding(original_query)
+                    return fallback_result if fallback_result is not None else []
+                    
+                GameChatLogger.log_success("embedding_service", "埋め込み生成完了（分類ベース）", {
+                    "embedding_dimension": len(result),
+                    "attempt": attempt + 1
+                })
+                
+                return result
+                
+            except openai.RateLimitError as e:
+                if attempt == max_retries:
+                    GameChatLogger.log_error("embedding_service", "OpenAI Embedding APIレート制限（分類ベース）、全リトライ試行完了", e)
+                    # レート制限の場合はフォールバックを試行
+                    GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
+                    fallback_result = await self.get_embedding(original_query)
+                    return fallback_result if fallback_result is not None else []
+                else:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    GameChatLogger.log_warning("embedding_service", f"OpenAI Embedding APIレート制限エラー（分類ベース）、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                    asyncio.run(asyncio.sleep(delay))
+                    continue
+                    
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
+                    if attempt == max_retries:
+                        GameChatLogger.log_error("embedding_service", f"OpenAI Embedding APIレート制限（分類ベース・その他）、全リトライ試行完了: {error_str}", e)
+                        # レート制限の場合はフォールバックを試行
+                        GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
+                        fallback_result = await self.get_embedding(original_query)
+                        return fallback_result if fallback_result is not None else []
+                    else:
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                        GameChatLogger.log_warning("embedding_service", f"OpenAI Embedding APIレート制限エラー（分類ベース・その他）、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                        asyncio.run(asyncio.sleep(delay))
+                        continue
+                else:
+                    GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー（分類ベース） (試行 {attempt + 1}): {error_str}", e)
+                    # 通常のエラーの場合もフォールバックを試行
+                    GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
+                    fallback_result = await self.get_embedding(original_query)
+                    return fallback_result if fallback_result is not None else []
         
-        # フォールバック処理
-        if not result:
-            GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
-            fallback_result = await self.get_embedding(original_query)
-            return fallback_result if fallback_result is not None else []
-            
-        return result
+        # ここには到達しないはずだが、フォールバック
+        GameChatLogger.log_warning("embedding_service", "埋め込み生成失敗、フォールバック実行")
+        fallback_result = await self.get_embedding(original_query)
+        return fallback_result if fallback_result is not None else []
 
     def _determine_embedding_text(
         self, 

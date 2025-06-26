@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from backend.app.main import app
+from app.main import app
 
 client = TestClient(app)
 
@@ -17,7 +17,7 @@ def test_talk_guidelines_with_ng_word(monkeypatch):
         return True
 
     # ルーターのインスタンスを直接モックする
-    from backend.app.routers import rag
+    from app.routers import rag
     monkeypatch.setattr(rag.rag_service, "process_query", mock_process_query)
     monkeypatch.setattr(rag.auth_service, "verify_request", mock_verify_request)
 
@@ -36,7 +36,7 @@ def test_talk_guidelines_without_ng_word(monkeypatch):
         return True
 
     # ルーターのインスタンスを直接モックする
-    from backend.app.routers import rag
+    from app.routers import rag
     monkeypatch.setattr(rag.rag_service, "process_query", mock_process_query)
     monkeypatch.setattr(rag.auth_service, "verify_request", mock_verify_request)
 
@@ -61,7 +61,7 @@ def test_talk_guidelines_responses(monkeypatch):
         return True
 
     # ルーターのインスタンスを直接モックする
-    from backend.app.routers import rag
+    from app.routers import rag
     monkeypatch.setattr(rag.rag_service, "process_query", mock_process_query)
     monkeypatch.setattr(rag.auth_service, "verify_request", mock_verify_request)
 

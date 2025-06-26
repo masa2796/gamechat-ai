@@ -136,6 +136,14 @@ class GameChatLogger:
         logging.getLogger("uvicorn").setLevel(logging.WARNING)
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
         logging.getLogger("fastapi").setLevel(logging.WARNING)
+        # OpenAI SDKの冗長なDEBUGログを抑制
+        logging.getLogger("openai").setLevel(logging.WARNING)
+        # Upstash Vectorの冗長なDEBUGログを抑制
+        logging.getLogger("upstash_vector").setLevel(logging.WARNING)
+        # 独自DB層のDEBUGログも抑制（必要に応じて）
+        logging.getLogger("app.core.database").setLevel(logging.INFO)
+        # 必要に応じて他の冗長なロガーもここで制御可能
+        # logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
         
         cls._configured = True
     

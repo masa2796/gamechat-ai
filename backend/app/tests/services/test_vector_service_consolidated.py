@@ -1,8 +1,8 @@
 
 import pytest
 from unittest.mock import MagicMock
-from backend.app.tests.mocks.vector_service_mock import MockVectorService
-from backend.app.models.rag_models import ContextItem
+from app.tests.mocks.vector_service_mock import MockVectorService
+from app.models.rag_models import ContextItem
 
 
 class TestVectorService:

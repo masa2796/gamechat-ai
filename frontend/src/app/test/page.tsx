@@ -120,8 +120,8 @@ export default function APITestPage() {
           <ul className="text-sm space-y-1">
             <li><strong>API URL:</strong> {process.env.NEXT_PUBLIC_API_URL}</li>
             <li><strong>Firebase Project:</strong> {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}</li>
-            <li><strong>reCAPTCHA Site Key:</strong> {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.substring(0, 20)}...</li>
-            <li><strong>API Key:</strong> {process.env.NEXT_PUBLIC_API_KEY?.substring(0, 20)}...</li>
+            <li><strong>reCAPTCHA Site Key:</strong> {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? "設定済み" : "未設定"}</li>
+            <li><strong>API Key:</strong> {process.env.NEXT_PUBLIC_API_KEY ? "設定済み" : "未設定"}</li>
             <li><strong>Environment:</strong> {process.env.NEXT_PUBLIC_ENVIRONMENT}</li>
           </ul>
         </div>

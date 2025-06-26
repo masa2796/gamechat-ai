@@ -15,6 +15,16 @@ export function PWAInstallBanner() {
   const { isInstalled } = usePWA()
 
   useEffect(() => {
+    // テスト環境では PWA バナーを表示しない
+    const isTestEnvironment = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test' || 
+                             process.env.NODE_ENV === 'test' ||
+                             typeof window !== 'undefined' && window.location.href.includes('localhost:3000')
+
+    if (isTestEnvironment) {
+      setShowBanner(false)
+      return
+    }
+
     const handler = (e: BeforeInstallPromptEvent) => {
       // デフォルトのブラウザプロンプトを防ぐ
       e.preventDefault()

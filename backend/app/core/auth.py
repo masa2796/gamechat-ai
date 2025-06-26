@@ -3,8 +3,8 @@ Enhanced API authentication and authorization module.
 """
 import os
 import time
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Callable, List
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any, Callable, List, TypedDict
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
@@ -32,6 +32,12 @@ except ImportError:
     CryptContext = None
     logger.warning("passlib not available, password hashing disabled")
 
+class ApiKeyConfig(TypedDict):
+    """Structure for API key configuration."""
+    name: str
+    rate_limit: int
+    permissions: List[str]
+
 class APIKeyAuth:
     """API Key based authentication."""
     
@@ -43,65 +49,39 @@ class APIKeyAuth:
         """Load API keys from environment variables."""
         api_keys = {}
         
-        # Production API key
-        prod_key = os.getenv("API_KEY_PRODUCTION")
-        if prod_key:
-            # Secret Managerからの改行文字を除去
-            prod_key = prod_key.strip()
-            logger.info("Production API key loaded: ***MASKED*** (type: production)")
-            api_keys[prod_key] = {
-                "name": "production",
-                "rate_limit": 1000,  # requests per hour
-                "permissions": ["read", "write"],
-                "created_at": datetime.now().isoformat()
-            }
-        else:
-            logger.warning("Production API key not found in environment variables")
+        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        environment = os.getenv("ENVIRONMENT", "development")
         
-        # Development API key
-        dev_key = os.getenv("API_KEY_DEVELOPMENT")
-        if dev_key:
-            # Secret Managerからの改行文字を除去
-            dev_key = dev_key.strip()
-            logger.info("Development API key loaded: ***MASKED*** (type: development)")
-            api_keys[dev_key] = {
-                "name": "development",
-                "rate_limit": 100,  # requests per hour
-                "permissions": ["read", "write"],
-                "created_at": datetime.now().isoformat()
-            }
-        else:
-            logger.warning("Development API key not found in environment variables")
+        if is_test_mode:
+            logger.info("Test mode detected, using test API keys")
         
-        # Read-only API key
-        readonly_key = os.getenv("API_KEY_READONLY")
-        if readonly_key:
-            # Secret Managerからの改行文字を除去
-            readonly_key = readonly_key.strip()
-            logger.info("Readonly API key loaded: ***MASKED*** (type: readonly)")
-            api_keys[readonly_key] = {
-                "name": "readonly",
-                "rate_limit": 500,  # requests per hour
-                "permissions": ["read"],
-                "created_at": datetime.now().isoformat()
-            }
-        else:
-            logger.info("Readonly API key not configured (optional)")
-        
-        # Frontend API key
-        frontend_key = os.getenv("API_KEY_FRONTEND")
-        if frontend_key:
-            # Secret Managerからの改行文字を除去
-            frontend_key = frontend_key.strip()
-            logger.info("Frontend API key loaded: ***MASKED*** (type: frontend)")
-            api_keys[frontend_key] = {
-                "name": "frontend",
-                "rate_limit": 200,  # requests per hour
-                "permissions": ["read"],
-                "created_at": datetime.now().isoformat()
-            }
-        else:
-            logger.info("Frontend API key not configured (optional)")
+        key_configs: Dict[str, ApiKeyConfig] = {
+            "API_KEY_PRODUCTION": {"name": "production", "rate_limit": 1000, "permissions": ["read", "write"]},
+            "API_KEY_DEVELOPMENT": {"name": "development", "rate_limit": 100, "permissions": ["read", "write"]},
+            "API_KEY_READONLY": {"name": "readonly", "rate_limit": 500, "permissions": ["read"]},
+            "API_KEY_FRONTEND": {"name": "frontend", "rate_limit": 200, "permissions": ["read"]},
+        }
+
+        for env_var, config in key_configs.items():
+            key_value = os.getenv(env_var)
+            if key_value:
+                # Secret Managerからの改行文字を除去
+                key_value = key_value.strip()
+                logger.info(f"{str(config['name']).capitalize()} API key loaded: ***MASKED*** (type: {config['name']})")
+                api_keys[key_value] = {
+                    **config,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+            else:
+                # 環境に応じたログ出力
+                is_required = (
+                    (env_var == "API_KEY_PRODUCTION" and environment == "production") or
+                    (env_var == "API_KEY_DEVELOPMENT" and environment == "development")
+                )
+                if is_required and not is_test_mode:
+                    logger.warning(f"{str(config['name']).capitalize()} API key not found in environment variables, but it might be required.")
+                else:
+                    logger.info(f"{str(config['name']).capitalize()} API key not configured (optional or not required in this env)")
         
         logger.info(f"Total API keys loaded: {len(api_keys)}")
         return api_keys
@@ -159,8 +139,13 @@ class JWTAuth:
     
     def _generate_secret_key(self) -> str:
         """Generate a secret key if not provided."""
-        logger.warning("JWT_SECRET_KEY not set, generating random key")
-        return secrets.token_urlsafe(32)
+        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        if is_test_mode:
+            logger.info("Using test JWT secret key")
+            return "test-jwt-secret-key-for-testing-only"
+        else:
+            logger.warning("JWT_SECRET_KEY not set, generating random key")
+            return secrets.token_urlsafe(32)
     
     def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
         """Create JWT access token."""

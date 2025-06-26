@@ -1,6 +1,8 @@
 import openai
 import json
 import os
+import asyncio
+import random
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType, SearchStrategy
 from ..core.config import settings
 from ..core.exceptions import ClassificationException
@@ -35,23 +37,26 @@ class ClassificationService:
     """
     
     def __init__(self) -> None:
-        # OpenAI クライアントを初期化
-        api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
-        
-        # テスト環境では厳密なAPIキーチェックをスキップ
+        # モック環境のチェック
+        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
         is_testing = os.getenv("TESTING", "false").lower() == "true"
         
-        # APIキーの検証
-        if not is_testing and (not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here"]):
-            raise ClassificationException(
-                "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
-            )
-        
-        # テスト環境では適当なキーでも許可
-        if is_testing and not api_key:
-            api_key = "test-api-key"
-        
-        self.client = openai.OpenAI(api_key=api_key)
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化
+            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+            
+            # APIキーの検証
+            if not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here", "sk-test_openai_key"]:
+                raise ClassificationException(
+                    "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
+                )
+            
+            self.client = openai.OpenAI(api_key=api_key)
+            self.is_mocked = False
         self.system_prompt = """あなたはゲーム攻略データベースのクエリ分類システムです。
 ユーザーの質問を分析し、最適な検索戦略を決定してください。
 
@@ -130,12 +135,9 @@ class ClassificationService:
             ['HP', '100以上']
         """
         
-        # テスト環境・開発環境での簡易対応
-        environment = os.getenv("ENVIRONMENT", "production")
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
-        
-        if environment in ["test", "development"] or is_testing:
-            GameChatLogger.log_info("classification_service", f"テスト環境で実行 - environment: {environment}")
+        # モック環境の処理
+        if self.is_mocked:
+            GameChatLogger.log_info("classification_service", "モック環境で実行")
             
             # 簡単な分類ロジック
             query_lower = request.query.lower()
@@ -189,43 +191,80 @@ class ClassificationService:
         
         user_prompt = f"質問: {request.query}"
         
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=300,
-                temperature=0.0,  # 一貫性のために0に設定
-                response_format={"type": "json_object"}  # JSON形式を強制
-            )
-        except openai.AuthenticationError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI認証エラー", e, {
-                "api_key_prefix": getattr(settings, 'OPENAI_API_KEY', 'None')[:10] if getattr(settings, 'OPENAI_API_KEY', None) else 'None'
-            })
-            raise ClassificationException(
-                message="OpenAI APIキーが無効です。正しいAPIキーを設定してください。",
-                code="INVALID_API_KEY"
-            ) from e
-        except openai.RateLimitError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI レート制限エラー", e)
-            raise ClassificationException(
-                message="OpenAI APIのレート制限に達しました。しばらく待ってから再試行してください。",
-                code="RATE_LIMIT_EXCEEDED"
-            ) from e
-        except openai.OpenAIError as e:
-            GameChatLogger.log_error("classification_service", "OpenAI APIエラー", e)
-            raise ClassificationException(
-                message=f"OpenAI APIでエラーが発生しました: {str(e)}",
-                code="OPENAI_API_ERROR"
-            ) from e
-        except Exception as e:
-            GameChatLogger.log_error("classification_service", "予期しないエラー", e)
-            raise ClassificationException(
-                message=f"分類処理中に予期しないエラーが発生しました: {str(e)}",
-                code="UNEXPECTED_ERROR"
-            ) from e
+        # レート制限対応のためのリトライ処理
+        max_retries = 3
+        base_delay = 1.0
+        
+        for attempt in range(max_retries + 1):
+            try:
+                GameChatLogger.log_info("classification_service", f"OpenAI API呼び出し開始 (試行 {attempt + 1}/{max_retries + 1})")
+                
+                response = self.client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=300,
+                    temperature=0.0,  # 一貫性のために0に設定
+                    response_format={"type": "json_object"},  # JSON形式を強制
+                    timeout=10  # 個別APIコールのタイムアウト
+                )
+                
+                GameChatLogger.log_success("classification_service", f"OpenAI API呼び出し成功 (試行 {attempt + 1})")
+                break  # 成功したらループを抜ける
+                
+            except openai.AuthenticationError as e:
+                GameChatLogger.log_error("classification_service", "OpenAI認証エラー", e, {
+                    "api_key_prefix": getattr(settings, 'OPENAI_API_KEY', 'None')[:10] if getattr(settings, 'OPENAI_API_KEY', None) else 'None'
+                })
+                raise ClassificationException(
+                    message="OpenAI APIキーが無効です。正しいAPIキーを設定してください。",
+                    code="INVALID_API_KEY"
+                ) from e
+                
+            except openai.RateLimitError as e:
+                if attempt == max_retries:
+                    GameChatLogger.log_error("classification_service", "OpenAI レート制限、全リトライ試行完了", e)
+                    raise ClassificationException(
+                        message="OpenAI APIのレート制限に達しました。しばらく待ってから再試行してください。",
+                        code="RATE_LIMIT_EXCEEDED"
+                    ) from e
+                else:
+                    # 指数バックオフ + ジッター
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    GameChatLogger.log_warning("classification_service", f"OpenAI APIレート制限エラー、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                    asyncio.run(asyncio.sleep(delay))
+                    continue
+                    
+            except openai.OpenAIError as e:
+                error_str = str(e)
+                # その他のOpenAIエラーもレート制限の可能性があるかチェック
+                if "429" in error_str or "rate_limit" in error_str.lower() or "too many requests" in error_str.lower():
+                    if attempt == max_retries:
+                        GameChatLogger.log_error("classification_service", f"OpenAI APIレート制限（その他）、全リトライ試行完了: {error_str}", e)
+                        raise ClassificationException(
+                            message="現在多くのリクエストが集中しているため処理できません。少し時間をおいてからもう一度お試しください。",
+                            code="RATE_LIMIT_EXCEEDED"
+                        ) from e
+                    else:
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                        GameChatLogger.log_warning("classification_service", f"OpenAI APIレート制限エラー（その他）、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
+                        asyncio.run(asyncio.sleep(delay))
+                        continue
+                else:
+                    GameChatLogger.log_error("classification_service", "OpenAI APIエラー", e)
+                    raise ClassificationException(
+                        message=f"OpenAI APIでエラーが発生しました: {error_str}",
+                        code="OPENAI_API_ERROR"
+                    ) from e
+                    
+            except Exception as e:
+                GameChatLogger.log_error("classification_service", f"予期しないエラー (試行 {attempt + 1})", e)
+                raise ClassificationException(
+                    message=f"分類処理中に予期しないエラーが発生しました: {str(e)}",
+                    code="UNEXPECTED_ERROR"
+                ) from e
         
         result_text = response.choices[0].message.content
         if result_text is None:

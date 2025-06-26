@@ -1,19 +1,36 @@
 {
-  "name": "gamechat-ai-root",
+  "name": "gamechat-ai",
+  "version": "1.0.0",
+  "description": "GameChat AI - Full-stack AI chat application",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix frontend\" \"cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001\"",
-    "dev:frontend": "npm run dev --prefix frontend",
-    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001",
-    "start": "concurrently \"npm run start --prefix frontend\" \"cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000\"",
-    "build": "npm run build --prefix frontend"
+    "dev": "docker-compose up -d",
+    "dev:logs": "docker-compose logs -f",
+    "dev:down": "docker-compose down",
+    "dev:build": "docker-compose build",
+    "dev:clean": "docker-compose down -v && docker-compose build --no-cache",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --log-level warning",
+    "dev:full": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "setup": "./scripts/utilities/dev-setup.sh",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && python -m pytest",
+    "test:frontend": "cd frontend && npm run test",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && python -m flake8 app/",
+    "lint:frontend": "cd frontend && npm run lint",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "docker build -f backend/Dockerfile -t gamechat-ai-backend .",
+    "build:frontend": "cd frontend && npm run build",
+    "deploy:prod": "./scripts/deployment/prod-deploy.sh",
+    "security-check": "./scripts/utilities/security-check.sh",
+    "verify-api-keys": "./scripts/utilities/verify-api-keys.sh"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  "dependencies": {
-    "@sentry/nextjs": "^9.30.0",
-    "@sentry/react": "^9.30.0",
-    "@sentry/vite-plugin": "^3.5.0"
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

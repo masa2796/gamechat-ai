@@ -26,7 +26,7 @@ log_warning() {
 }
 
 # プロジェクト設定
-PROJECT_ID=${GOOGLE_CLOUD_PROJECT:-"your-project-id"}
+PROJECT_ID=${GOOGLE_CLOUD_PROJECT:-"gamechat-ai"}
 REGION="asia-northeast1"
 SERVICE_NAME="gamechat-ai-backend"
 
@@ -96,7 +96,7 @@ deploy_backend() {
     
     # Docker イメージビルド & プッシュ
     log_info "Docker イメージをビルド中..."
-    docker build -f backend/Dockerfile -t "gcr.io/$PROJECT_ID/$SERVICE_NAME" .
+    docker build --platform linux/amd64 -f backend/Dockerfile -t "gcr.io/$PROJECT_ID/$SERVICE_NAME" .
     
     log_info "Container Registry にプッシュ中..."
     docker push "gcr.io/$PROJECT_ID/$SERVICE_NAME"

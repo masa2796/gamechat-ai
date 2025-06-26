@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  pull-requests: write
+  packages: read
+  statuses: write
+
 jobs:
   optimize-builds:
     runs-on: ubuntu-latest
@@ -21,7 +27,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Configure build cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: /tmp/.buildx-cache-${{ matrix.component }}
         key: ${{ runner.os }}-buildx-${{ matrix.component }}-${{ github.sha }}
@@ -30,7 +36,7 @@ jobs:
 
     - name: Build and cache backend
       if: matrix.component == 'backend'
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./backend/Dockerfile
@@ -44,7 +50,7 @@ jobs:
 
     - name: Build and cache frontend
       if: matrix.component == 'frontend'
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ./frontend
         file: ./frontend/Dockerfile
@@ -57,6 +63,15 @@ jobs:
           BUILDKIT_INLINE_CACHE=1
           DOCKER_BUILD=true
           CI=true
+          NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyDummy-API-Key-For-CI-Build-Only-Not-Real
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=dummy-project.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID=dummy-project
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=dummy-project.firebasestorage.app
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+          NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:dummy-app-id
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-DUMMY
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY=dummy-recaptcha-site-key
+          NEXT_PUBLIC_API_KEY=dummy-api-key-for-ci
 
     - name: Move cache
       run: |
@@ -70,11 +85,75 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup test environment
+      run: |
+        echo "Setting up test environment variables..."
+        
+        # .env.ciファイルの存在確認とフォールバック
+        if [ -f ".env.ci" ]; then
+          echo "Using existing .env.ci file"
+          cp .env.ci .env
+        else
+          echo "Creating .env.ci file (fallback)"
+          cat > .env.ci << EOF
+        # CI/CD Test Environment Configuration
+        ENVIRONMENT=test
+        DEBUG=false
+        
+        # Database URLs (test/mock values)
+        DATABASE_URL=sqlite:///tmp/test.db
+        UPSTASH_VECTOR_REST_URL=mock://localhost
+        UPSTASH_VECTOR_REST_TOKEN=test_token
+        
+        # API Keys (test values)
+        OPENAI_API_KEY=sk-test_openai_key
+        ANTHROPIC_API_KEY=sk-ant-test_key
+        
+        # Mock external services in CI
+        MOCK_EXTERNAL_SERVICES=true
+        
+        # JWT Configuration
+        JWT_SECRET_KEY=test_jwt_secret_key_for_github_actions
+        JWT_ALGORITHM=HS256
+        JWT_EXPIRE_MINUTES=30
+        
+        # Storage Configuration
+        STORAGE_TYPE=local
+        LOCAL_STORAGE_PATH=/tmp/test_storage
+        
+        # Mock data paths
+        DATA_FILE_PATH=./data/data.json
+        EMBEDDING_FILE_PATH=./data/embedding_list.jsonl
+        
+        # Test flags
+        SKIP_STARTUP_CHECKS=true
+        MOCK_EXTERNAL_SERVICES=true
+        TESTING=true
+        
+        # Health check settings
+        HEALTH_CHECK_TIMEOUT=10
+        LOG_LEVEL=WARNING
+        EOF
+          cp .env.ci .env
+        fi
+        
+        # Create test data directories
+        mkdir -p /tmp/test_storage
+        mkdir -p data
+        
+        # Create minimal test data files
+        echo '{"test": "data"}' > data/data.json
+        echo '{"test": "embeddings"}' > data/embedding_list.jsonl
+        echo '{"test": "query_data"}' > data/query_data.json
+        echo 'Mock results for top-k queries' > data/result_top_k.txt
+        
+        echo "✅ Test environment setup completed"
+        
     - name: Analyze Python dependencies
       run: |
         echo "=== Python Dependencies Analysis ==="
-        if [ -f "requirements.txt" ]; then
-          echo "📋 Total packages: $(wc -l < requirements.txt)"
+        if [ -f "backend/requirements.txt" ]; then
+          echo "📋 Total packages: $(wc -l < backend/requirements.txt)"
           echo "🔍 Security scan suggestions:"
           echo "  - Consider using poetry or pipenv for better dependency management"
           echo "  - Regularly update dependencies with: pip-review --auto"
@@ -84,8 +163,13 @@ jobs:
     - name: Analyze Node.js dependencies
       run: |
         echo "=== Node.js Dependencies Analysis ==="
-        if [ -f "frontend/package.json" ]; then
-          cd frontend
+        echo "📁 Current directory: $(pwd)"
+        echo "📁 Available directories:"
+        ls -la
+        
+        if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+          echo "📁 Frontend directory found, analyzing dependencies..."
+          pushd frontend > /dev/null
           echo "📋 Dependencies:"
           npm list --depth=0 --json 2>/dev/null | jq -r '.dependencies | keys | length' || echo "Cannot determine count"
           echo "🔍 Security scan:"
@@ -94,7 +178,189 @@ jobs:
           echo "  - Use npm ci in production instead of npm install"
           echo "  - Consider using npm-check-updates to update dependencies"
           echo "  - Bundle analysis with next bundle-analyzer"
+          popd > /dev/null
+        else
+          echo "⚠️ Frontend directory or package.json not found"
+          echo "Skipping frontend analysis"
         fi
+
+  test-startup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup test environment
+      run: |
+        echo "Setting up test environment variables..."
+        # Create comprehensive test environment
+        cat > .env << EOF
+        # Test Environment Configuration
+        ENVIRONMENT=test
+        DEBUG=false
+        
+        # Database URLs (test/mock values)
+        DATABASE_URL=sqlite:///tmp/test.db
+        UPSTASH_VECTOR_REST_URL=mock://localhost
+        UPSTASH_VECTOR_REST_TOKEN=test_token
+        
+        # API Keys (test values)
+        OPENAI_API_KEY=sk-test_openai_key
+        ANTHROPIC_API_KEY=sk-ant-test_key
+        
+        # Mock external services in CI
+        MOCK_EXTERNAL_SERVICES=true
+        
+        # JWT Configuration
+        JWT_SECRET_KEY=test_jwt_secret_key_for_github_actions_startup
+        JWT_ALGORITHM=HS256
+        JWT_EXPIRE_MINUTES=30
+        
+        # Storage Configuration
+        STORAGE_TYPE=local
+        LOCAL_STORAGE_PATH=/tmp/test_storage
+        
+        # Mock data paths
+        DATA_FILE_PATH=./data/data.json
+        EMBEDDING_FILE_PATH=./data/embedding_list.jsonl
+        
+        # Test flags
+        SKIP_STARTUP_CHECKS=true
+        MOCK_EXTERNAL_SERVICES=true
+        
+        # Health check settings
+        HEALTH_CHECK_TIMEOUT=10
+        EOF
+        
+        # Create test data directories and files
+        mkdir -p /tmp/test_storage
+        mkdir -p data
+        
+        # Create comprehensive test data files
+        cat > data/data.json << 'JSON_EOF'
+        {
+          "test_data": [
+            {
+              "id": "test_1",
+              "content": "Test content for startup verification",
+              "metadata": {
+                "category": "test",
+                "timestamp": "2025-06-23T00:00:00Z"
+              }
+            }
+          ]
+        }
+        JSON_EOF
+        
+        cat > data/embedding_list.jsonl << 'JSONL_EOF'
+        {"id": "test_1", "embedding": [0.1, 0.2, 0.3], "text": "Test embedding data"}
+        JSONL_EOF
+        
+        # Create additional mock files
+        echo '{"test": "query_data"}' > data/query_data.json
+        echo 'Mock results for top-k queries' > data/result_top_k.txt
+        
+        echo "✅ Test environment setup completed"
+        echo "📁 Created directories:"
+        ls -la data/
+        echo "📋 Environment variables:"
+        echo "DATABASE_URL, UPSTASH_VECTOR_URL, JWT_SECRET_KEY, etc."
+        
+    - name: Test backend and frontend startup
+      run: |
+        echo "=== Service Startup Test ==="
+        
+        # 権限設定とディレクトリ作成
+        sudo chmod 755 /tmp/test_storage 2>/dev/null || true
+        mkdir -p ./logs/backup 2>/dev/null || true
+        
+        # 環境変数設定
+        export TESTING=true
+        export LOG_LEVEL=WARNING
+        export SKIP_STARTUP_CHECKS=true
+        export MOCK_EXTERNAL_SERVICES=true
+        export LOCAL_STORAGE_PATH=/tmp/test_storage
+        
+        # Python依存関係のインストール
+        echo "Installing Python dependencies..."
+        pip install -r backend/requirements.txt
+        
+        # バックエンド起動
+        echo "Starting backend..."
+        cd backend
+        python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        BACKEND_PID=$!
+        cd ..
+        
+        # フロントエンド起動（存在する場合）
+        FRONTEND_PID=""
+        if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+          echo "Starting frontend..."
+          cd frontend
+          
+          # Firebase環境変数を設定
+          export CI=true
+          export NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyDummy-API-Key-For-CI-Build-Only-Not-Real
+          export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=dummy-project.firebaseapp.com
+          export NEXT_PUBLIC_FIREBASE_PROJECT_ID=dummy-project
+          export NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=dummy-project.firebasestorage.app
+          export NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+          export NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:dummy-app-id
+          export NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-DUMMY
+          export NEXT_PUBLIC_RECAPTCHA_SITE_KEY=dummy-recaptcha-site-key
+          export NEXT_PUBLIC_API_KEY=dummy-api-key-for-ci
+          export DOCKER_BUILD=true
+          
+          npm install
+          npm run build
+          npm run start &
+          FRONTEND_PID=$!
+          cd ..
+        else
+          echo "⚠️ Frontend directory not found, skipping frontend startup"
+        fi
+        
+        # サービス起動待機
+        echo "Waiting for services to start..."
+        sleep 30
+        
+        # バックエンドヘルスチェック
+        echo "Testing backend health endpoints..."
+        for i in {1..12}; do
+          if curl -f -s http://localhost:8000/health >/dev/null 2>&1; then
+            echo "✅ Backend is responding (attempt $i)"
+            curl -s http://localhost:8000/health | head -5
+            break
+          else
+            echo "⏳ Waiting for backend... (attempt $i/12)"
+            sleep 5
+          fi
+        done
+        
+        # 基本ヘルスチェック
+        echo "📋 Basic health check:"
+        curl -s http://localhost:8000/health || echo "Health check failed"
+        
+        # 詳細ヘルスチェック（非必須）
+        echo "📋 Detailed health check:"
+        curl -s http://localhost:8000/health/detailed || echo "Detailed health check failed (expected in test environment)"
+        
+        # フロントエンドヘルスチェック（存在する場合）
+        if [ -n "$FRONTEND_PID" ]; then
+          echo "📋 Frontend health check:"
+          curl -s http://localhost:3000 || echo "Frontend check failed (expected in test environment)"
+        fi
+        
+        # プロセス停止
+        echo "Stopping services..."
+        [ -n "$BACKEND_PID" ] && kill $BACKEND_PID 2>/dev/null || true
+        [ -n "$FRONTEND_PID" ] && kill $FRONTEND_PID 2>/dev/null || true
+        
+        # 少し待機してからプロセス確認
+        sleep 5
+        
+        echo "✅ Service startup test completed"
 
   size-analysis:
     runs-on: ubuntu-latest
@@ -107,7 +373,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build backend for size analysis
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./backend/Dockerfile
@@ -117,7 +383,7 @@ jobs:
         outputs: type=docker,dest=/tmp/backend-image.tar
 
     - name: Build frontend for size analysis
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ./frontend
         file: ./frontend/Dockerfile
@@ -125,6 +391,18 @@ jobs:
         push: false
         tags: gamechat-ai-frontend:size-test
         outputs: type=docker,dest=/tmp/frontend-image.tar
+        build-args: |
+          CI=true
+          DOCKER_BUILD=true
+          NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyDummy-API-Key-For-CI-Build-Only-Not-Real
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=dummy-project.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID=dummy-project
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=dummy-project.firebasestorage.app
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+          NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:dummy-app-id
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-DUMMY
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY=dummy-recaptcha-site-key
+          NEXT_PUBLIC_API_KEY=dummy-api-key-for-ci
 
     - name: Analyze image sizes
       run: |

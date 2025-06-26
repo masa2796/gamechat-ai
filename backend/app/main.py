@@ -23,6 +23,14 @@ from .core.database import initialize_database, close_database, database_health_
 from .core.logging import GameChatLogger
 from .services.storage_service import StorageService
 
+# 通信レイヤの冗長ログ抑制
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.INFO)  # ここはINFOでも残す価値あり
+logging.getLogger("google.cloud").setLevel(logging.WARNING)
+logging.getLogger("passlib").setLevel(logging.WARNING)
+logging.getLogger("google.cloud").setLevel(logging.WARNING)
+logging.getLogger("passlib").setLevel(logging.WARNING)
+
 # Sentry初期化
 if settings.SENTRY_DSN:
     def traces_sampler(sampling_context: dict[str, Any]) -> float:
@@ -308,33 +316,40 @@ async def detailed_health_check() -> dict[str, Any]:
     """詳細なヘルスチェック用エンドポイント"""
     current_time = time.time()
     uptime = current_time - app_start_time
+    is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
     
     # データベース接続状況を確認
     try:
-        db_health = await database_health_check()
+        if is_test_mode:
+            db_health = {"status": "test_mode", "message": "Database checks skipped in test mode"}
+        else:
+            db_health = await database_health_check()
     except Exception as e:
         db_health = {"status": "error", "message": str(e)}
     
     # ストレージサービス状況を確認
     try:
         storage_service = StorageService()
-        storage_health = {
-            "status": "healthy",
-            "gcs_configured": bool(storage_service.bucket_name),
+        storage_health: dict[str, Any] = {
+            "status": "healthy" if not is_test_mode else "test_mode",
+            "gcs_configured": bool(storage_service.bucket_name) if not is_test_mode else False,
             "environment": settings.ENVIRONMENT,
-            "cache_info": storage_service.get_cache_info()
+            "test_mode": is_test_mode
         }
         
-        # データファイルの可用性確認
-        data_files = {}
-        for file_key in ["data", "convert_data", "embedding_list", "query_data"]:
-            file_path = storage_service.get_file_path(file_key)
-            data_files[file_key] = bool(file_path)
-        
-        storage_health["data_files"] = data_files
+        if not is_test_mode:
+            storage_health["cache_info"] = storage_service.get_cache_info()
+            
+            # データファイルの可用性確認
+            data_files = {}
+            for file_key in ["data", "convert_data", "embedding_list", "query_data"]:
+                file_path = storage_service.get_file_path(file_key)
+                data_files[file_key] = bool(file_path)
+            
+            storage_health["data_files"] = data_files
         
     except Exception as e:
-        storage_health = {"status": "error", "message": str(e)}
+        storage_health = {"status": "error", "message": str(e), "test_mode": is_test_mode}
     
     health_data = {
         "status": "healthy",
@@ -343,13 +358,14 @@ async def detailed_health_check() -> dict[str, Any]:
         "uptime_seconds": round(uptime, 2),
         "version": "1.0.0",
         "environment": settings.ENVIRONMENT,
+        "test_mode": is_test_mode,
         "settings": {
-            "gcs_bucket_name": settings.GCS_BUCKET_NAME,
+            "gcs_bucket_name": settings.GCS_BUCKET_NAME if not is_test_mode else "test-mode",
             "data_dir": str(settings.DATA_DIR)
         },
         "checks": {
             "database": db_health,
-            "external_apis": "healthy",  # 外部API接続チェック
+            "external_apis": "test_mode" if is_test_mode else "healthy",
             "storage": storage_health
         }
     }

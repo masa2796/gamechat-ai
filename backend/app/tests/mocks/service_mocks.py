@@ -3,7 +3,7 @@
 """
 from typing import List
 from unittest.mock import MagicMock
-from backend.app.models.classification_models import ClassificationResult, QueryType
+from app.models.classification_models import ClassificationResult, QueryType
 
 
 class MockMatch:

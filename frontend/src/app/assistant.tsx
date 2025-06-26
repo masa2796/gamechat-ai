@@ -7,45 +7,12 @@ import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SentryTestComponentWrapper as SentryTestComponent } from "@/components/sentry-test-wrapper";
-import { getAuth } from "firebase/auth";
-import { initializeApp } from "firebase/app";
+import { auth as firebaseAuth } from "@/lib/firebase";
 import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
-}
-
-// Firebase設定（環境変数から取得）
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-};
-
-// Firebase初期化をクライアントサイドでのみ実行
-let app: ReturnType<typeof initializeApp> | null = null;
-let auth: ReturnType<typeof getAuth> | null = null;
-
-// Firebase初期化の安全なチェック
-const shouldInitializeFirebase = () => {
-  if (typeof window === "undefined") return false; // サーバーサイドでは初期化しない
-  if (process.env.CI) return false; // CI環境では初期化しない
-  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "dummy-api-key-for-ci") return false;
-  return true;
-};
-
-if (shouldInitializeFirebase()) {
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-  } catch (error) {
-    console.warn("Firebase initialization failed:", error);
-  }
 }
 
 declare global {
@@ -56,6 +23,15 @@ declare global {
     };
   }
 }
+
+// reCAPTCHAが無効かどうかを判定するヘルパー関数
+const isRecaptchaDisabled = () => {
+  return (
+    process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" ||
+    process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
+    !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+  );
+};
 
 export const Assistant = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -68,6 +44,13 @@ export const Assistant = () => {
     // Sentryタグを設定
     setSentryTag("component", "assistant");
     setSentryTag("environment", process.env.NEXT_PUBLIC_ENVIRONMENT || "development");
+    
+    
+    // テスト環境またはreCAPTCHA無効化フラグが設定されている場合はスクリプトを読み込まない
+    if (isRecaptchaDisabled()) {
+      setRecaptchaReady(true);
+      return;
+    }
     
     if (typeof window !== "undefined" && !window.grecaptcha) {
       const script = document.createElement("script");
@@ -83,33 +66,41 @@ export const Assistant = () => {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
     
-    const userMessage: Message = { role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage: Message = { role: "user", content: input.trim() };
     
     // Sentryにユーザーアクションを記録
     captureUserAction("message_sent", { messageLength: input.length });
     
-    setInput("");
+    // 状態を更新（ローディング開始、入力クリア、メッセージ追加）
     setLoading(true);
+    setInput("");
+    setMessages(prev => [...prev, userMessage]);
+
+    // API URLを環境変数から取得（テスト環境では外部API、本番では内部API Routes）
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
+      : "/api/rag/query";
 
     try {
       let idToken = "";
-      if (auth && auth.currentUser) {
+      if (firebaseAuth && firebaseAuth.currentUser) {
         try {
-          idToken = await auth.currentUser.getIdToken();
+          idToken = await firebaseAuth.currentUser.getIdToken();
         } catch (error) {
           console.warn("Failed to get auth token:", error);
         }
       }
       let recaptchaToken = "";
-      // reCAPTCHA認証をスキップするかチェック
-      if (process.env.NEXT_PUBLIC_SKIP_RECAPTCHA === "true") {
+    
+      if (isRecaptchaDisabled()) {
         recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
-        console.log("reCAPTCHA verification skipped due to NEXT_PUBLIC_SKIP_RECAPTCHA=true");
+    
       } else if (window.grecaptcha && recaptchaReady) {
         recaptchaToken = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: "submit" });
       }
-      const res = await fetch("/api/rag/query", {
+
+     
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -118,14 +109,20 @@ export const Assistant = () => {
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
         body: JSON.stringify({ 
-          question: input,
+          question: userMessage.content,
           top_k: 5,
           with_context: true,
-          recaptchaToken
+          recaptchaToken: recaptchaToken
         }),
         credentials: "include"
       });
       
+      if (!res.ok) {
+        // サーバーからのエラーレスポンスをより詳細に処理
+        const errorData = await res.json().catch(() => ({ error: { message: `HTTP error! status: ${res.status}` } }));
+        throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
+      }
+
       const data = await res.json();
       
       if (data.error) {
@@ -140,16 +137,25 @@ export const Assistant = () => {
     } catch (error) {
       console.error("Error:", error);
       
+      let displayMessage = "エラーが発生しました。もう一度お試しください。";
+      if (error instanceof Error) {
+        if (error.message.includes("Invalid authentication credentials") || error.message.includes("401")) {
+          displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
+        } else {
+          displayMessage = error.message;
+        }
+      }
+
       // Sentryにエラーを報告
       captureAPIError(error as Error, {
-        endpoint: "/api/rag/query",
+        endpoint: apiUrl,
         userMessage: userMessage.content,
         timestamp: new Date().toISOString()
       });
       
       const errorMessage: Message = { 
         role: "assistant", 
-        content: "エラーが発生しました。もう一度お試しください。" 
+        content: displayMessage
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -232,7 +238,7 @@ export const Assistant = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  onKeyDown={(e) => e.key === 'Enter' && !loading && input.trim().length > 0 && sendMessage()}
                   className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ゲームについて質問してください..."
                   disabled={loading}
@@ -240,7 +246,7 @@ export const Assistant = () => {
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={loading || !input.trim()}
+                  disabled={loading || input.trim().length === 0}
                   className="px-6 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
                   data-testid="send-button"
                 >

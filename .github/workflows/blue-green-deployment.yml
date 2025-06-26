@@ -50,11 +50,14 @@ jobs:
         echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
         echo "🚀 Deployment ID: $DEPLOYMENT_ID"
         
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
-      with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        project_id: ${{ env.PROJECT_ID }}
+      
         
     - name: Get Current Deployment Versions
       id: versions
@@ -104,7 +107,7 @@ jobs:
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        credentials: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Configure Docker authentication
@@ -151,7 +154,7 @@ jobs:
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        credentials: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Get Blue Service URL
@@ -215,7 +218,7 @@ jobs:
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        credentials: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Route 5% Traffic to Blue
@@ -291,7 +294,7 @@ jobs:
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        credentials: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Switch 100% Traffic to Blue
@@ -329,7 +332,7 @@ jobs:
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        credentials: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ env.PROJECT_ID }}
         
     - name: Final Health Check
@@ -396,7 +399,7 @@ jobs:
         cat deployment-report.md
         
     - name: Upload Deployment Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-report
         path: deployment-report.md

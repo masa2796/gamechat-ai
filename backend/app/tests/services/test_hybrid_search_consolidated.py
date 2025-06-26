@@ -3,8 +3,8 @@ Hybrid Search Service統合テストファイル（修正版）
 test_hybrid_search_service.py と test_hybrid_search_optimization.py を統合
 """
 import pytest
-from backend.app.models.rag_models import ContextItem
-from backend.app.models.classification_models import QueryType
+from app.models.rag_models import ContextItem
+from app.models.classification_models import QueryType
 
 
 class TestHybridSearchService:
@@ -345,7 +345,7 @@ class TestHybridSearchConfiguration:
 
     def test_service_initialization(self):
         """サービス初期化テスト"""
-        from backend.app.services.hybrid_search_service import HybridSearchService
+        from app.services.hybrid_search_service import HybridSearchService
         service = HybridSearchService()
         
         assert service is not None

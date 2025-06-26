@@ -1,27 +1,54 @@
 /** @type {import('next').NextConfig} */
+
+// 基本実験的機能設定
+const baseExperimental = {
+  optimizePackageImports: ['@radix-ui/react-dialog', '@radix-ui/react-separator', '@radix-ui/react-slot', '@radix-ui/react-tooltip'],
+  webVitalsAttribution: ['CLS', 'LCP'],
+  // バンドル分析（開発時のみ）
+  ...(process.env.ANALYZE === 'true' && {
+    bundlePagesRouterDependencies: true,
+  }),
+};
+
+// CI/テスト環境での追加設定
+const ciTestExtraConfig = process.env.CI === 'true' || process.env.NODE_ENV === 'test' ? {
+  // CI環境ではFirebase等の外部サービスエラーを無視
+  allowMiddlewareResponseBody: true,
+} : {};
+
+// 実験的機能の最終設定
+const experimental = {
+  ...baseExperimental,
+  ...ciTestExtraConfig,
+};
+
+// メイン設定
 const nextConfig = {
-  // Docker環境またはCI環境では standalone モードを使用
-  // ローカル開発では export モードを使用
-  output: process.env.DOCKER_BUILD || process.env.CI ? 'standalone' : 'export',
+  // Docker環境ではstandalone、Firebase Hosting用の静的エクスポート設定（本番ビルド時のみ）
+  output: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true'
+    ? 'standalone' 
+    : process.env.NODE_ENV === 'production' 
+      ? 'export' 
+      : undefined,
   
   // 基本設定
-  distDir: '.next',
+  distDir: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true'
+    ? '.next'
+    : process.env.NODE_ENV === 'production' 
+      ? 'out' 
+      : '.next',
   generateEtags: false,
-  trailingSlash: true,
+  trailingSlash: false,
   
+  // CI環境ではReact Strict Modeを無効化（Firebase初期化エラーを防ぐため）
+  reactStrictMode: process.env.CI !== 'true' && process.env.NODE_ENV !== 'test',
+
   // パフォーマンス最適化
-  
-  // パフォーマンス最適化
-  experimental: {
-    // optimizeCss: true, // 一時的に無効化 
-    optimizePackageImports: ['@radix-ui/react-dialog', '@radix-ui/react-separator', '@radix-ui/react-slot', '@radix-ui/react-tooltip'],
-    webVitalsAttribution: ['CLS', 'LCP'],
-    // esmExternals: 'loose', // 外部ESMパッケージの最適化
-  },
+  experimental,
   
   // 画像最適化設定
   images: {
-    unoptimized: true, // Docker/CI環境では画像最適化を無効化
+    unoptimized: process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD !== 'true' && process.env.CI !== 'true', // Firebase Hosting用の静的エクスポート時のみ画像最適化を無効化
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 31536000, // 1年
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -31,15 +58,15 @@ const nextConfig = {
   // 静的ファイル最適化
   assetPrefix: process.env.CDN_URL || '',
   
-  // バンドル分析（開発時のみ）
-  ...(process.env.ANALYZE === 'true' && {
-    experimental: {
-      bundlePagesRouterDependencies: true,
-    },
-  }),
-  
   // Webpack最適化
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
+    // Critical dependency警告を無視
+    config.ignoreWarnings = [
+      {
+        message: /the request of a dependency is an expression/,
+      },
+    ];
+
     // プロダクションビルドの最適化
     if (!dev) {
       config.optimization.splitChunks = {
@@ -53,12 +80,38 @@ const nextConfig = {
         },
       };
     }
-    
+
+    // クライアントバンドル時にNode.jsコアモジュールを除外
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        module: false,
+        path: false,
+        os: false,
+        crypto: false,
+      };
+    }
+
+    // CI環境やサーバーサイドビルドでFirebaseエラーを無視
+    if (process.env.CI === 'true' || isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+      
+      // Firebaseモジュールをサーバーサイドでは無視
+      config.externals = [...(config.externals || []), 'firebase'];
+    }
+
     return config;
   },
   
   // セキュリティ設定（standalone モードでのみ有効）
-  ...(process.env.DOCKER_BUILD || process.env.CI ? {
+  ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
     async headers() {
       const headers = [
         {
@@ -70,79 +123,52 @@ const nextConfig = {
           value: 'nosniff',
         },
         {
-          key: 'X-XSS-Protection',
-          value: '1; mode=block',
+          key: 'Referrer-Policy',
+          value: 'origin-when-cross-origin',
         },
         {
-          key: 'Referrer-Policy',
-          value: 'strict-origin-when-cross-origin',
+          key: 'Permissions-Policy',
+          value: 'camera=(), microphone=(), geolocation=()',
         },
       ];
-
-      // 本番環境でのみ追加のセキュリティヘッダーを設定
-      if (process.env.NODE_ENV === 'production') {
-        headers.push(
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';",
-          }
-        );
-      }
 
       return [
         {
           source: '/(.*)',
-          headers,
+          headers: headers,
         },
       ];
     },
   } : {}),
   
-  // 環境変数設定
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-    NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-    GOOGLE_SITE_VERIFICATION: process.env.GOOGLE_SITE_VERIFICATION,
-    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    // CI環境用のデフォルト値を設定
-    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : ''),
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (process.env.CI ? 'dummy-project.firebaseapp.com' : ''),
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || (process.env.CI ? 'dummy-project' : ''),
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || (process.env.CI ? 'dummy-project.firebasestorage.app' : ''),
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || (process.env.CI ? '123456789012' : ''),
-    NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || (process.env.CI ? '1:123456789012:web:dummy-app-id' : ''),
-    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || (process.env.CI ? 'G-DUMMY' : ''),
-    NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || (process.env.CI ? 'dummy-recaptcha-site-key' : ''),
-    NEXT_PUBLIC_API_KEY: process.env.NEXT_PUBLIC_API_KEY || (process.env.CI ? 'dummy-api-key-for-ci' : ''),
-  },
-
-  // PWA対応設定（export モードでは無効化）
-  ...(!(process.env.DOCKER_BUILD || process.env.CI) ? {} : {
+  // ルーティング最適化（standalone モードでのみ有効）
+  ...(process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? {
     async rewrites() {
       return [
         {
-          source: '/sw.js',
-          destination: '/sw.js',
-        },
-        {
-          source: '/manifest.json',
-          destination: '/manifest.json',
+          source: '/api/:path*',
+          destination: '/api/:path*',
         },
       ];
     },
-  }),
+  } : {}),
+};
+
+// CI/テスト環境での追加設定を後から適用
+if (process.env.CI === 'true' || process.env.NODE_ENV === 'test') {
+  // ビルド時にFirebaseエラーを無視
+  nextConfig.transpilePackages = ['firebase'];
 }
 
-// Injected content via Sentry wizard below
-
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
 
-module.exports = withSentryConfig(
+// CI環境または開発環境でSENTRY_AUTH_TOKENが設定されていない場合はSentryを無効化
+const shouldUseSentry = process.env.NODE_ENV === 'production' && 
+                       process.env.CI !== 'true' && 
+                       process.env.SENTRY_AUTH_TOKEN;
+
+module.exports = shouldUseSentry ? withSentryConfig(
   nextConfig,
   {
     // For all available options, see:
@@ -161,7 +187,7 @@ module.exports = withSentryConfig(
     widenClientFileUpload: true,
 
     // tunnelRoute を export モードでは無効化
-    tunnelRoute: process.env.DOCKER_BUILD || process.env.CI ? "/monitoring" : undefined,
+    tunnelRoute: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' ? "/monitoring" : undefined,
 
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     disableLogger: true,
@@ -170,6 +196,6 @@ module.exports = withSentryConfig(
     // See the following for more information:
     // https://docs.sentry.io/product/crons/
     // https://vercel.com/docs/cron-jobs
-    automaticVercelMonitors: process.env.DOCKER_BUILD || process.env.CI || false,
+    automaticVercelMonitors: process.env.DOCKER_BUILD === 'true' || process.env.CI === 'true' || false,
   }
-);
+) : nextConfig;

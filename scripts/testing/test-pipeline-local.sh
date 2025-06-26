@@ -13,7 +13,7 @@ echo "=========================================="
 echo ""
 echo "📋 Step 1: Python型チェック"
 echo "------------------------------------------"
-python3 -m mypy backend/app --config-file mypy.ini --exclude 'backend/app/tests' || {
+python3 -m mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests' || {
     echo "❌ 型チェックに失敗しました"
     exit 1
 }
@@ -63,8 +63,8 @@ echo ""
 echo "📦 Step 6: 依存関係分析"
 echo "------------------------------------------"
 echo "Python dependencies:"
-if [ -f "requirements.txt" ]; then
-    echo "  Total packages: $(wc -l < requirements.txt)"
+if [ -f "backend/requirements.txt" ]; then
+    echo "  Total packages: $(wc -l < backend/requirements.txt)"
     echo "  Python version check:"
     python3 --version
 fi

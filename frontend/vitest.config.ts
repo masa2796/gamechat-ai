@@ -14,6 +14,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
+      reportsDirectory: "./coverage",
+    },
+    reporters: ['default', 'junit'],
+    outputFile: {
+      junit: './test-results.xml'
     },
   },
   resolve: {

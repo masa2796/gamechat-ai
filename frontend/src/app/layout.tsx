@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | GameChat AI"
   },
   description: "AIを活用したゲーム攻略支援サービス。ゲームの質問に素早く正確に回答します。",
-  keywords: ["ゲーム", "攻略", "AI", "アシスタント", "ポケモンカード", "チャットボット"],
+  keywords: ["ゲーム", "攻略", "AI", "アシスタント", "チャットボット"],
   authors: [{ name: "GameChat AI Team" }],
   creator: "GameChat AI",
   publisher: "GameChat AI",
@@ -98,7 +98,8 @@ export default function RootLayout({
         )}
         <StructuredData data={structuredData} />
       </head>
-      <body
+      <body 
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SentryProvider>

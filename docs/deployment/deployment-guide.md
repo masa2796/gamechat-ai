@@ -226,7 +226,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: google-github-actions/setup-gcloud@v0
       - run: ./scripts/cloud-run-deploy.sh
 ```

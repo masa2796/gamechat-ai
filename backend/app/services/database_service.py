@@ -7,6 +7,12 @@ from ..core.logging import GameChatLogger
 from .storage_service import StorageService
 
 class DatabaseService:
+    _instance = None
+    def __new__(cls, *args: object, **kwargs: object) -> "DatabaseService":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     """通常のデータベース検索サービス（構造化データのフィルタリング）"""
     
     def __init__(self) -> None:

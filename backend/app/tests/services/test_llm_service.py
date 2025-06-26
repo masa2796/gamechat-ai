@@ -1,6 +1,6 @@
 import pytest
-from backend.app.services.llm_service import LLMService
-from backend.app.models.rag_models import ContextItem
+from app.services.llm_service import LLMService
+from app.models.rag_models import ContextItem
 
 @pytest.mark.asyncio
 async def test_generate_answer_with_context(mock_openai_client):
@@ -59,7 +59,7 @@ async def test_generate_answer_with_classification(monkeypatch):
     context = [ContextItem(title="テストカード", text="これは強力なカードです。", score=0.8)]
     
     # 分類結果のモック
-    from backend.app.models.classification_models import ClassificationResult, QueryType
+    from app.models.classification_models import ClassificationResult, QueryType
     classification = ClassificationResult(
         query_type=QueryType.SEMANTIC,
         summary="強いカードについて",
@@ -123,7 +123,7 @@ async def test_format_classification_info():
     """分類情報のフォーマット機能テスト"""
     llm = LLMService()
     
-    from backend.app.models.classification_models import ClassificationResult, QueryType
+    from app.models.classification_models import ClassificationResult, QueryType
     classification = ClassificationResult(
         query_type=QueryType.FILTERABLE,
         summary="炎タイプのカード検索",
@@ -180,7 +180,7 @@ async def test_generate_greeting_response(monkeypatch):
     llm = LLMService()
     
     # 挨拶の分類結果を作成
-    from backend.app.models.classification_models import ClassificationResult, QueryType
+    from app.models.classification_models import ClassificationResult, QueryType
     classification = ClassificationResult(
         query_type=QueryType.GREETING,
         summary="挨拶",

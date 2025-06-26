@@ -38,7 +38,7 @@ export default defineConfig({
   },
 
   /* Environment variables for testing */
-  // globalSetup: './tests/e2e/global-setup.ts',
+  globalSetup: './tests/e2e/global-setup.ts',
 
   /* Configure projects for major browsers */
   projects: [

@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
-    "types": ["node", "vitest/globals"],
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -23,7 +26,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "composite": true,
     "plugins": [
       {
         "name": "next"
@@ -32,12 +34,13 @@
     "target": "ES2017"
   },
   "include": [
-    "next-env.d.ts",
-    ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx",
+    ".next/types/**/*.ts",
+    "instrumentation-client.ts",
     "instrumentation.ts",
-    "instrumentation-client.ts"
+    "next-env.d.ts",
+    "out/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from backend.app.main import app
-from backend.app.models.rag_models import RagRequest
+from app.main import app
+from app.models.rag_models import RagRequest
 
 client = TestClient(app)
 
@@ -22,7 +22,7 @@ class TestRagAPI:
                 return True
             
             # ルーターのインスタンスを直接モックする
-            from backend.app.routers import rag
+            from app.routers import rag
             monkeypatch.setattr(rag.rag_service, "process_query", mock_process_query)
             monkeypatch.setattr(rag.auth_service, "verify_request", mock_verify_request)
 
