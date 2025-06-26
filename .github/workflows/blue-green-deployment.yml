@@ -1,7 +1,9 @@
-name: Blue-Green Deployment
 
+name: Blue-Green Deployment
 on:
   push:
+    branches: [ main ]
+  pull_request: # Add pull_request trigger
     branches: [ main ]
   workflow_dispatch:
     inputs:
@@ -51,9 +53,11 @@ jobs:
         echo "🚀 Deployment ID: $DEPLOYMENT_ID"
         
     - name: Authenticate to Google Cloud
+      if: false
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
+
 
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v1
@@ -61,7 +65,7 @@ jobs:
         
     - name: Get Current Deployment Versions
       id: versions
-      run: |
+      run: |      
         # 現在のBlue/Greenバージョンを取得
         CURRENT_SERVICES=$(gcloud run services list --region=${{ env.REGION }} --format="value(metadata.name)" | grep "${{ env.SERVICE_NAME }}")
         

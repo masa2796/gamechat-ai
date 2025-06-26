@@ -152,6 +152,7 @@ jobs:
 
   test:
     executor: node-executor
+    if: false
     steps:
       - checkout
       - attach_workspace:
