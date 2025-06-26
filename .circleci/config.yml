@@ -195,7 +195,8 @@ jobs:
           name: Run backend tests
           command: |
             . .venv/bin/activate
-            cd backend 
+            cd backend
+            export PYTHONPATH=$(pwd)
             export TESTING=true
             export LOG_LEVEL=CRITICAL
             # Run only existing tests that should pass
