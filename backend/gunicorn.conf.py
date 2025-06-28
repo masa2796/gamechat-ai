@@ -10,12 +10,12 @@ bind = "0.0.0.0:8000"
 backlog = 2048
 
 # Worker processes
-workers = multiprocessing.cpu_count() * 2 + 1
+workers = int(os.getenv("WORKERS", multiprocessing.cpu_count() * 2 + 1))
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000
 max_requests = 1000
 max_requests_jitter = 100
-preload_app = True
+preload_app = False
 
 # Worker timeouts - パフォーマンス最適化のため延長
 timeout = 60  # 30秒から60秒に延長

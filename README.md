@@ -1135,7 +1135,7 @@ MASAKI
 **自動デプロイ（推奨）**
 ```bash
 # 自動デプロイスクリプト使用
-./scripts/cloud-run-deploy.sh
+./scripts/deployment/cloud-run-deploy.sh
 ```
 
 **手動デプロイ**

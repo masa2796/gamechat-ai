@@ -1,9 +1,16 @@
 name: Deployment Approval Workflow
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**'  # すべての変更で無視（つまり実質スキップ）
   pull_request:
-    branches: [ main ]
-    types: [opened, synchronize, ready_for_review]
+    branches:
+      - main
+    paths-ignore:
+      - '**'  # PRも無視
   workflow_dispatch:
     inputs:
       deployment_environment:

@@ -226,8 +226,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         
         # バックグラウンドでプリウォーミング実行
         async def background_prewarm() -> None:
+            await asyncio.sleep(5)
             try:
-                await asyncio.sleep(5)  # 5秒待機してからプリウォーミング
                 rag_service = RagService()
                 await prewarmed_query_cache.prewarm_cache(rag_service)
             except Exception as e:

@@ -103,17 +103,19 @@ deploy_backend() {
     
     # Cloud Run デプロイ
     log_info "Cloud Run サービスをデプロイ中..."
-    gcloud run deploy "$SERVICE_NAME" \
-        --image "gcr.io/$PROJECT_ID/$SERVICE_NAME" \
-        --region "$REGION" \
-        --platform managed \
-        --allow-unauthenticated \
-        --port 8000 \
-        --memory 1Gi \
-        --cpu 1 \
-        --max-instances 10 \
-        --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=INFO" \
-        --quiet
+    gcloud beta run deploy gamechat-ai-backend \
+    --image gcr.io/gamechat-ai/gamechat-ai-backend \
+    --region asia-northeast1 \
+    --platform managed \
+    --allow-unauthenticated \
+    --port 8000 \
+    --memory 1Gi \
+    --cpu 1 \
+    --max-instances 10 \
+    --update-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest \
+    --set-env-vars ENVIRONMENT=production,LOG_LEVEL=INFO,WORKERS=1 \
+    --quiet
+
     
     # Cloud Run URL 取得
     BACKEND_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)")
@@ -135,18 +137,28 @@ deploy_frontend() {
     # 依存関係インストール
     npm ci
     
-    # Firebase Hosting用環境変数を設定
+    # Firebase Hosting用環境変数を読み込む
     if [ -f ".env.firebase" ]; then
         log_info "Firebase Hosting用環境変数を読み込み中..."
         cp .env.firebase .env.production
+
+        # .env.firebase から APIキーを抽出
+        FIREBASE_API_KEY=$(grep '^NEXT_PUBLIC_API_KEY=' .env.firebase | cut -d '=' -f2-)
     fi
-    
+
     # バックエンドURLを動的に設定
     if [ -f "../.backend_url" ]; then
         BACKEND_URL=$(cat ../.backend_url)
+
+        # API URL を書き換え
+        sed -i.bak '/^NEXT_PUBLIC_API_URL=/d' .env.production
         echo "NEXT_PUBLIC_API_URL=$BACKEND_URL" >> .env.production
+
+        # API キーも書き換え（前の値を削除し、上で読み込んだキーを使う）
+        sed -i.bak '/^NEXT_PUBLIC_API_KEY=/d' .env.production
+        echo "NEXT_PUBLIC_API_KEY=$FIREBASE_API_KEY" >> .env.production
     fi
-    
+        
     # Next.js Firebase Hosting用ビルド
     log_info "静的サイト生成を実行中..."
     npm run build:firebase
