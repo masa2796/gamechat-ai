@@ -12,12 +12,15 @@ else:
     PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 # 環境に応じて適切な.envファイルを読み込み（override=Trueで既存の環境変数を上書き）
-environment = os.getenv("BACKEND_ENVIRONMENT", "development")
+environment = os.getenv("BACKEND_ENVIRONMENT", os.getenv("ENVIRONMENT", "development"))
 if environment == "production":
     # 本番環境: プロジェクトルートの.env.productionファイル
     load_dotenv(PROJECT_ROOT / ".env.production", override=True)
     # backend/.env.productionファイルも読み込み（優先度高）
     load_dotenv(PROJECT_ROOT / "backend" / ".env.production", override=True)
+elif environment == "test":
+    # テスト環境: backend/.env.testファイルを優先的に読み込み
+    load_dotenv(PROJECT_ROOT / "backend" / ".env.test", override=True)
 else:
     # 開発環境: プロジェクトルートの.envファイル
     load_dotenv(PROJECT_ROOT / ".env", override=True)
