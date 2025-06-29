@@ -18,9 +18,9 @@ max_requests_jitter = 100
 preload_app = False
 
 # Worker timeouts - パフォーマンス最適化のため延長
-timeout = 60  # 30秒から60秒に延長
+timeout = 300  # 30秒から60秒に延長
 keepalive = 5
-graceful_timeout = 60  # 30秒から60秒に延長
+graceful_timeout = 300  # 30秒から60秒に延長
 
 # Logging
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'

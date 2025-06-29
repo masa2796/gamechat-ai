@@ -32,9 +32,6 @@ async def options_preflight(request: Request, response: Response) -> Dict[str, s
     
     return {"status": "ok"}
 
-# デバッグエンドポイントは本番環境ではセキュリティリスクのため完全削除
-# 開発環境でのデバッグが必要な場合は、別途開発専用ルーターを作成することを推奨
-
 @router.post("/rag/query")
 async def rag_query(
     request: Request,

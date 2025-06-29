@@ -32,6 +32,8 @@ class DatabaseService:
             "environment": settings.ENVIRONMENT,
             "storage_service_initialized": True
         })
+        
+        self.debug = getattr(settings, "DEBUG", False)  # デバッグ用フラグ
     
     def _load_data(self) -> List[Dict[str, Any]]:
         """データファイルを読み込む"""
@@ -205,7 +207,8 @@ class DatabaseService:
         if not keywords:
             return 0.0
 
-        print(f"  評価中: {item.get('name', 'Unknown')} (タイプ: {item.get('type', 'Unknown')})")
+        if self.debug:
+            GameChatLogger.log_debug("database_service", f"  評価中: {item.get('name', 'Unknown')} (タイプ: {item.get('type', 'Unknown')})")
         
         # 各スコアを計算
         hp_score, hp_matched = self._calculate_hp_score(item, keywords)
@@ -215,10 +218,9 @@ class DatabaseService:
         
         # 複合条件ボーナスを計算
         combo_bonus = self._calculate_combo_bonus(type_matched, damage_matched, hp_matched)
-        
         total_score = hp_score + damage_score + type_score + text_score + combo_bonus
-        
-        print(f"    最終スコア: {total_score}")
+        if self.debug:
+            GameChatLogger.log_debug("database_service", f"    最終スコア: {total_score}")
         return total_score
 
     def _calculate_hp_score(self, item: Dict[str, Any], keywords: List[str]) -> tuple[float, bool]:
@@ -269,31 +271,33 @@ class DatabaseService:
         if has_hp_keyword and has_hp_condition:
             try:
                 hp_value = int(item["hp"]) if "hp" in item and item["hp"] else 0
-                # 数値条件を確認
                 for kw in keywords:
                     if "40以上" in kw.lower() and hp_value >= 40:
                         score = 2.0
                         matched = True
-                        print(f"    HPマッチ: {hp_value} >= 40 -> +2.0")
+                        if self.debug:
+                            GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} >= 40 -> +2.0")
                         break
                     elif "50以上" in kw.lower() and hp_value >= 50:
                         score = 2.0
                         matched = True
-                        print(f"    HPマッチ: {hp_value} >= 50 -> +2.0")
+                        if self.debug:
+                            GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} >= 50 -> +2.0")
                         break
                     elif "100以上" in kw.lower() and hp_value >= 100:
                         score = 2.0
                         matched = True
-                        print(f"    HPマッチ: {hp_value} >= 100 -> +2.0")
+                        if self.debug:
+                            GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} >= 100 -> +2.0")
                         break
                     elif "150以上" in kw.lower() and hp_value >= 150:
                         score = 2.0
                         matched = True
-                        print(f"    HPマッチ: {hp_value} >= 150 -> +2.0")
+                        if self.debug:
+                            GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} >= 150 -> +2.0")
                         break
             except (ValueError, TypeError):
                 pass
-        
         return score, matched
 
     def _calculate_damage_score(self, item: Dict[str, Any], keywords: List[str], hp_matched: bool) -> tuple[float, bool]:
@@ -311,33 +315,35 @@ class DatabaseService:
                     if isinstance(attack, dict) and "damage" in attack:
                         try:
                             damage_value = int(attack["damage"]) if attack["damage"] else 0
-                            # 数値条件を確認
                             for kw in keywords:
                                 if "30以上" in kw.lower() and damage_value >= 30:
                                     score = 2.0
                                     matched = True
-                                    print(f"    ダメージマッチ: {damage_value} >= 30 -> +2.0")
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} >= 30 -> +2.0")
                                     break
                                 elif "40以上" in kw.lower() and damage_value >= 40:
                                     score = 2.0
                                     matched = True
-                                    print(f"    ダメージマッチ: {damage_value} >= 40 -> +2.0")
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} >= 40 -> +2.0")
                                     break
                                 elif "50以上" in kw.lower() and damage_value >= 50:
                                     score = 2.0
                                     matched = True
-                                    print(f"    ダメージマッチ: {damage_value} >= 50 -> +2.0")
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} >= 50 -> +2.0")
                                     break
                                 elif "60以上" in kw.lower() and damage_value >= 60:
                                     score = 2.0
                                     matched = True
-                                    print(f"    ダメージマッチ: {damage_value} >= 60 -> +2.0")
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} >= 60 -> +2.0")
                                     break
                             if matched:
                                 break
                         except (ValueError, TypeError):
                             pass
-        
         return score, matched
 
     def _calculate_type_score(self, item: Dict[str, Any], keywords: List[str]) -> tuple[float, bool]:
@@ -347,17 +353,15 @@ class DatabaseService:
         
         for keyword in keywords:
             keyword_lower = keyword.lower()
-            
-            # タイプ関連の処理
             if keyword_lower in ["炎", "水", "草", "電気", "超", "闘", "悪", "鋼", "フェアリー"]:
-                if not matched:  # 重複チェック
+                if not matched:
                     if "type" in item and item["type"]:
                         if keyword_lower == item["type"].lower():
                             score = 2.0
                             matched = True
-                            print(f"    タイプマッチ: {keyword} -> +2.0")
+                            if self.debug:
+                                GameChatLogger.log_debug("database_service", f"    タイプマッチ: {keyword} -> +2.0")
                             break
-        
         return score, matched
 
     def _calculate_text_score(self, item: Dict[str, Any], keywords: List[str]) -> float:
@@ -380,11 +384,13 @@ class DatabaseService:
             # 完全マッチ
             if keyword_lower in searchable_text_lower:
                 score += 0.5
-                print(f"    テキストマッチ: {keyword} -> +0.5")
+                if self.debug:
+                    GameChatLogger.log_debug("database_service", f"    テキストマッチ: {keyword} -> +0.5")
             # 部分マッチ
             elif any(keyword_lower in word for word in searchable_text_lower.split()):
                 score += 0.3
-                print(f"    部分マッチ: {keyword} -> +0.3")
+                if self.debug:
+                    GameChatLogger.log_debug("database_service", f"    部分マッチ: {keyword} -> +0.3")
         
         return score
 
@@ -407,7 +413,8 @@ class DatabaseService:
     def _calculate_combo_bonus(self, type_matched: bool, damage_matched: bool, hp_matched: bool) -> float:
         """複合条件ボーナスを計算"""
         if type_matched and (damage_matched or hp_matched):
-            print("    複合条件ボーナス: +1.0")
+            if self.debug:
+                GameChatLogger.log_debug("database_service", "    複合条件ボーナス: +1.0")
             return 1.0
         return 0.0
     

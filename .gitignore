@@ -14,6 +14,7 @@
 *.p12
 *.pfx
 key.md
+.backend_url
 
 # Cloud Run 機密設定
 cloud-run-*.yaml

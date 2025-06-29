@@ -33,6 +33,7 @@ COPY --from=builder /root/.local /home/app/.local
 COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
 COPY backend/requirements.txt .
+COPY backend/.env.production ./backend/.env.production
 
 # Create data directory for cache/temporary files
 RUN mkdir -p ./data /tmp/gamechat-data && \

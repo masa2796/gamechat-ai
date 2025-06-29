@@ -171,17 +171,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("🚀 Starting GameChat AI backend...")
     
     # データディレクトリの存在確認と作成
+    logger.info("Checking for data directory...")
     try:
         if not os.path.exists(str(settings.DATA_DIR)):
             os.makedirs(str(settings.DATA_DIR), exist_ok=True)
             logger.info(f"📁 Created data directory: {settings.DATA_DIR}")
+        else:
+            logger.info(f"📁 Data directory already exists: {settings.DATA_DIR}")
     except Exception as e:
-        logger.warning(f"⚠️ Could not create data directory: {e}")
+        logger.error(f"⚠️ Could not create data directory: {e}", exc_info=True)
     
     # StorageServiceを初期化してデータを準備
+    logger.info("Initializing StorageService...")
     try:
         storage_service = StorageService()
-        logger.info("📦 StorageService initialized")
+        logger.info("✅ StorageService initialized successfully")
         
         # 主要なデータファイルの可用性をチェック
         data_status = {}
@@ -189,14 +193,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             file_path = storage_service.get_file_path(file_key)
             data_status[file_key] = bool(file_path)
         
-        logger.info("📊 Data files status:", extra=data_status)
+        logger.info("📊 Data files availability status:", extra={"data_status": data_status})
         
         # 最低限必要なファイルの確認
         if not (data_status.get("data") or data_status.get("convert_data")):
             logger.warning("⚠️ No primary data files available. Application may have limited functionality.")
         
     except Exception as e:
-        logger.error(f"❌ StorageService initialization failed: {e}")
+        logger.error(f"❌ StorageService initialization failed: {e}", exc_info=True)
         logger.warning("🔄 Application will continue with limited functionality")
     
     # 環境情報とパス設定をログ出力
@@ -213,30 +217,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     })
     
     # データベース接続プール初期化
+    logger.info("Initializing database connections...")
     try:
         await initialize_database()
-        logger.info("✅ Database connections initialized")
+        logger.info("✅ Database connections initialized successfully")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize database connections: {e}")
+        logger.error(f"❌ Failed to initialize database connections: {e}", exc_info=True)
     
     # キャッシュプリウォーミング（バックグラウンドで実行）
+    logger.info("Starting cache prewarming task setup...")
     try:
         from .core.cache import prewarmed_query_cache
         from .services.rag_service import RagService
         
         # バックグラウンドでプリウォーミング実行
         async def background_prewarm() -> None:
+            logger.info("🔥 Background prewarming task waiting to start...")
             await asyncio.sleep(5)
+            logger.info("🔥 Starting background cache prewarming process...")
             try:
+                logger.info("Instantiating RagService for prewarming...")
                 rag_service = RagService()
+                logger.info("✅ RagService instantiated. Starting cache prewarm...")
                 await prewarmed_query_cache.prewarm_cache(rag_service)
+                logger.info("✅ Cache prewarming completed successfully.")
             except Exception as e:
-                logger.warning(f"Cache prewarming failed: {e}")
+                logger.error(f"❌ Cache prewarming failed during execution: {e}", exc_info=True)
         
         asyncio.create_task(background_prewarm())
-        logger.info("🔥 Cache prewarming task started")
+        logger.info("✅ Cache prewarming task created and started.")
     except Exception as e:
-        logger.warning(f"Could not start cache prewarming: {e}")
+        logger.error(f"❌ Could not start cache prewarming task: {e}", exc_info=True)
     
     logger.info("🎉 GameChat AI backend started successfully")
     

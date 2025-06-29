@@ -1,8 +1,7 @@
 {
   "compilerOptions": {
     "types": [
-      "node",
-      "vitest/globals"
+      "node"
     ],
     "baseUrl": ".",
     "paths": {
