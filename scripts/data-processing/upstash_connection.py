@@ -3,6 +3,7 @@ import json
 from upstash_vector import Index, Vector
 from dotenv import load_dotenv
 
+# backend/.envのみ参照
 dotenv_path_global = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
 load_dotenv(dotenv_path=dotenv_path_global)
 

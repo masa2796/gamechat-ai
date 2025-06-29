@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 # プロジェクトルートディレクトリを先に定義
 # Cloud Run環境では /app がプロジェクトルートになる
 # ローカル環境では親ディレクトリを辿る
-if os.getenv("ENVIRONMENT") == "production":
+if os.getenv("BACKEND_ENVIRONMENT") == "production":
     PROJECT_ROOT = Path("/app")
 else:
     PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 # 環境に応じて適切な.envファイルを読み込み（override=Trueで既存の環境変数を上書き）
-environment = os.getenv("ENVIRONMENT", "development")
+environment = os.getenv("BACKEND_ENVIRONMENT", "development")
 if environment == "production":
     # 本番環境: プロジェクトルートの.env.productionファイル
     load_dotenv(PROJECT_ROOT / ".env.production", override=True)
@@ -29,17 +29,17 @@ class Settings:
     PROJECT_ROOT: Path = PROJECT_ROOT
     
     # 環境設定
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    ENVIRONMENT: str = os.getenv("BACKEND_ENVIRONMENT", "development")
+    DEBUG: bool = os.getenv("BACKEND_DEBUG", "true").lower() == "true"
+    LOG_LEVEL: str = os.getenv("BACKEND_LOG_LEVEL", "INFO")
     
     # API Keys
     # RECAPTCHAは環境に応じて適切なキーを選択
-    RECAPTCHA_SECRET: Optional[str] = os.getenv("RECAPTCHA_SECRET_TEST") if environment != "production" else os.getenv("RECAPTCHA_SECRET")
+    RECAPTCHA_SECRET: Optional[str] = os.getenv("RECAPTCHA_SECRET_KEY_TEST") if environment != "production" else os.getenv("RECAPTCHA_SECRET_KEY")
     RECAPTCHA_SITE: Optional[str] = os.getenv("RECAPTCHA_SITE")
     
     # OpenAI APIキー（backend/.envから読み込み）
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    OPENAI_API_KEY: Optional[str] = os.getenv("BACKEND_OPENAI_API_KEY")
     
     # Upstash Vector設定（backend/.envから読み込み）
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
@@ -53,37 +53,37 @@ class Settings:
             "http://localhost:3000",
             "http://127.0.0.1:3000"
         ] if environment == "production" 
-        else os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+        else os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
     )
     
     # Security Settings
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
-    BCRYPT_ROUNDS: int = int(os.getenv("BCRYPT_ROUNDS", "12"))
+    SECRET_KEY: str = os.getenv("BACKEND_SECRET_KEY", "dev-secret-key-change-in-production")
+    BCRYPT_ROUNDS: int = int(os.getenv("BACKEND_BCRYPT_ROUNDS", "12"))
     
     # Rate Limiting Settings
-    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    RATE_LIMIT_ENABLED: bool = os.getenv("BACKEND_RATE_LIMIT_ENABLED", "true").lower() == "true"
     
     # API Authentication Settings
     API_KEY_HEADER: str = "X-API-Key"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
+    JWT_EXPIRE_MINUTES: int = int(os.getenv("BACKEND_JWT_EXPIRE_MINUTES", "30"))
     
     # Redis Settings (for rate limiting and caching)
-    REDIS_URL: Optional[str] = os.getenv("REDIS_URL")
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
-    REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
-    REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD")
+    REDIS_URL: Optional[str] = os.getenv("BACKEND_REDIS_URL")
+    REDIS_HOST: str = os.getenv("BACKEND_REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("BACKEND_REDIS_PORT", "6379"))
+    REDIS_DB: int = int(os.getenv("BACKEND_REDIS_DB", "0"))
+    REDIS_PASSWORD: Optional[str] = os.getenv("BACKEND_REDIS_PASSWORD")
     
     # Database Settings
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: int = int(os.getenv("DB_PORT", "5432"))
-    DB_NAME: str = os.getenv("DB_NAME", "gamechat_ai")
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    DB_HOST: str = os.getenv("BACKEND_DB_HOST", "localhost")
+    DB_PORT: int = int(os.getenv("BACKEND_DB_PORT", "5432"))
+    DB_NAME: str = os.getenv("BACKEND_DB_NAME", "gamechat_ai")
+    DB_USER: str = os.getenv("BACKEND_DB_USER", "postgres")
+    DB_PASSWORD: str = os.getenv("BACKEND_DB_PASSWORD", "")
     
     # Monitoring and Observability
-    SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
+    SENTRY_DSN: Optional[str] = os.getenv("BACKEND_SENTRY_DSN")
     MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
     
     # データファイルパス設定

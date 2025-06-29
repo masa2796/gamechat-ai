@@ -14,8 +14,8 @@ class TestAPIKeySafety:
         """テスト環境の分離が適切に行われていることを確認"""
         # このテストでは、環境変数の存在よりもモックが正しく機能していることを確認
         print("\n環境変数の状態:")
-        print(f"OPENAI_API_KEY: {'設定済み' if os.getenv('OPENAI_API_KEY') else '未設定'}")
-        print(f"TESTING: {os.getenv('TESTING')}")
+        print(f"BACKEND_OPENAI_API_KEY: {'設定済み' if os.getenv('BACKEND_OPENAI_API_KEY') else '未設定'}")
+        print(f"BACKEND_TESTING: {os.getenv('BACKEND_TESTING')}")
         
         # テスト環境であることを確認
         assert "pytest" in sys.modules, "pytest環境で実行されていません"
@@ -58,7 +58,7 @@ class TestAPIKeySafety:
     def test_network_isolation_check(self):
         """ネットワーク分離チェック（参考情報）"""
         print("\n=== API安全性確認結果 ===")
-        print(f"OPENAI_API_KEY: {os.getenv('OPENAI_API_KEY')}")
+        print(f"BACKEND_OPENAI_API_KEY: {os.getenv('BACKEND_OPENAI_API_KEY')}")
         print("テスト環境: pytest")
         print("モック使用: はい")
         print("実際のAPI呼び出し: なし")

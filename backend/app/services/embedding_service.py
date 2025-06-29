@@ -14,8 +14,8 @@ load_dotenv()
 class EmbeddingService:
     def __init__(self) -> None:
         # モック環境のチェック
-        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
+        mock_external = os.getenv("BACKEND_MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
+        is_testing = os.getenv("BACKEND_TESTING", "false").lower() == "true"
         
         if mock_external or is_testing:
             # モック環境では実際のOpenAIクライアントは初期化しない
@@ -23,7 +23,7 @@ class EmbeddingService:
             self.is_mocked = True
         else:
             # OpenAI クライアントを初期化（環境変数からAPIキーを取得）
-            api_key = os.getenv("OPENAI_API_KEY")
+            api_key = os.getenv("BACKEND_OPENAI_API_KEY")
             
             # テスト用のダミーキーの除外
             invalid_keys = ["sk-test_openai_key", "test-api-key"]

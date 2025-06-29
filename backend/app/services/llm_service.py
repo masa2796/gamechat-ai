@@ -12,8 +12,8 @@ from ..core.logging import GameChatLogger
 class LLMService:
     def __init__(self) -> None:
         # モック環境のチェック
-        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
+        mock_external = os.getenv("BACKEND_MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
+        is_testing = os.getenv("BACKEND_TESTING", "false").lower() == "true"
         
         if mock_external or is_testing:
             # モック環境では実際のOpenAIクライアントは初期化しない
@@ -21,7 +21,7 @@ class LLMService:
             self.is_mocked = True
         else:
             # OpenAI クライアントを初期化
-            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
             
             if not api_key or api_key in ["sk-test_openai_key", "test-api-key"]:
                 raise LLMException(

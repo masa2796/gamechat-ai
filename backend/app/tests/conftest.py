@@ -3,8 +3,8 @@
 """
 # テスト環境での設定を最初に行う
 import os
-os.environ["ENVIRONMENT"] = "test"
-os.environ["LOG_LEVEL"] = "CRITICAL"
+os.environ["BACKEND_ENVIRONMENT"] = "test"
+os.environ["BACKEND_LOG_LEVEL"] = "CRITICAL"
 
 import pytest
 import json
@@ -47,11 +47,11 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 load_dotenv(PROJECT_ROOT / "backend" / ".env", override=True)
 
 # テスト環境変数を設定
-os.environ["TESTING"] = "true"
+os.environ["BACKEND_TESTING"] = "true"
 # テスト用のダミーAPIキーを設定（実際のAPIコールは発生しない）
-os.environ["OPENAI_API_KEY"] = "test-api-key-for-testing"
-os.environ["UPSTASH_VECTOR_REST_URL"] = "https://test-vector-db.upstash.io"
-os.environ["UPSTASH_VECTOR_REST_TOKEN"] = "test-vector-token"
+os.environ["BACKEND_OPENAI_API_KEY"] = "test-api-key-for-testing"
+os.environ["BACKEND_UPSTASH_VECTOR_REST_URL"] = "https://test-vector-db.upstash.io"
+os.environ["BACKEND_UPSTASH_VECTOR_REST_TOKEN"] = "test-vector-token"
 
 
 # ==============================================================================

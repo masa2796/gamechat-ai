@@ -6,7 +6,7 @@ from pathlib import Path
 
 # プロジェクトルートディレクトリを取得
 project_root = Path(__file__).parent.parent
-dotenv_path = project_root / 'backend' / '.env'
+dotenv_path = project_root / 'backend' / '.env'  # backend/.envのみ参照
 load_dotenv(dotenv_path=dotenv_path)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 

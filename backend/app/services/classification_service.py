@@ -38,8 +38,8 @@ class ClassificationService:
     
     def __init__(self) -> None:
         # モック環境のチェック
-        mock_external = os.getenv("MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
-        is_testing = os.getenv("TESTING", "false").lower() == "true"
+        mock_external = os.getenv("BACKEND_MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
+        is_testing = os.getenv("BACKEND_TESTING", "false").lower() == "true"
         
         if mock_external or is_testing:
             # モック環境では実際のOpenAIクライアントは初期化しない
@@ -47,12 +47,12 @@ class ClassificationService:
             self.is_mocked = True
         else:
             # OpenAI クライアントを初期化
-            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("OPENAI_API_KEY")
+            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
             
             # APIキーの検証
             if not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here", "sk-test_openai_key"]:
                 raise ClassificationException(
-                    "OpenAI APIキーが設定されていません。.envファイルでOPENAI_API_KEYを設定してください。"
+                    "OpenAI APIキーが設定されていません。.envファイルでBACKEND_OPENAI_API_KEYを設定してください。"
                 )
             
             self.client = openai.OpenAI(api_key=api_key)

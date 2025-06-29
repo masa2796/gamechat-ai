@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 # プロジェクトルートディレクトリを取得
 project_root = Path(__file__).parent.parent
-dotenv_path = project_root / 'backend' / '.env'
+dotenv_path = project_root / 'backend' / '.env'  # backend/.envのみ参照
 load_dotenv(dotenv_path=dotenv_path)
 
 def convert_to_embedding_format(card_data):

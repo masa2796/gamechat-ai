@@ -49,7 +49,7 @@ class APIKeyAuth:
         """Load API keys from environment variables."""
         api_keys = {}
         
-        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        is_test_mode = os.getenv("BACKEND_TEST_MODE", "false").lower() == "true"
         environment = os.getenv("ENVIRONMENT", "development")
         
         if is_test_mode:
@@ -128,7 +128,7 @@ class JWTAuth:
     """JWT based authentication."""
     
     def __init__(self) -> None:
-        self.secret_key = os.getenv("JWT_SECRET_KEY", self._generate_secret_key())
+        self.secret_key = os.getenv("BACKEND_JWT_SECRET_KEY", self._generate_secret_key())
         self.algorithm = "HS256"
         self.access_token_expire_minutes = 30
         
@@ -139,12 +139,12 @@ class JWTAuth:
     
     def _generate_secret_key(self) -> str:
         """Generate a secret key if not provided."""
-        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        is_test_mode = os.getenv("BACKEND_TEST_MODE", "false").lower() == "true"
         if is_test_mode:
             logger.info("Using test JWT secret key")
             return "test-jwt-secret-key-for-testing-only"
         else:
-            logger.warning("JWT_SECRET_KEY not set, generating random key")
+            logger.warning("BACKEND_JWT_SECRET_KEY not set, generating random key")
             return secrets.token_urlsafe(32)
     
     def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:

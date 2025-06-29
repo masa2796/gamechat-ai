@@ -33,12 +33,8 @@ pre_deployment_checks() {
     fi
     
     # 環境変数ファイルの確認
-    if [ ! -f ".env.production" ]; then
-        log_warning ".env.production が見つかりません。デフォルト値が使用されます"
-    fi
-    
     if [ ! -f "backend/.env.production" ]; then
-        log_warning "backend/.env.production が見つかりません"
+        log_warning "backend/.env.production が見つかりません。デフォルト値が使用されます"
     fi
     
     # Docker の稼働確認

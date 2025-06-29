@@ -4,8 +4,13 @@
 
 # -----------------------------------------------------------------------------
 # 環境変数・機密情報
-# -----------------------------------------------------------------------------
+# 本番・開発用envは除外、サンプル・CI用envは許可
 .env*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+!backend/.env.ci
+!frontend/.env.ci
 *secret*
 *credential*
 *private*

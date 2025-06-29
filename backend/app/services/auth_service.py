@@ -13,8 +13,8 @@ class AuthService:
     async def verify_recaptcha(self, token: str) -> bool:
         """reCAPTCHA検証を実行"""
         # reCAPTCHA認証を完全にスキップする環境変数チェック（デバッグ用）
-        if os.getenv("SKIP_RECAPTCHA") == "true":
-            logger.info("reCAPTCHA verification skipped due to SKIP_RECAPTCHA=true")
+        if os.getenv("BACKEND_SKIP_RECAPTCHA") == "true":
+            logger.info("reCAPTCHA verification skipped due to BACKEND_SKIP_RECAPTCHA=true")
             return True
             
         # テスト環境用のバイパス機能（本番環境でもtest tokenを一時的に許可）
@@ -23,20 +23,20 @@ class AuthService:
             return True
             
         # 開発・テスト環境での完全バイパス
-        if os.getenv("ENVIRONMENT") in ["development", "test"]:
+        if os.getenv("BACKEND_ENVIRONMENT") in ["development", "test"]:
             logger.info("reCAPTCHA bypass for test environment")
             return True
             
         # 環境に応じて適切なreCAPTCHA秘密鍵を選択
-        environment = os.getenv("ENVIRONMENT", "development")
+        environment = os.getenv("BACKEND_ENVIRONMENT", "development")
         if environment == "production":
-            RECAPTCHA_SECRET = os.getenv("RECAPTCHA_SECRET")
+            RECAPTCHA_SECRET = os.getenv("RECAPTCHA_SECRET_KEY")
         else:
-            RECAPTCHA_SECRET = os.getenv("RECAPTCHA_SECRET_TEST")
+            RECAPTCHA_SECRET = os.getenv("RECAPTCHA_SECRET_KEY_TEST")
             
         if not RECAPTCHA_SECRET:
             # reCAPTCHA秘密鍵が設定されていない場合、テスト環境では通す
-            if os.getenv("ENVIRONMENT") in ["development", "test"]:
+            if os.getenv("BACKEND_ENVIRONMENT") in ["development", "test"]:
                 logger.warning("reCAPTCHA secret not set, allowing in development mode")
                 return True
             # 本番環境でも秘密キーが未設定の場合は一時的に許可（デバッグ用）
@@ -74,7 +74,7 @@ class AuthService:
         except Exception as e:
             logger.error(f"reCAPTCHA verification error: {str(e)}")
             # 本番環境ではreCAPTCHAサービス障害時は厳格に拒否
-            if os.getenv("ENVIRONMENT") == "production":
+            if os.getenv("BACKEND_ENVIRONMENT") == "production":
                 return False
             # 開発環境では通す
             return True

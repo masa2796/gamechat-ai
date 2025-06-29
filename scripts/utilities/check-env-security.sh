@@ -12,15 +12,14 @@ echo "📁 現在のディレクトリ: $(pwd)"
 echo ""
 
 # 1. .envファイルの存在確認
-echo "📋 1. .envファイルの確認"
-echo "------------------------------------------"
-if ls .env* 1> /dev/null 2>&1; then
+# backend/.env* および frontend/.env* を確認
+if ls backend/.env* 1> /dev/null 2>&1 || ls frontend/.env* 1> /dev/null 2>&1; then
     echo "発見された.envファイル:"
-    ls -la .env*
+    ls -la backend/.env* 2>/dev/null
+    ls -la frontend/.env* 2>/dev/null
     echo ""
-    
     # 各ファイルの状態を確認
-    for file in .env*; do
+    for file in backend/.env* frontend/.env*; do
         if [ -f "$file" ]; then
             echo "📄 $file:"
             if git check-ignore "$file" >/dev/null 2>&1; then
@@ -29,15 +28,13 @@ if ls .env* 1> /dev/null 2>&1; then
                 echo "  ❌ gitignoreされていません！"
                 echo "  ⚠️  このファイルがGitにコミットされる可能性があります"
             fi
-            
-            # ファイルサイズも確認
             size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null)
             echo "  📊 ファイルサイズ: $size bytes"
             echo ""
         fi
     done
 else
-    echo "✅ ルートディレクトリに.envファイルはありません"
+    echo "✅ backend/ および frontend/ に .envファイルはありません"
     echo ""
 fi
 
