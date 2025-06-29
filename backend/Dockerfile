@@ -33,7 +33,15 @@ COPY --from=builder /root/.local /home/app/.local
 COPY backend/app/ ./app/
 COPY backend/gunicorn.conf.py ./
 COPY backend/requirements.txt .
-COPY backend/.env.production ./backend/.env.production
+
+# .env.productionがなければ.env.ciをコピー
+RUN if [ -f backend/.env.production ]; then \
+      cp backend/.env.production ./backend/.env.production; \
+    elif [ -f backend/.env.ci ]; then \
+      cp backend/.env.ci ./backend/.env.production; \
+    else \
+      echo "No .env.production or .env.ci found!" && exit 1; \
+    fi
 
 # Create data directory for cache/temporary files
 RUN mkdir -p ./data /tmp/gamechat-data && \
