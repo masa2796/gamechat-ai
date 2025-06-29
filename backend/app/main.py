@@ -307,20 +307,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import sys
+
+try:
+    from .core.config import settings
+except Exception as e:
+    import traceback
+    print("[FATAL] settings import/init failed:", file=sys.stderr)
+    traceback.print_exc()
+    from .core.config import Settings  # 型エラー回避のため
+    class DummySettings(Settings):
+        ENVIRONMENT = "unknown"
+        DEBUG = False
+        CORS_ORIGINS = ["*"]
+    settings = DummySettings()
+
 @app.get("/health")
 async def health_check() -> dict[str, str | int | float]:
     """ヘルスチェック用エンドポイント"""
-    current_time = time.time()
-    uptime = current_time - app_start_time
-    
-    return {
-        "status": "healthy",
-        "service": "gamechat-ai-backend",
-        "timestamp": datetime.now().isoformat(),
-        "uptime_seconds": round(uptime, 2),
-        "version": "1.0.0",
-        "environment": settings.ENVIRONMENT
-    }
+    try:
+        current_time = time.time()
+        uptime = current_time - app_start_time
+        return {
+            "status": "healthy",
+            "service": "gamechat-ai-backend",
+            "timestamp": datetime.now().isoformat(),
+            "uptime_seconds": round(uptime, 2),
+            "version": "1.0.0",
+            "environment": settings.ENVIRONMENT
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "service": "gamechat-ai-backend",
+            "timestamp": datetime.now().isoformat(),
+        }
 
 @app.get("/health/detailed")
 async def detailed_health_check() -> dict[str, Any]:

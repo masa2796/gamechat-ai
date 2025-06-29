@@ -5,16 +5,18 @@
 import asyncio
 import sys
 import os
+import pytest
 
 # プロジェクトのルートディレクトリをパスに追加
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from backend.app.services.rag_service import RagService
-from backend.app.services.hybrid_search_service import HybridSearchService
-from backend.app.services.llm_service import LLMService
-from backend.app.models.rag_models import RagRequest
-from backend.app.models.classification_models import QueryType
+from app.services.rag_service import RagService
+from app.services.hybrid_search_service import HybridSearchService
+from app.services.llm_service import LLMService
+from app.models.rag_models import RagRequest
+from app.models.classification_models import QueryType
 
+@pytest.mark.asyncio
 async def test_greeting_detection():
     """挨拶検出と早期応答の統合テスト"""
     

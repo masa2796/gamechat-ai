@@ -222,6 +222,13 @@ class GameChatLogger:
             extra_data.update(details)
         
         logger.info(f"📋 AUDIT: {action} by {user_id}", extra={"extra_data": extra_data})
+    
+    @classmethod
+    def log_debug(cls, logger_name: str, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+        """デバッグログの統一フォーマット"""
+        logger = cls.get_logger(logger_name)
+        extra = {"extra_data": details} if details else {}
+        logger.debug(f"🟢 {message}", extra=extra)
 
 # テスト環境など、必要に応じて手動で初期化する場合のみ呼び出し
 # 本番環境では main.py で明示的に初期化される

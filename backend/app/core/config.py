@@ -14,10 +14,15 @@ else:
 # 環境に応じて適切な.envファイルを読み込み（override=Trueで既存の環境変数を上書き）
 environment = os.getenv("BACKEND_ENVIRONMENT", os.getenv("ENVIRONMENT", "development"))
 if environment == "production":
-    # 本番環境: プロジェクトルートの.env.productionファイル
-    load_dotenv(PROJECT_ROOT / ".env.production", override=True)
-    # backend/.env.productionファイルも読み込み（優先度高）
-    load_dotenv(PROJECT_ROOT / "backend" / ".env.production", override=True)
+    # 本番環境: .env.productionが存在すればそれを読み込む
+    prod_env_path = PROJECT_ROOT / "backend" / ".env.production"
+    if prod_env_path.exists():
+        load_dotenv(prod_env_path, override=True)
+    else:
+        # .env.productionがなければ.env.ciを利用
+        ci_env_path = PROJECT_ROOT / "backend" / ".env.ci"
+        if ci_env_path.exists():
+            load_dotenv(ci_env_path, override=True)
 elif environment == "test":
     # テスト環境: backend/.env.testファイルを優先的に読み込み
     load_dotenv(PROJECT_ROOT / "backend" / ".env.test", override=True)

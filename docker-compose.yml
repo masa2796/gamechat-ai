@@ -14,6 +14,8 @@ services:
       # Mount source code for hot reload in development
       - ./backend/app:/app/app:ro
       - ./backend/requirements.txt:/app/requirements.txt:ro
+      # .env.productionがなくても開発・CIでエラーにならないようにする
+      - ./backend/.env.ci:/app/backend/.env.production:ro
     env_file:
       - backend/.env
     networks:

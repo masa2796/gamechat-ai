@@ -2,6 +2,8 @@
 Core security modules
 """
 
+from .logging import GameChatLogger
+
 # セキュリティ関連モジュールの初期化
 try:
     from .log_security import security_audit_logger, SecurityLogMasker
@@ -14,10 +16,11 @@ try:
         'SecurityLogMasker', 
         'security_audit_manager',
         'api_key_rotation_manager',
-        'intrusion_detection_system'
+        'intrusion_detection_system',
+        'GameChatLogger'
     ]
 except ImportError as e:
     # 開発環境でのインポートエラーを防ぐ
     import logging
     logging.warning(f"Security module import warning: {e}")
-    __all__ = []
+    __all__ = ['GameChatLogger']
