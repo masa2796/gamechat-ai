@@ -39,7 +39,7 @@ from app.tests.mocks import (
 )
 
 # logging.basicConfig(level=logging.CRITICAL, format='%(message)s')  # ← Cloud Run/本番と同じロギング構成に統一
-from backend.app.core.logging import GameChatLogger
+from app.core.logging import GameChatLogger
 GameChatLogger.configure_logging()
 
 # テスト実行時に環境変数を読み込み

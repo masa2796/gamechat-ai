@@ -127,7 +127,7 @@ class GameChatLogger:
         )
     
     @staticmethod
-    def _sanitize_extra(data):
+    def _sanitize_extra(data: Any) -> Any:
         """extraで渡す値をプリミティブ型・dict・listのみに制限"""
         if isinstance(data, (str, int, float, bool)):
             return data

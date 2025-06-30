@@ -30,7 +30,7 @@ except ImportError:
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from backend.app.core.logging import GameChatLogger
+from app.core.logging import GameChatLogger
 
 
 class DataUploader:

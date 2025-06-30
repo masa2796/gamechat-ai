@@ -49,8 +49,9 @@ class Settings:
     
     # OpenAI APIキー（backend/.envから読み込み）
     BACKEND_OPENAI_API_KEY: Optional[str] = (
-        os.getenv("BACKEND_OPENAI_API_KEY").strip() if os.getenv("BACKEND_OPENAI_API_KEY") else None
-    )
+        (v.strip() if v is not None else None)
+        for v in [os.getenv("BACKEND_OPENAI_API_KEY")]
+    ).__next__()
     
     # Upstash Vector設定（backend/.envから読み込み）
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")

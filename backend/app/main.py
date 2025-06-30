@@ -210,8 +210,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 gcs_blob_path = "data/data.json"
                 local_path = "/tmp/data.json"
                 try:
-                    async def download_gcs_file():
-                        def _download():
+                    async def download_gcs_file() -> None:
+                        def _download() -> None:
                             client = storage.Client()
                             bucket = client.bucket(bucket_name)
                             blob = bucket.blob(gcs_blob_path)
