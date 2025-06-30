@@ -32,14 +32,15 @@ class StorageService:
     
     """Google Cloud Storageとローカルファイルシステムの統合管理"""
     
-    def __init__(self) -> None:
+    def __init__(self, data_path: Optional[str] = None) -> None:
         self.initialized: bool = getattr(self, 'initialized', False)
         if self.initialized:
             return  # すでに初期化済みの場合は何もしない
         
         self.bucket_name = settings.GCS_BUCKET_NAME
-        self.is_cloud_environment = settings.ENVIRONMENT == "production"
+        self.is_cloud_environment = settings.BACKEND_ENVIRONMENT == "production"
         self.cache_dir = Path("/tmp/gamechat-data") if self.is_cloud_environment else None
+        self._override_data_path = data_path  # 追加: 明示的なdata.jsonパス
         
         # Cloud環境でのみGoogle Cloud Storageクライアントを初期化
         if self.is_cloud_environment and self.bucket_name and GCS_AVAILABLE:
@@ -48,7 +49,7 @@ class StorageService:
                 self.bucket = self.client.bucket(self.bucket_name)
                 GameChatLogger.log_info("storage_service", "Cloud Storage初期化完了", {
                     "bucket_name": self.bucket_name,
-                    "environment": settings.ENVIRONMENT
+                    "environment": settings.BACKEND_ENVIRONMENT
                 })
             except Exception as e:
                 GameChatLogger.log_error("storage_service", "Cloud Storage初期化に失敗", e)
@@ -60,7 +61,7 @@ class StorageService:
             if not GCS_AVAILABLE and self.is_cloud_environment:
                 GameChatLogger.log_warning("storage_service", "Google Cloud Storage ライブラリが利用できません")
             GameChatLogger.log_info("storage_service", "ローカル環境モードで初期化", {
-                "environment": settings.ENVIRONMENT,
+                "environment": settings.BACKEND_ENVIRONMENT,
                 "bucket_configured": bool(self.bucket_name),
                 "gcs_available": GCS_AVAILABLE
             })
@@ -121,7 +122,7 @@ class StorageService:
     def _get_local_file_path(self, file_key: str) -> str:
         """ファイルキーに対応するローカルファイルパスを取得"""
         path_mapping = {
-            "data": settings.DATA_FILE_PATH,
+            "data": self._override_data_path if self._override_data_path and file_key == "data" else settings.DATA_FILE_PATH,
             "convert_data": settings.CONVERTED_DATA_FILE_PATH,
             "embedding_list": settings.EMBEDDING_FILE_PATH,
             "query_data": settings.QUERY_DATA_FILE_PATH

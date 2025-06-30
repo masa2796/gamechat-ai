@@ -38,6 +38,17 @@ export const Assistant = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
+  // 送信モード: 'enter' or 'mod+enter'
+  const [sendMode, setSendMode] = useState<'enter' | 'mod+enter'>(
+    () => (typeof window !== 'undefined' && localStorage.getItem('chat-send-mode')) as 'enter' | 'mod+enter' || 'enter'
+  );
+
+  // 送信モードのローカルストレージ保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chat-send-mode', sendMode);
+    }
+  }, [sendMode]);
 
   // reCAPTCHAスクリプトの動的ロード
   useEffect(() => {
@@ -163,6 +174,24 @@ export const Assistant = () => {
     }
   };
 
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (loading || input.trim().length === 0) return;
+    if (sendMode === 'enter') {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+      // Shift+Enterは改行（inputなら無視、textareaなら改行）
+    } else if (sendMode === 'mod+enter') {
+      // Mac: Command+Enter, Windows: Ctrl+Enter
+      if ((e.key === 'Enter') && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        sendMessage();
+      }
+      // Enter単体は改行（inputなら無視、textareaなら改行）
+    }
+  };
+
   return (
     <ErrorBoundary>
       <SidebarProvider>
@@ -233,12 +262,36 @@ export const Assistant = () => {
           {/* 入力エリア */}
           <div className="border-t p-4" data-testid="chat-input-area">
             <div className="max-w-3xl mx-auto">
+              {/* 送信モード選択UI */}
+              <div className="mb-2 flex gap-4 items-center">
+                <label className="flex items-center gap-1 text-sm">
+                  <input
+                    type="radio"
+                    name="send-mode"
+                    value="enter"
+                    checked={sendMode === 'enter'}
+                    onChange={() => setSendMode('enter')}
+                  />
+                  Enterで送信
+                </label>
+                <label className="flex items-center gap-1 text-sm">
+                  <input
+                    type="radio"
+                    name="send-mode"
+                    value="mod+enter"
+                    checked={sendMode === 'mod+enter'}
+                    onChange={() => setSendMode('mod+enter')}
+                  />
+                  Command/Ctrl+Enterで送信
+                </label>
+                <span className="text-xs text-gray-400">（改行: {sendMode === 'enter' ? 'Shift+Enter' : 'Enter'}）</span>
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !loading && input.trim().length > 0 && sendMessage()}
+                  onKeyDown={handleInputKeyDown}
                   className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ゲームについて質問してください..."
                   disabled={loading}

@@ -8,7 +8,7 @@ import os
 import json
 from typing import Optional, Any, Dict
 from datetime import datetime
-from pathlib import Path
+import traceback
 
 class JSONFormatter(logging.Formatter):
     """構造化JSON形式のログフォーマッター"""
@@ -49,31 +49,16 @@ class GameChatLogger:
     
     @classmethod
     def configure_logging(cls) -> None:
-        """本番環境対応のログ設定を初期化"""
+        """Cloud Run/本番環境向け: ログ設定を初期化（stdoutのみ、重複防止）"""
         if cls._configured:
             return
         
-        # 環境変数から設定を取得
         log_level = os.getenv("LOG_LEVEL", "INFO").upper()
         environment = os.getenv("ENVIRONMENT", "development")
-        
-        # ログディレクトリの設定（CI環境対応）
-        default_log_dir = "/app/logs" if environment == "production" else "./logs"
-        log_dir_path = Path(os.getenv("LOG_DIR", default_log_dir))
-        log_dir: Optional[Path] = log_dir_path
-        
-        # ログディレクトリを作成（権限エラーの場合はスキップ）
-        try:
-            log_dir_path.mkdir(parents=True, exist_ok=True)
-        except (PermissionError, OSError) as e:
-            # CI環境や権限がない場合は標準出力のみ使用
-            log_dir = None
-            logging.warning(f"Cannot create log directory {log_dir_path}: {e}. Using stdout only.")
         
         # ルートロガーの設定
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, log_level, logging.INFO))
-        
         # 既存のハンドラーをクリア
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
@@ -88,109 +73,90 @@ class GameChatLogger:
                 datefmt='%Y-%m-%d %H:%M:%S'
             )
         
-        # コンソールハンドラー
+        # stdoutのみ
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(getattr(logging, log_level, logging.INFO))
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
         
-        # 本番環境のファイルハンドラー（ログディレクトリが利用可能な場合のみ）
-        if environment == "production" and log_dir is not None:
-            try:
-                # アプリケーションログ
-                app_handler = logging.handlers.RotatingFileHandler(
-                    log_dir / "app.log",
-                    maxBytes=100 * 1024 * 1024,  # 100MB
-                    backupCount=10
-                )
-                app_handler.setLevel(logging.INFO)
-                app_handler.setFormatter(formatter)
-                root_logger.addHandler(app_handler)
-                
-                # エラーログ
-                error_handler = logging.handlers.RotatingFileHandler(
-                    log_dir / "error.log",
-                    maxBytes=50 * 1024 * 1024,  # 50MB
-                    backupCount=10
-                )
-                error_handler.setLevel(logging.ERROR)
-                error_handler.setFormatter(formatter)
-                root_logger.addHandler(error_handler)
-                
-                # アクセスログ（Gunicornが使用）
-                access_handler = logging.handlers.RotatingFileHandler(
-                    log_dir / "access.log",
-                    maxBytes=100 * 1024 * 1024,  # 100MB
-                    backupCount=10
-                )
-                access_handler.setLevel(logging.INFO)
-                access_handler.setFormatter(formatter)
-                
-                # Gunicornのアクセスログを設定
-                gunicorn_logger = logging.getLogger("gunicorn.access")
-                gunicorn_logger.addHandler(access_handler)
-            except (PermissionError, OSError) as e:
-                logging.warning(f"Cannot create file handlers: {e}. Using console output only.")
+        # ファイルハンドラーはCloud Runでは一切追加しない
+        # gunicorn/uvicornのloggerもstdoutのみ
+        for logger_name in ["gunicorn.error", "gunicorn.access", "uvicorn", "uvicorn.access", "fastapi"]:
+            logger_obj = logging.getLogger(logger_name)
+            logger_obj.handlers.clear()
+            logger_obj.addHandler(console_handler)
+            logger_obj.setLevel(logging.WARNING if logger_name != "gunicorn.error" else logging.INFO)
+            logger_obj.propagate = False
         
-        # 外部ライブラリのログレベル調整
-        logging.getLogger("uvicorn").setLevel(logging.WARNING)
-        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-        logging.getLogger("fastapi").setLevel(logging.WARNING)
-        # OpenAI SDKの冗長なDEBUGログを抑制
+        # OpenAI/Upstash等の冗長なログも抑制
         logging.getLogger("openai").setLevel(logging.WARNING)
-        # Upstash Vectorの冗長なDEBUGログを抑制
         logging.getLogger("upstash_vector").setLevel(logging.WARNING)
-        # 独自DB層のDEBUGログも抑制（必要に応じて）
         logging.getLogger("app.core.database").setLevel(logging.INFO)
-        # 必要に応じて他の冗長なロガーもここで制御可能
-        # logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
         
         cls._configured = True
     
     @classmethod
     def get_logger(cls, name: str) -> logging.Logger:
-        """統一フォーマットのロガーを取得"""
+        """統一フォーマットのロガーを取得（propagate=Falseで重複防止）"""
         cls.configure_logging()
         
         if name not in cls._loggers:
             logger = logging.getLogger(name)
+            logger.propagate = False  # 伝播禁止で重複防止
             cls._loggers[name] = logger
         
         return cls._loggers[name]
     
     @classmethod
     def log_error(cls, logger_name: str, message: str, error: Exception, details: Optional[Dict[str, Any]] = None) -> None:
-        """エラーログの統一フォーマット"""
+        """エラーログの統一フォーマット（extraはプリミティブ型のみ）"""
         logger = cls.get_logger(logger_name)
-        extra_data = {"error_type": type(error).__name__}
+        extra_data = {
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "traceback": traceback.format_exc()
+        }
         if details:
-            extra_data.update(details)
-        
+            # details内もプリミティブ型・dict・listのみ許容
+            safe_details = cls._sanitize_extra(details)
+            extra_data.update(safe_details)
         logger.error(
             f"🔴 {message}: {str(error)}",
             exc_info=True,
             extra={"extra_data": extra_data}
         )
     
+    @staticmethod
+    def _sanitize_extra(data):
+        """extraで渡す値をプリミティブ型・dict・listのみに制限"""
+        if isinstance(data, (str, int, float, bool)):
+            return data
+        elif isinstance(data, dict):
+            return {k: GameChatLogger._sanitize_extra(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [GameChatLogger._sanitize_extra(v) for v in data]
+        else:
+            return str(data)
+
     @classmethod
     def log_warning(cls, logger_name: str, message: str, details: Optional[Dict[str, Any]] = None) -> None:
         """警告ログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
-        extra = {"extra_data": details} if details else {}
+        extra = {"extra_data": cls._sanitize_extra(details)} if details else {}
         logger.warning(f"🟡 {message}", extra=extra)
     
     @classmethod
     def log_info(cls, logger_name: str, message: str, details: Optional[Dict[str, Any]] = None) -> None:
         """情報ログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
-        extra = {"extra_data": details} if details else {}
+        extra = {"extra_data": cls._sanitize_extra(details)} if details else {}
         logger.info(f"🔵 {message}", extra=extra)
     
     @classmethod
     def log_success(cls, logger_name: str, message: str, details: Optional[Dict[str, Any]] = None) -> None:
         """成功ログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
-        extra = {"extra_data": details} if details else {}
+        extra = {"extra_data": cls._sanitize_extra(details)} if details else {}
         logger.info(f"✅ {message}", extra=extra)
     
     @classmethod
@@ -199,8 +165,7 @@ class GameChatLogger:
         logger = cls.get_logger(logger_name)
         extra_data = {"category": "security"}
         if details:
-            extra_data.update(details)
-        
+            extra_data.update(cls._sanitize_extra(details))
         logger.warning(f"🔐 SECURITY: {message}", extra={"extra_data": extra_data})
     
     @classmethod
@@ -209,8 +174,7 @@ class GameChatLogger:
         logger = cls.get_logger(logger_name)
         extra_data = {"category": "performance", "duration_ms": duration * 1000}
         if details:
-            extra_data.update(details)
-        
+            extra_data.update(cls._sanitize_extra(details))
         logger.info(f"⚡ PERFORMANCE: {message} (took {duration*1000:.2f}ms)", extra={"extra_data": extra_data})
     
     @classmethod
@@ -219,15 +183,14 @@ class GameChatLogger:
         logger = cls.get_logger(logger_name)
         extra_data = {"category": "audit", "action": action, "user_id": user_id}
         if details:
-            extra_data.update(details)
-        
+            extra_data.update(cls._sanitize_extra(details))
         logger.info(f"📋 AUDIT: {action} by {user_id}", extra={"extra_data": extra_data})
     
     @classmethod
     def log_debug(cls, logger_name: str, message: str, details: Optional[Dict[str, Any]] = None) -> None:
         """デバッグログの統一フォーマット"""
         logger = cls.get_logger(logger_name)
-        extra = {"extra_data": details} if details else {}
+        extra = {"extra_data": cls._sanitize_extra(details)} if details else {}
         logger.debug(f"🟢 {message}", extra=extra)
 
 # テスト環境など、必要に応じて手動で初期化する場合のみ呼び出し

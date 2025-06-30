@@ -22,6 +22,8 @@ from .core.rate_limit import RateLimitMiddleware
 from .core.database import initialize_database, close_database, database_health_check
 from .core.logging import GameChatLogger
 from .services.storage_service import StorageService
+import threading
+from google.cloud import storage  # 追加: GCSクライアント
 
 # 通信レイヤの冗長ログ抑制
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -163,59 +165,108 @@ def increment_storage_operations_counter(operation: str, status: str) -> None:
     """ストレージ操作カウンターを増加"""
     STORAGE_OPERATIONS_COUNTER.labels(operation=operation, status=status).inc()
 
+# プロセス単位の初期化フラグ
+_lifespan_initialized = False
+_lifespan_lock = threading.Lock()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """アプリケーションのライフサイクル管理"""
-    # 起動時の処理
+    global _lifespan_initialized
     logger = logging.getLogger("startup")
     logger.info("🚀 Starting GameChat AI backend...")
-    
-    # データディレクトリの存在確認と作成
-    logger.info("Checking for data directory...")
-    try:
-        if not os.path.exists(str(settings.DATA_DIR)):
-            os.makedirs(str(settings.DATA_DIR), exist_ok=True)
-            logger.info(f"📁 Created data directory: {settings.DATA_DIR}")
-        else:
-            logger.info(f"📁 Data directory already exists: {settings.DATA_DIR}")
-    except Exception as e:
-        logger.error(f"⚠️ Could not create data directory: {e}", exc_info=True)
-    
-    # StorageServiceを初期化してデータを準備
-    logger.info("Initializing StorageService...")
-    try:
-        storage_service = StorageService()
-        logger.info("✅ StorageService initialized successfully")
-        
-        # 主要なデータファイルの可用性をチェック
-        data_status = {}
-        for file_key in ["data", "convert_data", "embedding_list", "query_data"]:
-            file_path = storage_service.get_file_path(file_key)
-            data_status[file_key] = bool(file_path)
-        
-        logger.info("📊 Data files availability status:", extra={"data_status": data_status})
-        
-        # 最低限必要なファイルの確認
-        if not (data_status.get("data") or data_status.get("convert_data")):
-            logger.warning("⚠️ No primary data files available. Application may have limited functionality.")
-        
-    except Exception as e:
-        logger.error(f"❌ StorageService initialization failed: {e}", exc_info=True)
-        logger.warning("🔄 Application will continue with limited functionality")
-    
-    # 環境情報とパス設定をログ出力
-    logger.info("📍 Environment and Path Configuration:", extra={
-        "environment": settings.ENVIRONMENT,
-        "current_directory": os.getcwd(),
-        "project_root": str(settings.PROJECT_ROOT),
-        "data_file_path": settings.DATA_FILE_PATH,
-        "converted_data_path": settings.CONVERTED_DATA_FILE_PATH,
-        "data_file_exists": os.path.exists(settings.DATA_FILE_PATH),
-        "converted_data_exists": os.path.exists(settings.CONVERTED_DATA_FILE_PATH),
-        "data_dir_exists": os.path.exists(str(settings.DATA_DIR)),
-        "data_dir_contents": os.listdir(str(settings.DATA_DIR)) if os.path.exists(str(settings.DATA_DIR)) else "N/A"
-    })
-    
+
+    # プロセス単位で初期化処理を1回だけ実行
+    with _lifespan_lock:
+        if not _lifespan_initialized:
+            # データディレクトリの存在確認と作成
+            logger.info("Checking for data directory...")
+            try:
+                logger.info(f"DATA_DIR: {settings.DATA_DIR}")
+                logger.info(f"Current UID: {os.getuid()}, EUID: {os.geteuid()}, GID: {os.getgid()}, EGID: {os.getegid()}")
+                parent_dir = os.path.dirname(str(settings.DATA_DIR)) or "/"
+                logger.info(f"Parent dir: {parent_dir}")
+                if os.path.exists(parent_dir):
+                    stat = os.stat(parent_dir)
+                    logger.info(f"Parent dir stat: mode={oct(stat.st_mode)}, uid={stat.st_uid}, gid={stat.st_gid}")
+                else:
+                    logger.warning(f"Parent dir does not exist: {parent_dir}")
+                if os.path.exists(str(settings.DATA_DIR)):
+                    stat = os.stat(str(settings.DATA_DIR))
+                    logger.info(f"DATA_DIR stat: mode={oct(stat.st_mode)}, uid={stat.st_uid}, gid={stat.st_gid}")
+                else:
+                    logger.info(f"DATA_DIR does not exist yet: {settings.DATA_DIR}")
+                if not os.path.exists(str(settings.DATA_DIR)):
+                    os.makedirs(str(settings.DATA_DIR), exist_ok=True)
+                    logger.info(f"📁 Created data directory: {settings.DATA_DIR}")
+                else:
+                    logger.info(f"📁 Data directory already exists: {settings.DATA_DIR}")
+            except Exception as e:
+                logger.error(f"⚠️ Could not create data directory: {e}", exc_info=True)
+
+            # Cloud Run環境でGCSからdata/data.jsonをダウンロード
+            data_path = None
+            if settings.ENVIRONMENT == "production":
+                bucket_name = settings.GCS_BUCKET_NAME
+                gcs_blob_path = "data/data.json"
+                local_path = "/tmp/data.json"
+                try:
+                    async def download_gcs_file():
+                        def _download():
+                            client = storage.Client()
+                            bucket = client.bucket(bucket_name)
+                            blob = bucket.blob(gcs_blob_path)
+                            if not blob.exists():
+                                raise FileNotFoundError(f"GCSファイルが存在しません: gs://{bucket_name}/{gcs_blob_path}")
+                            blob.download_to_filename(local_path)
+                        return await asyncio.to_thread(_download)
+                    await download_gcs_file()
+                    logger.info(f"✅ GCSからdata/data.jsonを/tmp/data.jsonにダウンロード完了: {local_path}")
+                    data_path = local_path
+                except Exception as e:
+                    logger.error(f"❌ GCSからのdata/data.jsonダウンロードに失敗: {e}", exc_info=True)
+                    raise
+            # StorageServiceを初期化してデータを準備
+            logger.info("Initializing StorageService...")
+            try:
+                if data_path:
+                    storage_service = StorageService(data_path=data_path)
+                else:
+                    storage_service = StorageService()
+                logger.info("✅ StorageService initialized successfully")
+                
+                # 主要なデータファイルの可用性をチェック
+                data_status = {}
+                for file_key in ["data", "convert_data", "embedding_list", "query_data"]:
+                    file_path = storage_service.get_file_path(file_key)
+                    data_status[file_key] = bool(file_path)
+                # extraの値をプリミティブ型・dict・listのみに限定
+                safe_data_status = {k: bool(v) for k, v in data_status.items()}
+                logger.info("📊 Data files availability status:", extra={"data_status": safe_data_status})
+                
+                # 最低限必要なファイルの確認
+                if not (data_status.get("data") or data_status.get("convert_data")):
+                    logger.warning("⚠️ No primary data files available. Application may have limited functionality.")
+            
+            except Exception as e:
+                logger.error(f"❌ StorageService initialization failed: {e}", exc_info=True)
+                logger.warning("🔄 Application will continue with limited functionality")
+
+            # 環境情報とパス設定をログ出力
+            safe_env = {
+                "environment": str(settings.ENVIRONMENT),
+                "current_directory": str(os.getcwd()),
+                "project_root": str(settings.PROJECT_ROOT),
+                "data_file_path": str(settings.DATA_FILE_PATH),
+                "converted_data_path": str(settings.CONVERTED_DATA_FILE_PATH),
+                "data_file_exists": bool(os.path.exists(settings.DATA_FILE_PATH)),
+                "converted_data_exists": bool(os.path.exists(settings.CONVERTED_DATA_FILE_PATH)),
+                "data_dir_exists": bool(os.path.exists(str(settings.DATA_DIR))),
+                "data_dir_contents": os.listdir(str(settings.DATA_DIR)) if os.path.exists(str(settings.DATA_DIR)) else "N/A"
+            }
+            logger.info("📍 Environment and Path Configuration:", extra=safe_env)
+
+            _lifespan_initialized = True
+
     # データベース接続プール初期化
     logger.info("Initializing database connections...")
     try:
@@ -223,7 +274,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("✅ Database connections initialized successfully")
     except Exception as e:
         logger.error(f"❌ Failed to initialize database connections: {e}", exc_info=True)
-    
+
     # キャッシュプリウォーミング（バックグラウンドで実行）
     logger.info("Starting cache prewarming task setup...")
     try:

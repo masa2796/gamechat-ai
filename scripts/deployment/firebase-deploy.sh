@@ -30,6 +30,9 @@ PROJECT_ID=${GOOGLE_CLOUD_PROJECT:-"gamechat-ai"}
 REGION="asia-northeast1"
 SERVICE_NAME="gamechat-ai-backend"
 
+# 本番環境用環境変数を明示的に設定
+export ENVIRONMENT=production
+
 # 前提条件チェック
 check_prerequisites() {
     log_info "前提条件をチェック中..."
@@ -96,26 +99,25 @@ deploy_backend() {
     
     # Docker イメージビルド & プッシュ
     log_info "Docker イメージをビルド中..."
-    docker build --platform linux/amd64 -f backend/Dockerfile -t "gcr.io/$PROJECT_ID/$SERVICE_NAME" .
+    docker build --platform linux/amd64 --build-arg BUILD_ENV=production -f backend/Dockerfile -t "gcr.io/$PROJECT_ID/$SERVICE_NAME" .
     
     log_info "Container Registry にプッシュ中..."
     docker push "gcr.io/$PROJECT_ID/$SERVICE_NAME"
     
     # Cloud Run デプロイ
     log_info "Cloud Run サービスをデプロイ中..."
-    gcloud beta run deploy gamechat-ai-backend \
-    --image gcr.io/gamechat-ai/gamechat-ai-backend \
-    --region asia-northeast1 \
+    gcloud beta run deploy "$SERVICE_NAME" \
+    --image "gcr.io/$PROJECT_ID/$SERVICE_NAME" \
+    --region "$REGION" \
     --platform managed \
     --allow-unauthenticated \
     --port 8000 \
     --memory 1Gi \
     --cpu 1 \
     --max-instances 10 \
-    --update-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest \
-    --set-env-vars ENVIRONMENT=production,LOG_LEVEL=INFO,WORKERS=1 \
+    --update-secrets BACKEND_OPENAI_API_KEY=BACKEND_OPENAI_API_KEY:latest,UPSTASH_VECTOR_REST_TOKEN=BACKEND_UPSTASH_VECTOR_REST_TOKEN:latest,BACKEND_API_KEY_PRODUCTION=BACKEND_API_KEY_PRODUCTION:latest,API_KEY_DEVELOPMENT=BACKEND_API_KEY_DEVELOPMENT:latest,API_KEY_FRONTEND=BACKEND_API_KEY_FRONTEND:latest,BACKEND_JWT_SECRET_KEY=BACKEND_JWT_SECRET_KEY:latest,BACKEND_RECAPTCHA_SECRET=BACKEND_RECAPTCHA_SECRET:latest \
+    --set-env-vars ENVIRONMENT=production,BACKEND_ENVIRONMENT=production,BACKEND_LOG_LEVEL=INFO,BACKEND_BCRYPT_ROUNDS=12,BACKEND_CORS_ORIGINS=https://gamechat-ai.web.app,GCS_BUCKET_NAME=gamechat-ai-data,GCS_PROJECT_ID=$PROJECT_ID \
     --quiet
-
     
     # Cloud Run URL 取得
     BACKEND_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)")
@@ -140,23 +142,24 @@ deploy_frontend() {
     # Firebase Hosting用環境変数を読み込む
     if [ -f ".env.firebase" ]; then
         log_info "Firebase Hosting用環境変数を読み込み中..."
-        cp .env.firebase .env.production
+        
+        # .env.firebase のすべての環境変数を export（安全な方法）
+        set -o allexport
+        source .env.firebase
+        set +o allexport
 
-        # .env.firebase から APIキーを抽出
-        FIREBASE_API_KEY=$(grep '^NEXT_PUBLIC_API_KEY=' .env.firebase | cut -d '=' -f2-)
+        FIREBASE_API_KEY=$NEXT_PUBLIC_API_KEY
     fi
+
 
     # バックエンドURLを動的に設定
     if [ -f "../.backend_url" ]; then
         BACKEND_URL=$(cat ../.backend_url)
-
-        # API URL を書き換え
-        sed -i.bak '/^NEXT_PUBLIC_API_URL=/d' .env.production
-        echo "NEXT_PUBLIC_API_URL=$BACKEND_URL" >> .env.production
-
-        # API キーも書き換え（前の値を削除し、上で読み込んだキーを使う）
-        sed -i.bak '/^NEXT_PUBLIC_API_KEY=/d' .env.production
-        echo "NEXT_PUBLIC_API_KEY=$FIREBASE_API_KEY" >> .env.production
+        # .env.production ではなく .env.firebase を直接編集
+        sed -i.bak '/^NEXT_PUBLIC_API_URL=/d' .env.firebase
+        echo "NEXT_PUBLIC_API_URL=$BACKEND_URL" >> .env.firebase
+        sed -i.bak '/^NEXT_PUBLIC_API_KEY=/d' .env.firebase
+        echo "NEXT_PUBLIC_API_KEY=$FIREBASE_API_KEY" >> .env.firebase
     fi
         
     # Next.js Firebase Hosting用ビルド
@@ -211,7 +214,7 @@ health_check() {
 cleanup() {
     log_info "一時ファイルをクリーンアップ中..."
     rm -f .backend_url
-    rm -f frontend/.env.production
+    # .env.production の削除は不要
     log_success "クリーンアップ完了"
 }
 

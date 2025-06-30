@@ -16,6 +16,7 @@ class DatabaseService:
     """通常のデータベース検索サービス（構造化データのフィルタリング）"""
     
     def __init__(self) -> None:
+        
         # 設定ファイルからデータファイルのパスを取得（後方互換性のため保持）
         self.data_path = settings.DATA_FILE_PATH
         self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
@@ -23,6 +24,11 @@ class DatabaseService:
         
         # StorageServiceを初期化
         self.storage_service = StorageService()
+        print(f"[DEBUG] settings: {settings}")
+        print(f"[DEBUG] settings type: {type(settings)}")
+        print(f"[DEBUG] hasattr(settings, 'ENVIRONMENT'): {hasattr(settings, 'ENVIRONMENT')}")
+        print(f"[DEBUG] settings.ENVIRONMENT: {getattr(settings, 'ENVIRONMENT', '属性なし')}")
+
         
         # 初期化時にパス情報をログ出力
         GameChatLogger.log_info("database_service", "DatabaseService初期化", {

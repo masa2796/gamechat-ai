@@ -8,7 +8,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 dotenv_path = project_root / 'backend' / '.env'  # backend/.envのみ参照
 load_dotenv(dotenv_path=dotenv_path)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("BACKEND_OPENAI_API_KEY")
 
 def build_text(data):
     return data.get('text', '')

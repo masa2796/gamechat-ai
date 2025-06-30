@@ -38,6 +38,7 @@ class Settings:
     
     # 環境設定
     ENVIRONMENT: str = os.getenv("BACKEND_ENVIRONMENT", "development")
+    BACKEND_ENVIRONMENT: str = os.getenv("BACKEND_ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("BACKEND_DEBUG", "true").lower() == "true"
     LOG_LEVEL: str = os.getenv("BACKEND_LOG_LEVEL", "INFO")
     
@@ -47,7 +48,9 @@ class Settings:
     RECAPTCHA_SITE: Optional[str] = os.getenv("RECAPTCHA_SITE")
     
     # OpenAI APIキー（backend/.envから読み込み）
-    OPENAI_API_KEY: Optional[str] = os.getenv("BACKEND_OPENAI_API_KEY")
+    BACKEND_OPENAI_API_KEY: Optional[str] = (
+        os.getenv("BACKEND_OPENAI_API_KEY").strip() if os.getenv("BACKEND_OPENAI_API_KEY") else None
+    )
     
     # Upstash Vector設定（backend/.envから読み込み）
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
@@ -95,9 +98,17 @@ class Settings:
     MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
     
     # データファイルパス設定
-    # プロジェクトルートを基準にパスを解決
-    BASE_DIR = str(PROJECT_ROOT)
-    DATA_DIR = os.path.join(BASE_DIR, "data")
+    # Cloud Run（production）では必ず /tmp/data を使う。環境変数が /data など不正な場合も自動補正。
+    _raw_data_dir = os.getenv("BACKEND_DATA_DIR")
+    if BACKEND_ENVIRONMENT == "production":
+        if _raw_data_dir and not _raw_data_dir.startswith("/tmp"):
+            import logging
+            logging.warning(f"[config] BACKEND_DATA_DIR='{_raw_data_dir}' はCloud Runでは無効です。/tmp/dataに強制します。")
+            DATA_DIR = "/tmp/data"
+        else:
+            DATA_DIR = _raw_data_dir or "/tmp/data"
+    else:
+        DATA_DIR = _raw_data_dir or os.path.join(str(PROJECT_ROOT), "data")
     DATA_FILE_PATH = os.path.join(DATA_DIR, "data.json")
     EMBEDDING_FILE_PATH = os.path.join(DATA_DIR, "embedding_list.jsonl")
     QUERY_DATA_FILE_PATH = os.path.join(DATA_DIR, "query_data.json")

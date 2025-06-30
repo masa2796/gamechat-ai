@@ -142,10 +142,8 @@ class RagService:
             return response
                 
         except Exception as e:
-            # エラーログを出力
+            # エラーログを出力（raiseしないのでlogger.errorのみでOK）
             logger.error(f"RAGクエリ処理中にエラーが発生: {str(e)}", exc_info=True)
-            
-            # エラーが発生した場合の簡易対応
             return {
                 "answer": f"申し訳ありませんが、「{rag_req.question}」に関する回答の処理中にエラーが発生しました。"
             }

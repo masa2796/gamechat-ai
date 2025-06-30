@@ -25,18 +25,18 @@ def check_api_keys():
     issues = []
     
     # OpenAI APIキー
-    openai_key = os.getenv("OPENAI_API_KEY")
+    openai_key = os.getenv("BACKEND_OPENAI_API_KEY")
     if not openai_key:
-        print("❌ OPENAI_API_KEY: 未設定")
-        issues.append("OPENAI_API_KEY が設定されていません")
+        print("❌ BACKEND_OPENAI_API_KEY: 未設定")
+        issues.append("BACKEND_OPENAI_API_KEY が設定されていません")
     elif openai_key in ["your_openai_api_key", "your_actual_openai_api_key_here"]:
-        print("❌ OPENAI_API_KEY: プレースホルダ値")
-        issues.append("OPENAI_API_KEY がプレースホルダ値のままです")
+        print("❌ BACKEND_OPENAI_API_KEY: プレースホルダ値")
+        issues.append("BACKEND_OPENAI_API_KEY がプレースホルダ値のままです")
     elif not openai_key.startswith("sk-"):
-        print("❌ OPENAI_API_KEY: 無効な形式")
-        issues.append("OPENAI_API_KEY の形式が正しくありません（sk-で始まる必要があります）")
+        print("❌ BACKEND_OPENAI_API_KEY: 無効な形式")
+        issues.append("BACKEND_OPENAI_API_KEY の形式が正しくありません（sk-で始まる必要があります）")
     else:
-        print(f"✅ OPENAI_API_KEY: 設定済み ({openai_key[:10]}...)")
+        print(f"✅ BACKEND_OPENAI_API_KEY: 設定済み ({openai_key[:10]}...)")
     
     # Upstash Vector URL
     upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
@@ -108,12 +108,12 @@ def provide_solutions(issues):
     print("\n💡 解決方法:")
     print("=" * 50)
     
-    if any("OPENAI_API_KEY" in issue for issue in issues):
+    if any("BACKEND_OPENAI_API_KEY" in issue for issue in issues):
         print("【OpenAI APIキー】")
         print("1. https://platform.openai.com/account/api-keys にアクセス")
         print("2. 新しいAPIキーを生成")
-        print("3. .envファイルのOPENAI_API_KEY=の後に実際のキーを設定")
-        print("   例: OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx")
+        print("3. .envファイルのBACKEND_OPENAI_API_KEY=の後に実際のキーを設定")
+        print("   例: BACKEND_OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx")
         print()
     
     if any("UPSTASH" in issue for issue in issues):
@@ -138,7 +138,7 @@ def test_api_connection():
     print("=" * 50)
     
     # OpenAI APIテスト
-    openai_key = os.getenv("OPENAI_API_KEY")
+    openai_key = os.getenv("BACKEND_OPENAI_API_KEY")
     if openai_key and not openai_key.startswith("your_"):
         try:
             import openai
