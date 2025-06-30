@@ -53,6 +53,13 @@ class Settings:
         for v in [os.getenv("BACKEND_OPENAI_API_KEY")]
     ).__next__()
     
+    @property
+    def OPENAI_API_KEY(self) -> Optional[str]:
+        """
+        サービス層やテストから参照される共通APIキーエイリアス
+        """
+        return self.BACKEND_OPENAI_API_KEY
+
     # Upstash Vector設定（backend/.envから読み込み）
     UPSTASH_VECTOR_REST_URL: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_URL")
     UPSTASH_VECTOR_REST_TOKEN: Optional[str] = os.getenv("UPSTASH_VECTOR_REST_TOKEN")

@@ -47,7 +47,7 @@ class ClassificationService:
             self.is_mocked = True
         else:
             # OpenAI クライアントを初期化
-            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
+            api_key = getattr(settings, 'BACKEND_OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
             
             # APIキーの検証
             if not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here", "sk-test_openai_key"]:

@@ -40,7 +40,7 @@ python upstash_connection.py
 ## 📋 前提条件
 
 - Python 3.8以上
-- 必要な環境変数の設定（OPENAI_API_KEY, UPSTASH_VECTOR_*）
+- 必要な環境変数の設定（BACKEND_OPENAI_API_KEY, UPSTASH_VECTOR_*）
 - データファイルの準備
 
 ## ⚠️ 注意事項

@@ -79,7 +79,7 @@ COPY --chown=app:app data/ ./data/
 ```yaml
 # Secret Manager による管理
 secrets:
-  - OPENAI_API_KEY
+  - BACKEND_OPENAI_API_KEY: OpenAI APIキー
   - UPSTASH_VECTOR_REST_URL
   - UPSTASH_VECTOR_REST_TOKEN 
   - RECAPTCHA_SECRET

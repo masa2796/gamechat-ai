@@ -63,7 +63,7 @@ gcloud run deploy gamechat-ai-backend \
 **Secret Manager設定**:
 ```bash
 # APIキー設定
-echo "your_openai_api_key" | gcloud secrets create OPENAI_API_KEY --data-file=-
+echo "your_openai_api_key" | gcloud secrets create BACKEND_OPENAI_API_KEY --data-file=-
 echo "your_upstash_url" | gcloud secrets create UPSTASH_VECTOR_REST_URL --data-file=-
 echo "your_upstash_token" | gcloud secrets create UPSTASH_VECTOR_REST_TOKEN --data-file=-
 echo "your_recaptcha_secret" | gcloud secrets create RECAPTCHA_SECRET_TEST --data-file=-
@@ -72,7 +72,7 @@ echo "your_api_key_dev" | gcloud secrets create API_KEY_DEVELOPMENT --data-file=
 # Cloud RunサービスにSecret設定
 gcloud run services update gamechat-ai-backend \
   --region=asia-northeast1 \
-  --update-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest \
+  --update-secrets BACKEND_OPENAI_API_KEY=BACKEND_OPENAI_API_KEY:latest \
   --update-secrets UPSTASH_VECTOR_REST_URL=UPSTASH_VECTOR_REST_URL:latest \
   --update-secrets UPSTASH_VECTOR_REST_TOKEN=UPSTASH_VECTOR_REST_TOKEN:latest \
   --update-secrets RECAPTCHA_SECRET_TEST=RECAPTCHA_SECRET_TEST:latest \

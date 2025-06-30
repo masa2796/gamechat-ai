@@ -50,6 +50,7 @@ steps:
         # backend用の環境変数ファイル作成
         echo "ENVIRONMENT=production" > backend/.env.production
         echo "CORS_ORIGINS=https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com" >> backend/.env.production
+        echo "BACKEND_OPENAI_API_KEY=$$BACKEND_OPENAI_API_KEY" >> backend/.env.production
         # Cloud Run用の環境変数ファイル作成（YAML形式）
         cat > cloud-run-env.yaml << EOF
         ENVIRONMENT: production
@@ -64,7 +65,7 @@ steps:
         EMBEDDING_FILE_PATH: "/app/data/embedding_list.jsonl"
         QUERY_DATA_FILE_PATH: "/app/data/query_data.json"
         EOF
-    secretEnv: ['OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN', 'RECAPTCHA_SECRET', 'API_KEY_DEVELOPMENT', 'API_KEY_PRODUCTION']
+    secretEnv: ['BACKEND_OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN', 'RECAPTCHA_SECRET', 'API_KEY_DEVELOPMENT', 'API_KEY_PRODUCTION']
 
   # バックエンドDockerイメージのビルド
   - name: 'gcr.io/cloud-builders/docker'

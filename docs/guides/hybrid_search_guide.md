@@ -287,7 +287,7 @@ data/
 echo $OPENAI_API_KEY
 
 # .envファイルの設定
-OPENAI_API_KEY=your_api_key_here
+BACKEND_OPENAI_API_KEY=your_api_key_here
 ```
 
 #### 2. テスト失敗

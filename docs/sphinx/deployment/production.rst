@@ -103,7 +103,7 @@ Google Cloud Run を使用した本番環境へのデプロイ手順と設定に
 
    ENVIRONMENT=production
    LOG_LEVEL=INFO
-   OPENAI_API_KEY=***（設定済み）
+   BACKEND_OPENAI_API_KEY=***（設定済み）
 
 デプロイ手順
 ------------
@@ -166,7 +166,7 @@ Cloud Run デプロイ
      --min-instances 0 \
      --max-instances 10 \
      --timeout 300 \
-     --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,OPENAI_API_KEY=your_api_key"
+     --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,BACKEND_OPENAI_API_KEY=your_api_key"
 
 運用・保守
 ----------
@@ -180,7 +180,7 @@ Cloud Run デプロイ
 
    gcloud run services update gamechat-ai-backend \
      --region asia-northeast1 \
-     --update-env-vars OPENAI_API_KEY=your_production_api_key
+     --update-env-vars BACKEND_OPENAI_API_KEY=your_production_api_key
 
 ログ確認
 ~~~~~~~~

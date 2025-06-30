@@ -572,7 +572,7 @@ cp .env.template backend/.env
 ```
 
 **必須設定項目**:
-- `OPENAI_API_KEY`: OpenAI APIキー
+- `BACKEND_OPENAI_API_KEY`: OpenAI APIキー
 - `UPSTASH_VECTOR_REST_URL`: Upstash Vector URL
 - `UPSTASH_VECTOR_REST_TOKEN`: Upstash Vectorトークン
 

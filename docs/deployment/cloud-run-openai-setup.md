@@ -16,11 +16,11 @@
 
 ```bash
 # OpenAI APIキーをSecret Managerに保存
-gcloud secrets create OPENAI_API_KEY --data-file=-
+gcloud secrets create BACKEND_OPENAI_API_KEY --data-file=-
 # 実際のAPIキーを入力してEnterを押す
 
 # または、ファイルから読み込み
-echo "your_openai_api_key_here" | gcloud secrets create OPENAI_API_KEY --data-file=-
+echo "your_openai_api_key_here" | gcloud secrets create BACKEND_OPENAI_API_KEY --data-file=-
 ```
 
 ### Upstash関連のシークレット（使用している場合）
@@ -45,7 +45,7 @@ PROJECT_ID="your-project-id"
 CLOUD_BUILD_SA="${PROJECT_ID}@cloudbuild.gserviceaccount.com"
 
 # シークレットへのアクセス権限を付与
-gcloud secrets add-iam-policy-binding OPENAI_API_KEY \
+gcloud secrets add-iam-policy-binding BACKEND_OPENAI_API_KEY \
     --member="serviceAccount:${CLOUD_BUILD_SA}" \
     --role="roles/secretmanager.secretAccessor"
 
@@ -71,10 +71,10 @@ steps:
       - '-c'
       - |
         echo "ENVIRONMENT=production" > backend/.env.production
-        echo "OPENAI_API_KEY=$$OPENAI_API_KEY" >> backend/.env.production
+        echo "BACKEND_OPENAI_API_KEY=$$BACKEND_OPENAI_API_KEY" >> backend/.env.production
         echo "UPSTASH_VECTOR_REST_URL=$$UPSTASH_VECTOR_REST_URL" >> backend/.env.production
         echo "UPSTASH_VECTOR_REST_TOKEN=$$UPSTASH_VECTOR_REST_TOKEN" >> backend/.env.production
-    secretEnv: ['OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN']
+    secretEnv: ['BACKEND_OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN']
 
   # Cloud Runにデプロイ
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -90,18 +90,18 @@ steps:
       '--max-instances', '10',
       '--set-env-vars', 'ENVIRONMENT=production',
       '--set-env-vars', 'LOG_LEVEL=INFO',
-      '--set-env-vars', 'OPENAI_API_KEY=$$OPENAI_API_KEY',
+      '--set-env-vars', 'BACKEND_OPENAI_API_KEY=$$BACKEND_OPENAI_API_KEY',
       '--set-env-vars', 'UPSTASH_VECTOR_REST_URL=$$UPSTASH_VECTOR_REST_URL',
       '--set-env-vars', 'UPSTASH_VECTOR_REST_TOKEN=$$UPSTASH_VECTOR_REST_TOKEN',
       '--set-env-vars', 'CORS_ORIGINS=https://YOUR_DOMAIN.web.app,https://YOUR_DOMAIN.firebaseapp.com'
     ]
-    secretEnv: ['OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN']
+    secretEnv: ['BACKEND_OPENAI_API_KEY', 'UPSTASH_VECTOR_REST_URL', 'UPSTASH_VECTOR_REST_TOKEN']
 
 # シークレットの設定
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/OPENAI_API_KEY/versions/latest
-      env: OPENAI_API_KEY
+    - versionName: projects/$PROJECT_ID/secrets/BACKEND_OPENAI_API_KEY/versions/latest
+      env: BACKEND_OPENAI_API_KEY
     - versionName: projects/$PROJECT_ID/secrets/UPSTASH_VECTOR_REST_URL/versions/latest
       env: UPSTASH_VECTOR_REST_URL
     - versionName: projects/$PROJECT_ID/secrets/UPSTASH_VECTOR_REST_TOKEN/versions/latest
@@ -141,7 +141,7 @@ gcloud run deploy gamechat-ai-backend \
   --max-instances 10 \
   --set-env-vars ENVIRONMENT=production \
   --set-env-vars LOG_LEVEL=INFO \
-  --update-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest \
+  --update-secrets BACKEND_OPENAI_API_KEY=BACKEND_OPENAI_API_KEY:latest \
   --update-secrets UPSTASH_VECTOR_REST_URL=UPSTASH_VECTOR_REST_URL:latest \
   --update-secrets UPSTASH_VECTOR_REST_TOKEN=UPSTASH_VECTOR_REST_TOKEN:latest
 ```
@@ -203,7 +203,7 @@ gcloud logs read "resource.type=cloud_run_revision AND resource.labels.service_n
 ## セキュリティ考慮事項
 
 1. **APIキーの保護**
-   - Secret Managerを使用してAPIキーを安全に保存
+   - Secret Managerを使用してAPIキーを安全に保存（BACKEND_OPENAI_API_KEY）
    - 環境変数として直接設定しない
    - GitリポジトリにAPIキーをコミットしない
 

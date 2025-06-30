@@ -59,7 +59,7 @@ GameChat AI バックエンドは、FastAPI + Python で構築されており、
 
    ENVIRONMENT=production
    LOG_LEVEL=INFO
-   OPENAI_API_KEY=***（機密情報）
+   BACKEND_OPENAI_API_KEY=***（機密情報）
 
 エンドポイント
 ~~~~~~~~~~~~~~
@@ -170,7 +170,7 @@ Step 6: Cloud Run デプロイ
      --min-instances 0 \
      --max-instances 10 \
      --timeout 300 \
-     --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,OPENAI_API_KEY=your_api_key"
+     --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,BACKEND_OPENAI_API_KEY=your_api_key"
 
 Step 7: デプロイ確認
 ~~~~~~~~~~~~~~~~~~~~~
@@ -194,7 +194,7 @@ Step 7: デプロイ確認
    # 本番用APIキーの更新
    gcloud run services update gamechat-ai-backend \
      --region asia-northeast1 \
-     --update-env-vars OPENAI_API_KEY=new_production_api_key
+     --update-env-vars BACKEND_OPENAI_API_KEY=new_production_api_key
 
 ログ監視
 ~~~~~~~~

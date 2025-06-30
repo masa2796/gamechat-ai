@@ -53,7 +53,7 @@ async def test_generate_answer_greeting(mock_openai_client):
 async def test_generate_answer_with_classification(monkeypatch):
     """分類結果を含む新しい回答生成機能のテスト"""
     # 環境変数でAPIキーを設定
-    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    monkeypatch.setenv("BACKEND_OPENAI_API_KEY", "dummy_key")
     
     llm = LLMService()
     context = [ContextItem(title="テストカード", text="これは強力なカードです。", score=0.8)]
@@ -145,7 +145,7 @@ async def test_format_classification_info():
 async def test_legacy_compatibility(monkeypatch):
     """下位互換性のテスト"""
     # 環境変数でAPIキーを設定
-    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    monkeypatch.setenv("BACKEND_OPENAI_API_KEY", "dummy_key")
     
     llm = LLMService()
     context = [ContextItem(title="レガシーテスト", text="下位互換性テスト", score=0.8)]
@@ -175,7 +175,7 @@ async def test_legacy_compatibility(monkeypatch):
 async def test_generate_greeting_response(monkeypatch):
     """挨拶応答生成のテスト"""
     # 環境変数でAPIキーを設定
-    monkeypatch.setenv("OPENAI_API_KEY", "dummy_key")
+    monkeypatch.setenv("BACKEND_OPENAI_API_KEY", "dummy_key")
     
     llm = LLMService()
     

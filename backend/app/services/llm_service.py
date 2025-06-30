@@ -21,7 +21,7 @@ class LLMService:
             self.is_mocked = True
         else:
             # OpenAI クライアントを初期化
-            api_key = getattr(settings, 'OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
+            api_key = getattr(settings, 'BACKEND_OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
             
             if not api_key or api_key in ["sk-test_openai_key", "test-api-key"]:
                 raise LLMException(

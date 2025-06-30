@@ -70,7 +70,7 @@ if [ -f "backend/.env.production" ]; then
     fi
     
     # 必須環境変数の確認
-    required_vars=("OPENAI_API_KEY" "UPSTASH_VECTOR_REST_URL" "UPSTASH_VECTOR_REST_TOKEN")
+    required_vars=("BACKEND_OPENAI_API_KEY" "UPSTASH_VECTOR_REST_URL" "UPSTASH_VECTOR_REST_TOKEN")
     for var in "${required_vars[@]}"; do
         if grep -q "^${var}=" backend/.env.production; then
             check_pass "必須環境変数 ${var} が設定されています"

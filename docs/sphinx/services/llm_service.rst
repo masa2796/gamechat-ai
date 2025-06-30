@@ -423,7 +423,7 @@ LLMサービス
    
    # サービスの初期化
    llm_service = LLMService(
-       api_key=os.getenv("OPENAI_API_KEY"),
+       api_key=os.getenv("BACKEND_OPENAI_API_KEY"),
        model="gpt-4",
        config={
            "temperature": 0.7,

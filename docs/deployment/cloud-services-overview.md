@@ -56,7 +56,7 @@ Platform: managed
 #### 2. **Secret Manager** 🔐
 - **役割**: APIキーと機密情報の安全な管理
 - **管理するSecret**:
-  - `OPENAI_API_KEY`: OpenAI APIキー
+  - `BACKEND_OPENAI_API_KEY`: OpenAI APIキー
   - `UPSTASH_VECTOR_REST_URL`: Upstash Vector DB URL
   - `UPSTASH_VECTOR_REST_TOKEN`: Upstash Vector DB Token
   - `RECAPTCHA_SECRET`: reCAPTCHA秘密キー
@@ -151,7 +151,7 @@ gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 ```bash
 # OpenAI APIキー
-echo "your_openai_api_key" | gcloud secrets create OPENAI_API_KEY --data-file=-
+echo "your_openai_api_key" | gcloud secrets create BACKEND_OPENAI_API_KEY --data-file=-
 
 # Upstash設定
 echo "your_upstash_url" | gcloud secrets create UPSTASH_VECTOR_REST_URL --data-file=-
@@ -178,7 +178,7 @@ gcloud run deploy gamechat-ai-backend \
   --cpu 1 \
   --max-instances 10 \
   --set-env-vars ENVIRONMENT=production,LOG_LEVEL=INFO,CORS_ORIGINS="https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com" \
-  --update-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest \
+  --update-secrets BACKEND_OPENAI_API_KEY=BACKEND_OPENAI_API_KEY:latest \
   --update-secrets UPSTASH_VECTOR_REST_URL=UPSTASH_VECTOR_REST_URL:latest \
   --update-secrets UPSTASH_VECTOR_REST_TOKEN=UPSTASH_VECTOR_REST_TOKEN:latest \
   --update-secrets RECAPTCHA_SECRET=RECAPTCHA_SECRET:latest \
@@ -231,7 +231,7 @@ gcloud monitoring metrics list --filter="resource.type=cloud_run_revision"
 #### Secretの更新
 ```bash
 # APIキー更新
-echo "new_api_key" | gcloud secrets versions add OPENAI_API_KEY --data-file=-
+echo "new_api_key" | gcloud secrets versions add BACKEND_OPENAI_API_KEY --data-file=-
 
 # Cloud Runサービス再起動（新しいSecretを反映）
 gcloud run services update gamechat-ai-backend --region=asia-northeast1
@@ -243,10 +243,10 @@ gcloud run services update gamechat-ai-backend --region=asia-northeast1
 gcloud secrets list
 
 # Secretバージョン確認
-gcloud secrets versions list OPENAI_API_KEY
+gcloud secrets versions list BACKEND_OPENAI_API_KEY
 
 # Secret値の確認（注意：ログに残る可能性があります）
-gcloud secrets versions access latest --secret="OPENAI_API_KEY"
+gcloud secrets versions access latest --secret="BACKEND_OPENAI_API_KEY"
 ```
 
 ### コンテナイメージ管理
@@ -316,7 +316,7 @@ gcloud artifacts docker images delete asia-northeast1-docker.pkg.dev/gamechat-ai
 #### Cloud Buildサービスアカウント権限
 ```bash
 # Secret Manager アクセス権限
-gcloud secrets add-iam-policy-binding OPENAI_API_KEY \
+gcloud secrets add-iam-policy-binding BACKEND_OPENAI_API_KEY \
   --member="serviceAccount:${PROJECT_ID}@cloudbuild.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
@@ -364,7 +364,7 @@ gcloud run services update gamechat-ai-backend \
 # 2. Secretを前のバージョンに戻す
 gcloud run services update gamechat-ai-backend \
   --region=asia-northeast1 \
-  --update-secrets OPENAI_API_KEY=OPENAI_API_KEY:PREVIOUS_VERSION
+  --update-secrets BACKEND_OPENAI_API_KEY=BACKEND_OPENAI_API_KEY:PREVIOUS_VERSION
 
 # 3. Firebase Hostingのロールバック
 firebase hosting:clone SOURCE_SITE_ID:SOURCE_VERSION_ID TARGET_SITE_ID

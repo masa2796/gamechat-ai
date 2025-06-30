@@ -19,13 +19,13 @@ fi
 echo ""
 echo "📡 OpenAI API接続テスト"
 echo "------------------------"
-if [ -z "$OPENAI_API_KEY" ] || [ "$OPENAI_API_KEY" = "your_openai_api_key" ]; then
-    echo "❌ OPENAI_API_KEYが設定されていません"
+if [ -z "$BACKEND_OPENAI_API_KEY" ] || [ "$BACKEND_OPENAI_API_KEY" = "your_openai_api_key" ]; then
+    echo "❌ BACKEND_OPENAI_API_KEYが設定されていません"
     echo "   設定方法: https://platform.openai.com/account/api-keys でAPIキーを取得"
 else
     # OpenAI API接続テスト
     response=$(curl -s -w "%{http_code}" -o /tmp/openai_test.json \
-        -H "Authorization: Bearer $OPENAI_API_KEY" \
+        -H "Authorization: Bearer $BACKEND_OPENAI_API_KEY" \
         -H "Content-Type: application/json" \
         -d '{"model":"gpt-3.5-turbo","messages":[{"role":"user","content":"test"}],"max_tokens":5}' \
         https://api.openai.com/v1/chat/completions)
