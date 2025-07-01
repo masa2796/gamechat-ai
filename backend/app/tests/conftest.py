@@ -339,10 +339,11 @@ def mock_openai_api_key(monkeypatch):
     全テストでOpenAI APIキーを無効化し、実際のAPI呼び出しを防ぐ
     autouse=Trueにより、すべてのテストで自動的に適用される
     """
-    # 環境変数のOPENAI_API_KEYを削除
+    # 環境変数のOPENAI_API_KEY/BACKEND_OPENAI_API_KEYを削除またはダミー値に
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    # configからも削除
-    monkeypatch.setattr("app.core.config.settings.OPENAI_API_KEY", None)
+    monkeypatch.setenv("BACKEND_OPENAI_API_KEY", "sk-test-dummy-key-for-testing")
+    # propertyではなく実体の変数をパッチする
+    monkeypatch.setattr("app.core.config.settings.BACKEND_OPENAI_API_KEY", None)
 
 
 # ==============================================================================
