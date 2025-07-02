@@ -40,9 +40,14 @@ export function SentryTestComponent() {
             setTestResult('❌ Sentry scope not available');
           }
         });
-      } catch (error) {
-        console.error('❌ Sentry client error:', error);
-        setTestResult('❌ Sentry client error: ' + String(error));
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error('❌ Sentry client error:', error);
+          setTestResult('❌ Sentry client error: ' + error.message);
+        } else {
+          console.error('❌ Sentry client error:', String(error));
+          setTestResult('❌ Sentry client error: ' + String(error));
+        }
       }
     };
 
@@ -213,7 +218,12 @@ export function SentryTestComponent() {
         clearTimeout(timeoutId);
         console.error('🌐 Network error:', networkError);
         
-        if (networkError.name === 'AbortError') {
+        if (
+          typeof networkError === 'object' &&
+          networkError !== null &&
+          'name' in networkError &&
+          (networkError as Record<string, unknown>).name === 'AbortError'
+        ) {
           setTestResult('❌ Network timeout - Check firewall/proxy settings');
         } else {
           setTestResult(`❌ Network error: ${String(networkError)}`);

@@ -56,24 +56,11 @@ export function useWebVitals() {
           // onINP might not be available in older versions
           console.log('onINP not available')
         }
-      }).catch(() => {
-        // web-vitalsが利用できない場合は代替実装
-        const observer = new PerformanceObserver((list) => {
-          for (const entry of list.getEntries()) {
-            if (entry.entryType === 'navigation') {
-              const navEntry = entry as PerformanceNavigationTiming
-              reportWebVitals({
-                name: 'FCP',
-                value: navEntry.loadEventEnd - navEntry.loadEventStart,
-                id: 'fallback-fcp',
-                rating: 'good'
-              })
-            }
-          }
-        })
-        
-        if ('observe' in observer) {
-          observer.observe({ entryTypes: ['navigation'] })
+      }).catch((error: unknown) => {
+        if (error instanceof Error) {
+          console.error(error);
+        } else {
+          console.error(String(error));
         }
       })
     }

@@ -107,7 +107,10 @@ export const Assistant = () => {
         recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
     
       } else if (window.grecaptcha && recaptchaReady) {
-        recaptchaToken = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: "submit" });
+        recaptchaToken = await window.grecaptcha.execute(
+          process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+          { action: "submit" }
+        );
       }
 
      

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 interface ErrorBoundaryProps {
-  error: Error & { digest?: string };
+  error: Error & { digest?: string | undefined };
   reset: () => void;
 }
 
