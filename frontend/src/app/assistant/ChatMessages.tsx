@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 export type Message = {
   role: "user" | "assistant";
@@ -11,6 +11,19 @@ export interface ChatMessagesProps {
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, loading }) => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // SSR/CSRの差異をデバッグ
+      // eslint-disable-next-line no-console
+      console.log("[ChatMessages] window object:", window);
+      // eslint-disable-next-line no-console
+      console.log("[ChatMessages] messages:", messages);
+      // loading状態も確認
+      // eslint-disable-next-line no-console
+      console.log("[ChatMessages] loading:", loading);
+    }
+  }, [messages, loading]);
+
   return (
     <div className="flex flex-col gap-2 px-2 py-4 overflow-y-auto flex-1">
       {messages.length === 0 && !loading && (

@@ -1,13 +1,5 @@
 import React from "react";
-
-export interface ChatInputProps {
-  input: string;
-  onInputChange: (value: string) => void;
-  onSend: () => void;
-  loading?: boolean;
-  sendMode: "enter" | "mod+enter";
-  onSendModeChange: (mode: "enter" | "mod+enter") => void;
-}
+import type { ChatInputProps } from "./types";
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   input,
@@ -63,6 +55,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           />
           Cmd/Ctrl+Enterで送信
         </label>
+        <span className="text-xs text-gray-400">
+          （改行: {sendMode === "enter" ? "Shift+Enter" : "Enter"}）
+        </span>
       </div>
     </div>
   );

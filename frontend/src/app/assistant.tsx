@@ -39,9 +39,16 @@ export const Assistant = () => {
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   // 送信モード: 'enter' or 'mod+enter'
-  const [sendMode, setSendMode] = useState<'enter' | 'mod+enter'>(
-    () => (typeof window !== 'undefined' && localStorage.getItem('chat-send-mode')) as 'enter' | 'mod+enter' || 'enter'
-  );
+  const [sendMode, setSendMode] = useState<'enter' | 'mod+enter'>('enter');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chat-send-mode');
+      if (saved === 'enter' || saved === 'mod+enter') {
+        setSendMode(saved);
+      }
+    }
+  }, []);
 
   // 送信モードのローカルストレージ保存
   useEffect(() => {
