@@ -112,6 +112,10 @@
 4. `components/`, `hooks/`の構成整理案のドラフト作成
 5. Tailwind共通ユーティリティ設計のたたき案作成
 6. `package.json`から未使用依存の棚卸し
+7. `useChat.ts`の実装・親コンポーネントのリファクタ（進行中）
+8. `useChat`/`ChatMessages`/`ChatInput`のユニットテスト追加・テストカバレッジ計測
+9. `tsconfig.json` strict化＆型エラー修正
+10. 構成整理・スタイル共通化・依存整理
 
 ---
 
@@ -121,7 +125,7 @@
 
 - ✅ UI表示責務の分離（`ChatMessages.tsx`, `ChatInput.tsx`の作成・props型明示）
 - ✅ 親コンポーネント（`index.tsx`）での統合
-- ⬜ ロジック責務の分離（`useChat`カスタムフック化、API通信・認証・reCAPTCHA等）
+- ✅ ロジック責務の分離（`useChat`カスタムフック化、API通信・認証・reCAPTCHA等）
 - ⬜ 型定義・テスト（`Message`型共通化済み、テスト未着手）
 
 ---
@@ -131,30 +135,32 @@
 1. **ロジック責務の分離**
    - `useChat.ts`を新規作成し、メッセージ状態・API通信・認証・reCAPTCHA等のロジックをカスタムフック化
    - `index.tsx`から状態管理・副作用ロジックを`useChat`へ移譲
-
+   - 🟡【着手中】
 2. **型安全性強化**
    - `tsconfig.json`の`strict: true`化
    - 型エラーの洗い出し・修正
    - `any`型の排除・明示
-
 3. **テスト拡充**
    - `ChatMessages`/`ChatInput`/`useChat`のユニットテスト追加
    - テストカバレッジ計測・主要ロジックのテスト網羅
-
 4. **ディレクトリ・構成整理**
    - `components/`, `hooks/`のAtomic/Featureベース整理案ドラフト作成
-
 5. **Tailwind共通ユーティリティ設計**
    - 共通クラス・ユーティリティのたたき案作成
-
 6. **依存パッケージの棚卸し**
    - `package.json`から未使用依存の洗い出し・削除
+7. **テストカバレッジ向上・E2Eテスト拡充**
+   - 主要機能のE2Eテスト追加、カバレッジ50%以上を目指す
+8. **型定義の共通化・型ガイドライン作成**
+   - `Message`型などの共通型を`types/`に集約し、型設計方針を文書化
 
 ---
 
 #### 優先度順の次アクション
 
-1. `useChat.ts`の実装・親コンポーネントのリファクタ
-2. `tsconfig.json` strict化＆型エラー修正
-3. ユニットテスト追加＆カバレッジ計測
+1. 🟡 `useChat.ts`の実装・親コンポーネントのリファクタ（着手中）
+2. `useChat`/`ChatMessages`/`ChatInput`のユニットテスト追加・カバレッジ計測
+3. `tsconfig.json` strict化＆型エラー修正
 4. 構成整理・スタイル共通化・依存整理
+5. 型定義の共通化・型ガイドライン作成
+6. E2Eテスト拡充
