@@ -184,9 +184,9 @@
      - [x] 送信ボタンの活性/非活性（テスト追加済み）
      - [x] ラジオボタンによる送信モード切替（テスト追加済み）
    - API通信
-     - [ ] メッセージ送信時のAPIリクエスト/レスポンス
-     - [ ] API失敗時のリトライやエラー表示
-     - [ ] reCAPTCHAトークン取得・認証トークン取得の分岐
+     - [x] メッセージ送信時のAPIリクエスト/レスポンス（useChat.test.tsで実装・通過）
+     - [x] API失敗時のリトライやエラー表示（useChat.test.tsで実装・通過）
+     - [x] reCAPTCHAトークン取得・認証トークン取得の分岐（useChat.test.tsで実装・通過）
 2. **テストファイルの作成**
    - `src/hooks/__tests__/useChat.test.ts`
    - `src/app/assistant/__tests__/ChatMessages.test.tsx`

@@ -148,4 +148,126 @@ describe('useChat', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
 
   });
+
+  it('APIリクエストの内容とレスポンスを正しく処理する', async () => {
+    const mockAnswer = 'APIからの応答メッセージ';
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ answer: mockAnswer }),
+    });
+    global.fetch = fetchSpy;
+
+    const { result } = renderHook(() => useChat());
+    act(() => {
+      result.current.setInput('APIリクエストテスト');
+    });
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    // fetchが正しい引数で呼ばれているか
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toMatch(/\/api\/rag\/query/);
+    expect(options.method).toBe('POST');
+    expect(options.headers['Content-Type']).toBe('application/json');
+    const body = JSON.parse(options.body);
+    expect(body.question).toBe('APIリクエストテスト');
+    expect(body.top_k).toBe(5);
+    expect(body.with_context).toBe(true);
+    expect(body.recaptchaToken).toBeDefined();
+
+    // レスポンスがmessagesに反映されているか
+    expect(result.current.messages.length).toBe(2);
+    expect(result.current.messages[0].content).toBe('APIリクエストテスト');
+    expect(result.current.messages[1].content).toBe(mockAnswer);
+  });
+
+  it('API失敗時にリトライで成功した場合、エラーメッセージの後に正常応答が追加される', async () => {
+    let callCount = 0;
+    const fetchSpy = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ error: { message: '一時的なAPIエラー' } }),
+          status: 500,
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ answer: 'リトライ成功応答' }),
+      });
+    });
+    global.fetch = fetchSpy;
+
+    const { result } = renderHook(() => useChat());
+    act(() => {
+      result.current.setInput('リトライテスト');
+    });
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+    // 1回目はエラー
+    expect(result.current.messages.length).toBe(2);
+    expect(result.current.messages[1].content).toContain('一時的なAPIエラー');
+
+    // 2回目（リトライ）
+    act(() => {
+      result.current.setInput('リトライテスト');
+    });
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+    // 2回目は成功応答
+    expect(result.current.messages.length).toBe(4);
+    expect(result.current.messages[3].content).toBe('リトライ成功応答');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('reCAPTCHA無効時はreCAPTCHAトークンが"test"でAPIリクエストされる', async () => {
+    process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA = 'true';
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ answer: 'reCAPTCHA無効応答' }),
+    });
+    global.fetch = fetchSpy;
+
+    const { result } = renderHook(() => useChat());
+    act(() => {
+      result.current.setInput('reCAPTCHA無効テスト');
+    });
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+    const [, options] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.recaptchaToken).toBe('test');
+    expect(result.current.messages[1].content).toBe('reCAPTCHA無効応答');
+  });
+
+  it('firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される', async () => {
+    const mockIdToken = 'dummy-id-token';
+    (window as any).firebaseAuth = {
+      currentUser: {
+        getIdToken: vi.fn().mockResolvedValue(mockIdToken),
+      },
+    };
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ answer: '認証トークン応答' }),
+    });
+    global.fetch = fetchSpy;
+
+    const { result } = renderHook(() => useChat());
+    act(() => {
+      result.current.setInput('認証トークンテスト');
+    });
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+    const [, options] = fetchSpy.mock.calls[0];
+    expect(options.headers.Authorization).toBe(`Bearer ${mockIdToken}`);
+    expect(result.current.messages[1].content).toBe('認証トークン応答');
+  });
 });
