@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ChatInput } from '../ChatInput';
 
@@ -53,5 +53,52 @@ describe('ChatInput', () => {
     );
     const button = screen.getByRole('button', { name: '送信' });
     expect(button).toBeDisabled();
+  });
+
+  it('ユーザーがメッセージを入力し送信できる', () => {
+    const handleInputChange = vi.fn();
+    const handleSend = vi.fn();
+    const handleSendModeChange = vi.fn();
+    render(
+      <ChatInput
+        input="テストメッセージ"
+        onInputChange={handleInputChange}
+        onSend={handleSend}
+        loading={false}
+        sendMode="enter"
+        onSendModeChange={handleSendModeChange}
+      />
+    );
+    const sendButton = screen.getByRole('button', { name: '送信' });
+    fireEvent.click(sendButton);
+    expect(handleSend).toHaveBeenCalled();
+  });
+
+  it('送信モード（Enter/Mod+Enter）の切替挙動', () => {
+    // ラッパーで状態を持たせて切り替えをテスト
+    const Wrapper = () => {
+      const [mode, setMode] = useState<'enter' | 'mod+enter'>('mod+enter');
+      const handleSendModeChange = (m: 'enter' | 'mod+enter') => setMode(m);
+      return (
+        <ChatInput
+          input="test"
+          onInputChange={() => {}}
+          onSend={() => {}}
+          loading={false}
+          sendMode={mode}
+          onSendModeChange={handleSendModeChange}
+        />
+      );
+    };
+    render(<Wrapper />);
+    const radios = screen.getAllByRole('radio');
+    // Enterで送信のラジオをクリック
+    fireEvent.click(radios[0]);
+    expect(radios[0]).toBeChecked();
+    expect(radios[1]).not.toBeChecked();
+    // Mod+Enterで送信のラジオをクリック
+    fireEvent.click(radios[1]);
+    expect(radios[1]).toBeChecked();
+    expect(radios[0]).not.toBeChecked();
   });
 });

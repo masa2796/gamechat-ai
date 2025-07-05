@@ -1,43 +1,47 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="14" failures="0" errors="0" time="0.657323917">
-    <testsuite name="src/app/assistant/__tests__/ChatInput.branch.test.tsx" timestamp="2025-07-05T04:35:13.233Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.261867875">
-        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; loading時はinputもdisabled" time="0.056482583">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; inputが空白のみの場合は送信ボタンがdisabled" time="0.046298833">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; 送信モード切替UIが正しく動作する" time="0.158072083">
+<testsuites name="vitest tests" tests="16" failures="0" errors="0" time="0.288690333">
+    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-07-05T05:44:53.617Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.018297417">
+        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.017328042">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/ChatInput.test.tsx" timestamp="2025-07-05T04:35:13.234Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.315274375">
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 入力値が反映される" time="0.081640084">
+    <testsuite name="src/app/assistant/__tests__/ChatInput.branch.test.tsx" timestamp="2025-07-05T05:44:53.620Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.085555583">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; loading時はinputもdisabled" time="0.061669542">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンが押せる" time="0.033498334">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; inputが空白のみの場合は送信ボタンがdisabled" time="0.012517625">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading時はボタンがdisabled" time="0.156598541">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-05T04:35:13.236Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.030320417">
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.017853">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.008054958">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.003323917">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; 送信モード切替UIが正しく動作する" time="0.009565458">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/useChat.error.test.ts" timestamp="2025-07-05T04:35:13.237Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.013891375">
-        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; APIエラー時にエラーメッセージがmessagesに追加される" time="0.010958167">
+    <testsuite name="src/app/assistant/__tests__/ChatInput.test.tsx" timestamp="2025-07-05T05:44:53.621Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.118174042">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 入力値が反映される" time="0.06499375">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; 認証エラー時は認証エラー文言が表示される" time="0.0021475">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンが押せる" time="0.012999042">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading時はボタンがdisabled" time="0.007361333">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ユーザーがメッセージを入力し送信できる" time="0.008973291">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信モード（Enter/Mod+Enter）の切替挙動" time="0.022842417">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-05T04:35:13.238Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.01781025">
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.013233083">
+    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-05T05:44:53.624Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.023604333">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.015839791">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.002791709">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.003104166">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.003512541">
         </testcase>
     </testsuite>
-    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-07-05T04:35:13.238Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.018159625">
-        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.01689675">
+    <testsuite name="src/app/assistant/__tests__/useChat.error.test.ts" timestamp="2025-07-05T05:44:53.629Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.021059583">
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; APIエラー時にエラーメッセージがmessagesに追加される" time="0.015965458">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; 認証エラー時は認証エラー文言が表示される" time="0.004178">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-05T05:44:53.638Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.021999375">
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.014455959">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.006539333">
         </testcase>
     </testsuite>
 </testsuites>
