@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { auth as firebaseAuth } from "@/lib/firebase";
 import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
 
 export interface Message {
@@ -75,9 +74,9 @@ export const useChat = () => {
       : "/api/rag/query";
     try {
       let idToken = "";
-      if (firebaseAuth && firebaseAuth.currentUser) {
+      if (typeof window !== "undefined" && window.firebaseAuth && window.firebaseAuth.currentUser) {
         try {
-          idToken = await firebaseAuth.currentUser.getIdToken();
+          idToken = await window.firebaseAuth.currentUser.getIdToken();
         } catch (error) {
           console.warn("Failed to get auth token:", error);
         }
@@ -85,7 +84,7 @@ export const useChat = () => {
       let recaptchaToken = "";
       if (isRecaptchaDisabled()) {
         recaptchaToken = "test";
-      } else if (window.grecaptcha && recaptchaReady) {
+      } else if (typeof window !== "undefined" && window.grecaptcha && recaptchaReady) {
         recaptchaToken = await window.grecaptcha.execute(
           process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
           { action: "submit" }
@@ -142,7 +141,7 @@ export const useChat = () => {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, recaptchaReady, sendMode]);
+  }, [input, loading, recaptchaReady]);
 
   return {
     messages,
@@ -156,3 +155,17 @@ export const useChat = () => {
     recaptchaReady
   };
 };
+
+// window.grecaptcha型定義を追加
+interface WindowWithRecaptcha extends Window {
+  grecaptcha?: {
+    execute(siteKey: string, options: { action: string }): Promise<string>;
+  };
+  firebaseAuth?: {
+    currentUser?: {
+      getIdToken(): Promise<string>;
+    };
+  };
+}
+
+declare const window: WindowWithRecaptcha;

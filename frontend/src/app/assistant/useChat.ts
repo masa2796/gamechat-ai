@@ -10,6 +10,20 @@ const isRecaptchaDisabled = () => {
   );
 };
 
+// window.grecaptcha型定義を追加
+interface WindowWithRecaptcha extends Window {
+  grecaptcha?: {
+    execute(siteKey: string, options: { action: string }): Promise<string>;
+  };
+  firebaseAuth?: {
+    currentUser?: {
+      getIdToken(): Promise<string>;
+    };
+  };
+}
+
+declare const window: WindowWithRecaptcha;
+
 export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -65,10 +79,9 @@ export const useChat = () => {
 
     try {
       let idToken = "";
-      // 認証トークン取得（firebaseAuthはグローバルで利用可能想定）
-      if (typeof window !== "undefined" && (window as any).firebaseAuth && (window as any).firebaseAuth.currentUser) {
+      if (typeof window !== "undefined" && window.firebaseAuth && window.firebaseAuth.currentUser) {
         try {
-          idToken = await (window as any).firebaseAuth.currentUser.getIdToken();
+          idToken = await window.firebaseAuth.currentUser.getIdToken();
         } catch (error) {
           console.warn("Failed to get auth token:", error);
         }
