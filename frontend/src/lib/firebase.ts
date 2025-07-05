@@ -51,8 +51,12 @@ if (shouldInitializeFirebase()) {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     console.log('Firebase initialized successfully');
-  } catch (error) {
-    console.warn('Firebase initialization failed:', error);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.warn('Firebase initialization failed:', error);
+    } else {
+      console.warn('Firebase initialization failed:', String(error));
+    }
     // エラーが発生してもアプリケーションを停止させない
     app = null;
     auth = null;
