@@ -101,4 +101,27 @@ describe('ChatInput', () => {
     expect(radios[1]).toBeChecked();
     expect(radios[0]).not.toBeChecked();
   });
+
+  it('空メッセージ送信時は送信ボタンがdisabledかつonSendが呼ばれない', () => {
+    const handleSend = vi.fn();
+    render(
+      <ChatInput
+        input="   "
+        onInputChange={() => {}}
+        onSend={handleSend}
+        loading={false}
+        sendMode="enter"
+        onSendModeChange={() => {}}
+      />
+    );
+    const button = screen.getByRole('button', { name: '送信' });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(handleSend).not.toHaveBeenCalled();
+
+    // Enterキーでの送信も発火しない
+    const inputBox = screen.getByRole('textbox');
+    fireEvent.keyDown(inputBox, { key: 'Enter', code: 'Enter' });
+    expect(handleSend).not.toHaveBeenCalled();
+  });
 });

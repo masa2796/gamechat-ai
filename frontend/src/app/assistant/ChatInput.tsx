@@ -20,8 +20,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={e => {
             if (loading) return;
             if (
-              (sendMode === "enter" && e.key === "Enter" && !e.shiftKey) ||
-              (sendMode === "mod+enter" && e.key === "Enter" && (e.metaKey || e.ctrlKey))
+              ((sendMode === "enter" && e.key === "Enter" && !e.shiftKey) ||
+                (sendMode === "mod+enter" && e.key === "Enter" && (e.metaKey || e.ctrlKey))) &&
+              input.trim().length > 0
             ) {
               e.preventDefault();
               onSend();

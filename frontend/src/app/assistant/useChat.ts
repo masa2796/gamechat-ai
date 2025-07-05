@@ -150,5 +150,7 @@ export const useChat = () => {
     sendMode,
     setSendMode,
     sendMessage,
+    recaptchaReady,
+    setRecaptchaReady // 追加
   };
 };

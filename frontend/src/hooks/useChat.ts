@@ -6,6 +6,8 @@ export interface Message {
   content: string;
 }
 
+export type SendMode = 'enter' | 'mod+enter';
+
 const isRecaptchaDisabled = () => {
   return (
     process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" ||
@@ -14,8 +16,6 @@ const isRecaptchaDisabled = () => {
   );
 };
 
-export type SendMode = 'enter' | 'mod+enter';
-
 export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -23,13 +23,13 @@ export const useChat = () => {
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<SendMode>('enter');
 
-  // Sentryタグ設定
+  // Sentry設定
   useEffect(() => {
     setSentryTag("component", "assistant");
     setSentryTag("environment", process.env.NEXT_PUBLIC_ENVIRONMENT || "development");
   }, []);
 
-  // 送信モードの初期化
+  // 送信モード初期化
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('chat-send-mode');
@@ -45,12 +45,13 @@ export const useChat = () => {
     }
   }, [sendMode]);
 
-  // reCAPTCHAスクリプトの動的ロード
+  // reCAPTCHA読み込み
   useEffect(() => {
     if (isRecaptchaDisabled()) {
       setRecaptchaReady(true);
       return;
     }
+
     if (typeof window !== "undefined" && !window.grecaptcha) {
       const script = document.createElement("script");
       script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
@@ -64,24 +65,28 @@ export const useChat = () => {
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || loading) return;
+
     const userMessage: Message = { role: "user", content: input.trim() };
-    captureUserAction("message_sent", { messageLength: input.length });
     setLoading(true);
     setInput("");
     setMessages(prev => [...prev, userMessage]);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
+    captureUserAction("message_sent", { messageLength: input.length });
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
       ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
       : "/api/rag/query";
-    try {
-      let idToken = "";
-      if (typeof window !== "undefined" && window.firebaseAuth && window.firebaseAuth.currentUser) {
-        try {
-          idToken = await window.firebaseAuth.currentUser.getIdToken();
-        } catch (error) {
-          console.warn("Failed to get auth token:", error);
-        }
+
+    let idToken = "";
+    if (typeof window !== "undefined" && window.firebaseAuth?.currentUser) {
+      try {
+        idToken = await window.firebaseAuth.currentUser.getIdToken();
+      } catch (error) {
+        console.warn("Failed to get auth token:", error);
       }
-      let recaptchaToken = "";
+    }
+
+    let recaptchaToken = "";
+    try {
       if (isRecaptchaDisabled()) {
         recaptchaToken = "test";
       } else if (typeof window !== "undefined" && window.grecaptcha && recaptchaReady) {
@@ -89,7 +94,27 @@ export const useChat = () => {
           process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
           { action: "submit" }
         );
+      } else {
+        throw new Error("reCAPTCHA未準備");
       }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error("reCAPTCHA取得失敗");
+      // 必ず reCAPTCHA取得失敗 を含むメッセージにする
+      let displayMessage = "reCAPTCHA取得失敗";
+      if (err.message && err.message !== "reCAPTCHA取得失敗") {
+        displayMessage += `: ${err.message}`;
+      }
+      captureAPIError(err, {
+        endpoint: apiUrl,
+        userMessage: userMessage.content,
+        timestamp: new Date().toISOString()
+      });
+      setMessages(prev => [...prev, { role: "assistant", content: displayMessage }]);
+      setLoading(false);
+      return;
+    }
+
+    try {
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -97,47 +122,45 @@ export const useChat = () => {
           "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           question: userMessage.content,
           top_k: 5,
           with_context: true,
-          recaptchaToken: recaptchaToken
+          recaptchaToken
         }),
         credentials: "include"
       });
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: { message: `HTTP error! status: ${res.status}` } }));
         throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
       }
+
       const data = await res.json();
-      if (data.error) {
-        throw new Error(data.error.message || "APIエラーが発生しました");
-      }
-      const botMessage: Message = { 
-        role: "assistant", 
-        content: data.answer || "エラーが発生しました" 
-      };
-      setMessages(prev => [...prev, botMessage]);
+      if (data.error) throw new Error(data.error.message || "APIエラーが発生しました");
+
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data.answer || "エラーが発生しました"
+      }]);
     } catch (error) {
-      console.error("Error:", error);
+      const err = error instanceof Error ? error : new Error("APIエラー");
+      console.error("Error:", err);
+
       let displayMessage = "エラーが発生しました。もう一度お試しください。";
-      if (error instanceof Error) {
-        if (error.message.includes("Invalid authentication credentials") || error.message.includes("401")) {
-          displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
-        } else {
-          displayMessage = error.message;
-        }
+      if (err.message.includes("Invalid authentication credentials") || err.message.includes("401")) {
+        displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
+      } else {
+        displayMessage = err.message;
       }
-      captureAPIError(error as Error, {
+
+      captureAPIError(err, {
         endpoint: apiUrl,
         userMessage: userMessage.content,
         timestamp: new Date().toISOString()
       });
-      const errorMessage: Message = { 
-        role: "assistant", 
-        content: displayMessage
-      };
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages(prev => [...prev, { role: "assistant", content: displayMessage }]);
     } finally {
       setLoading(false);
     }
@@ -152,11 +175,12 @@ export const useChat = () => {
     sendMode,
     setSendMode,
     sendMessage,
-    recaptchaReady
+    recaptchaReady,
+    setRecaptchaReady
   };
 };
 
-// window.grecaptcha型定義を追加
+// window 型拡張
 interface WindowWithRecaptcha extends Window {
   grecaptcha?: {
     execute(siteKey: string, options: { action: string }): Promise<string>;
@@ -167,5 +191,4 @@ interface WindowWithRecaptcha extends Window {
     };
   };
 }
-
 declare const window: WindowWithRecaptcha;
