@@ -129,9 +129,10 @@
   - 理由: 状態変化
   - テストで確認すべき内容例: `onChange` や `value` の連携、ラベル描画確認など
   - 実装完了: 全37テストケース追加。基本描画、Props処理、スタイル適用、イベントハンドリング、input types、制御/非制御コンポーネント、アクセシビリティ、エッジケースを網羅
-- [ ] `src/components/error-boundary.tsx`  
+- [x] `src/components/error-boundary.tsx`  
   - 理由: Catch確認
   - テストで確認すべき内容例: 子がエラーを投げたとき、fallback UIに切り替わるか
+  - 実装完了: 全24テストケース追加。エラーキャッチ、フォールバックUI表示、リセット機能、カスタムfallback、環境別エラー詳細表示、withErrorBoundary HOC、アクセシビリティ、各種エラータイプ（TypeError、null等）、ネスト・条件レンダリング等のエッジケースを網羅的にテスト
 - [ ] `src/components/app-sidebar.tsx`  
   - 理由: ロジック含む
   - テストで確認すべき内容例: 現在ページによる選択状態、ナビゲーション押下挙動
