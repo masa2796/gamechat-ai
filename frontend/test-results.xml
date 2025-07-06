@@ -1,9 +1,47 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="2" failures="0" errors="0" time="0.030364709">
-    <testsuite name="src/hooks/__tests__/use-web-vitals.test.ts" timestamp="2025-07-06T22:57:13.048Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.030364709">
-        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should register web-vitals metrics and call callback (development)" time="0.026033458">
+<testsuites name="vitest tests" tests="21" failures="0" errors="0" time="0.0305045">
+    <testsuite name="src/lib/__tests__/sentry.test.ts" timestamp="2025-07-06T23:07:48.665Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.0305045">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error with context" time="0.002705792">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should call fetch in production" time="0.003306667">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error without context" time="0.002269833">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should not capture error on server side" time="0.000187125">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action with data" time="0.001730417">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action without data" time="0.001675375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should start performance transaction" time="0.000512375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should return null on server side" time="0.000512375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function with performance span" time="0.000556541">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function without span on server side" time="0.000261833">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryUser &gt; should set user information" time="0.001649708">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with default level" time="0.002005917">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with custom level" time="0.001519125">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryTag &gt; should set tag" time="0.001598916">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryContext &gt; should set context" time="0.001569875">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should run monitoring tests in development environment" time="0.00266975">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should not run monitoring tests in production environment" time="0.000266041">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture production error with default severity" time="0.001913791">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture critical error with fatal level" time="0.001565708">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture high severity error with error level" time="0.001560541">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with default unit" time="0.00152675">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with custom unit and tags" time="0.000343375">
         </testcase>
     </testsuite>
 </testsuites>
