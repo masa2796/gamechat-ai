@@ -1,17 +1,214 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="6" failures="0" errors="0" time="0.018434084">
-    <testsuite name="src/hooks/__tests__/use-mobile.test.ts" timestamp="2025-07-06T06:18:06.442Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.018434084">
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; モバイル判定: 767px以下でtrue" time="0.010124709">
+<testsuites name="vitest tests" tests="69" failures="0" errors="0" time="2.102016043">
+    <testsuite name="src/__tests__/instrumentation-client.test.ts" timestamp="2025-07-06T06:36:09.033Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.001241791">
+        <testcase classname="src/__tests__/instrumentation-client.test.ts" name="instrumentation-client.ts &gt; onRouterTransitionStartがSentry.captureRouterTransitionStartを参照している" time="0.000613917">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; PC判定: 768px以上でfalse" time="0.001343375">
+    </testsuite>
+    <testsuite name="src/__tests__/instrumentation.test.ts" timestamp="2025-07-06T06:36:09.039Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.002313458">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register関数がエクスポートされている" time="0.000800042">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; ウィンドウ幅変更時に値が変わる" time="0.002278958">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; onRequestErrorがSentry.captureRequestErrorを参照している" time="0.000212125">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; matchMedia未定義時でも例外を投げずfalse" time="0.000823041">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=nodejsでsentry.server.configをimportする" time="0.000165667">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; addEventListenerが例外を投げても例外伝播しない" time="0.001571">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=edgeでsentry.edge.configをimportする" time="0.000206416">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; 返り値はboolean型である" time="0.001193125">
+    </testsuite>
+    <testsuite name="src/hooks/__tests__/use-mobile.test.ts" timestamp="2025-07-06T06:36:09.048Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.020827917">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; モバイル判定: 767px以下でtrue" time="0.009931">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; PC判定: 768px以上でfalse" time="0.001739958">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; ウィンドウ幅変更時に値が変わる" time="0.004477417">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; matchMedia未定義時でも例外を投げずfalse" time="0.00120575">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; addEventListenerが例外を投げても例外伝播しない" time="0.001619958">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; 返り値はboolean型である" time="0.000768541">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/structured-data.test.ts" timestamp="2025-07-06T06:36:09.052Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.002965667">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateWebAppStructuredData: 正常系" time="0.000841834">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 正常系" time="0.0002585">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 境界値（空配列）" time="0.000295459">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 正常系" time="0.000181584">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 境界値（空配列）" time="0.000054208">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; 型安全性: 型不正な引数でTypeScriptエラー（実行時はthrowしない）" time="0.000436208">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/utils.test.ts" timestamp="2025-07-06T06:36:09.059Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.0057565">
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; clsxとtailwind-mergeでクラス名を正規化する（正常系）" time="0.004385167">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 空やfalsy値は除外される" time="0.000241417">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 型安全性: ClassValue以外はTypeScriptエラー（実行時はthrowしない）" time="0.000118334">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 副作用なし: 入力配列を破壊しない" time="0.000354042">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" timestamp="2025-07-06T06:36:09.062Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.026520333">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る" time="0.016256458">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendが呼ばれたときsendMessageが呼ばれる" time="0.003128167">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる" time="0.003484917">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる" time="0.002741334">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" timestamp="2025-07-06T06:36:09.068Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.013961292">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" name="AssistantPage &gt; ChatMessagesにmessages/loadingが正しく渡る" time="0.0127675">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-06T06:36:09.069Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.021989417">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.0211195">
+            <system-err>
+Error: useChat error!
+    at useChat [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx:24:26[90m)[39m
+    at AssistantPage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/index.tsx:15:7[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;useChat error!&apos;[39m
+}
+
+The above error occurred in the &lt;AssistantPage&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, TestErrorBoundary.
+
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.test.tsx" timestamp="2025-07-06T06:36:09.069Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.029365792">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; ChatMessagesとChatInputが正しく表示される" time="0.019749041">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; useChatの返り値が空オブジェクトでもエラーにならず描画される" time="0.008734292">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/ChatInput.branch.test.tsx" timestamp="2025-07-06T06:36:09.069Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.077926417">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; loading時はinputもdisabled" time="0.054076916">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; inputが空白のみの場合は送信ボタンがdisabled" time="0.01313675">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; 送信モード切替UIが正しく動作する" time="0.009452708">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/ChatInput.test.tsx" timestamp="2025-07-06T06:36:09.073Z" hostname="MasakinoMacBook-Pro.local" tests="11" failures="0" errors="0" skipped="0" time="0.167382">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 入力値が反映される" time="0.072339542">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンが押せる" time="0.014138708">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading時はボタンがdisabled" time="0.005049917">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ユーザーがメッセージを入力し送信できる" time="0.013176167">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信モード（Enter/Mod+Enter）の切替挙動" time="0.013353">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ラジオボタンによる送信モード切替" time="0.005762584">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 空メッセージ送信時は送信ボタンがdisabledかつonSendが呼ばれない" time="0.011307875">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Enterキーで送信（sendMode: enter）" time="0.0150065">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Cmd+Enterで送信（sendMode: mod+enter）" time="0.003450583">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンの活性/非活性" time="0.007203417">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading=true時にChatInputの送信ボタンがdisabledになる" time="0.00422275">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-06T06:36:09.076Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.02718375">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.016588042">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.004382292">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.002353125">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading=true時にChatMessagesのローディングUI（送信中...）が表示される" time="0.001458">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; messagesが空配列のときChatMessagesが空状態を表示する" time="0.001510208">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.error.test.ts" timestamp="2025-07-06T06:36:09.078Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.017581208">
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; APIエラー時にエラーメッセージがmessagesに追加される" time="0.01408825">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; 認証エラー時は認証エラー文言が表示される" time="0.002392291">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-06T06:36:09.078Z" hostname="MasakinoMacBook-Pro.local" tests="9" failures="0" errors="0" skipped="0" time="0.050759709">
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.0150775">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.003594167">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIエラー時はassistantロールのエラーメッセージが追加される" time="0.003127417">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 認証失敗時はassistantロールの認証エラーメッセージが追加される" time="0.003565542">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA失敗時はassistantロールのエラーメッセージが追加される" time="0.005692208">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIリクエストの内容とレスポンスを正しく処理する" time="0.010069583">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; API失敗時にリトライで成功した場合、エラーメッセージの後に正常応答が追加される" time="0.001893167">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA無効時はreCAPTCHAトークンが&quot;test&quot;でAPIリクエストされる" time="0.001332041">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される" time="0.0048635">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-07-06T06:36:09.085Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.022435584">
+        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.021135042">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/skeleton.test.tsx" timestamp="2025-07-06T06:36:09.085Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.026861666">
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; ローディング時にスケルトンが表示される（デフォルトクラス）" time="0.019086833">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; className propsで追加クラスが反映される" time="0.002267125">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; propsの型安全性：div属性が渡せる" time="0.003986417">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/api/rag/query/__tests__/route.test.ts" timestamp="2025-07-06T06:36:09.085Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="1.586943542">
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: テスト環境で正しいレスポンスが返る" time="0.5072235">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: 本番環境で外部APIが200ならそのまま返す" time="0.001312958">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; バリデーション: queryが未指定の場合は400エラー" time="0.505873708">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 異常系: 外部APIがエラー時は500エラー" time="0.023791167">
+            <system-err>
+API route error: Error: API request failed: 502
+    at POST [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/route.ts:33:13[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:65:17
+    at [90mfile:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 外部API/DBアクセスのモック: fetch例外時も500エラー" time="0.046071583">
+            <system-err>
+API route error: Error: fetch失敗
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:73:40
+    at mockCall [90m(file:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at spy [90m(file:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mtinyspy[24m/dist/index.js:47:103[90m)[39m
+    at POST [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/route.ts:23:28[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:75:17
+    at [90mfile:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 戻り値の型安全性: answer/context/confidence型を検証" time="0.501451125">
         </testcase>
     </testsuite>
 </testsuites>
