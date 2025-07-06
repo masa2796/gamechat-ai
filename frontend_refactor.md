@@ -116,9 +116,10 @@
 - [x] `src/hooks/use-web-vitals.ts`  
   - 理由: 同上
   - テストで確認すべき内容例: `getCLS`, `getLCP` の記録を `mock` してコール確認、副作用（console.log, fetch）もspyで検証済み
-- [ ] `src/lib/firebase.ts`  
+- [x] `src/lib/firebase.ts`  
   - 理由: 非同期通信
   - テストで確認すべき内容例: `getAnalytics()` などの初期化モック、呼び出し確認
+  - 実装完了: Firebase設定・初期化・Analytics関連のテストを追加。環境変数による初期化制御、エラー処理、Analytics初期化の動作確認済み
 - [ ] `src/lib/sentry.ts`  
   - 理由: エラーログ
   - テストで確認すべき内容例: `init`, `captureException` の `spyOn` モック確認
