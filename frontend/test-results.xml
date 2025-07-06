@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="3" failures="0" errors="0" time="0.01489075">
-    <testsuite name="src/hooks/__tests__/use-pwa.test.ts" timestamp="2025-07-06T07:40:04.284Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.01489075">
-        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; 初期状態でisInstallable, isInstalledがbooleanで返る" time="0.009544625">
+<testsuites name="vitest tests" tests="2" failures="0" errors="0" time="0.034909792">
+    <testsuite name="src/hooks/__tests__/use-web-vitals.test.ts" timestamp="2025-07-06T10:06:35.331Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.034909792">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should register web-vitals metrics and call callback (development)" time="0.029921292">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; beforeinstallpromptイベントでisInstallableがtrueになる" time="0.001795458">
-        </testcase>
-        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; showInstallPromptがwindowに定義される（PWA環境のみ）" time="0.002844125">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should call fetch in production" time="0.004054291">
         </testcase>
     </testsuite>
 </testsuites>

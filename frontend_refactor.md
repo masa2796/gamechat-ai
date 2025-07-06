@@ -16,6 +16,8 @@
 - ✅ テスト観点・カバレッジレポートに基づきprops/UI/異常系も型安全に検証
 - ✅ useChatの異常系もErrorBoundaryでカバー
 - ⬆ coverageレポートでカバレッジ0%の業務ロジック・UI部品を優先してテスト追加中
+- ✅ src/hooks/use-pwa.tsのユニットテスト作成・React 19対応済み
+  - @testing-library/reactのrenderHookを利用し、環境依存の仕様も考慮したテストを追加
 
 ---
 
@@ -108,12 +110,24 @@
 ---
 
 ### 優先的にテスト追加すべきファイル一覧（2025/07/06追記）
-| ファイル                                | 理由         | テストで確認すべき内容の例                                                     |
-| ----------------------------------- | ---------- | ----------------------------------------------------------------- |
-| `src/hooks/use-pwa.ts`              | 100行あるが 0% | `beforeinstallprompt` のハンドリング、状態変化 (`isSupported`, `isInstalled`) |
-| `src/hooks/use-web-vitals.ts`       | 同上         | `getCLS`, `getLCP` の記録を `mock` してコール確認                            |
-| `src/lib/firebase.ts`               | 非同期通信      | `getAnalytics()` などの初期化モック、呼び出し確認                                 |
-| `src/lib/sentry.ts`                 | エラーログ      | `init`, `captureException` の `spyOn` モック確認                        |
-| `src/components/ui/input.tsx`       | 状態変化       | `onChange` や `value` の連携、ラベル描画確認など                                |
-| `src/components/error-boundary.tsx` | Catch確認    | 子がエラーを投げたとき、fallback UIに切り替わるか                                    |
-| `src/components/app-sidebar.tsx`    | ロジック含む     | 現在ページによる選択状態、ナビゲーション押下挙動                                          |
+- [x] `src/hooks/use-pwa.ts`  
+  - 理由: 100行あるが 0%
+  - テストで確認すべき内容例: `beforeinstallprompt` のハンドリング、状態変化 (`isSupported`, `isInstalled`)
+- [x] `src/hooks/use-web-vitals.ts`  
+  - 理由: 同上
+  - テストで確認すべき内容例: `getCLS`, `getLCP` の記録を `mock` してコール確認、副作用（console.log, fetch）もspyで検証済み
+- [ ] `src/lib/firebase.ts`  
+  - 理由: 非同期通信
+  - テストで確認すべき内容例: `getAnalytics()` などの初期化モック、呼び出し確認
+- [ ] `src/lib/sentry.ts`  
+  - 理由: エラーログ
+  - テストで確認すべき内容例: `init`, `captureException` の `spyOn` モック確認
+- [ ] `src/components/ui/input.tsx`  
+  - 理由: 状態変化
+  - テストで確認すべき内容例: `onChange` や `value` の連携、ラベル描画確認など
+- [ ] `src/components/error-boundary.tsx`  
+  - 理由: Catch確認
+  - テストで確認すべき内容例: 子がエラーを投げたとき、fallback UIに切り替わるか
+- [ ] `src/components/app-sidebar.tsx`  
+  - 理由: ロジック含む
+  - テストで確認すべき内容例: 現在ページによる選択状態、ナビゲーション押下挙動

@@ -9,13 +9,29 @@ interface WebVitalsMetric {
   rating: 'good' | 'needs-improvement' | 'poor'
 }
 
+function getEnvMode() {
+  // テスト用: globalThis.__TEST_ENV__ を最優先
+  if (typeof globalThis !== 'undefined' && (globalThis as any).__TEST_ENV__) {
+    return (globalThis as any).__TEST_ENV__
+  }
+  // Vite/Next.js両対応
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE) {
+    return import.meta.env.MODE
+  }
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) {
+    return process.env.NODE_ENV
+  }
+  return 'development'
+}
+
 export function useWebVitals() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const reportWebVitals = (metric: WebVitalsMetric) => {
+      const mode = getEnvMode()
       // 本番環境でのみ送信
-      if (process.env.NODE_ENV === 'production') {
+      if (mode === 'production') {
         fetch('/api/performance', {
           method: 'POST',
           headers: {
@@ -33,7 +49,7 @@ export function useWebVitals() {
       }
 
       // 開発環境ではコンソールに出力
-      if (process.env.NODE_ENV === 'development') {
+      if (mode === 'development') {
         console.log('Web Vitals:', metric)
       }
     }
