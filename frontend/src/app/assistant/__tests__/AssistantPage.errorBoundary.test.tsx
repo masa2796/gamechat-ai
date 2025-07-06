@@ -1,7 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
-import type { Mock } from "vitest";
 
 // ErrorBoundaryの簡易モック
 class TestErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {

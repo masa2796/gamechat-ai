@@ -12,7 +12,7 @@ global.fetch = vi.fn(() =>
     ok: true,
     json: () => Promise.resolve({ answer: 'テスト応答' }),
   })
-) as any;
+) as unknown as typeof fetch;
 
 describe('useChat', () => {
   // 環境変数を保存するための変数
@@ -25,8 +25,8 @@ describe('useChat', () => {
         ok: true,
         json: () => Promise.resolve({ answer: 'テスト応答' }),
       })
-    ) as any;
-    delete (window as any).grecaptcha;
+    ) as unknown as typeof fetch;
+    delete (window as Record<string, unknown>).grecaptcha;
 
     // 環境変数を保存
     originalEnv = process.env;
@@ -65,7 +65,7 @@ describe('useChat', () => {
   });
 
   it('APIエラー時はassistantロールのエラーメッセージが追加される', async () => {
-    (global.fetch as any) = vi.fn(() =>
+    (global.fetch as unknown as typeof fetch) = vi.fn(() =>
       Promise.resolve({
         ok: false,
         json: () => Promise.resolve({ error: { message: 'APIエラー発生' } }),
@@ -85,7 +85,7 @@ describe('useChat', () => {
   });
 
   it('認証失敗時はassistantロールの認証エラーメッセージが追加される', async () => {
-    (global.fetch as unknown) = vi.fn(() =>
+    (global.fetch as unknown as typeof fetch) = vi.fn(() =>
       Promise.resolve({
         ok: false,
         json: () => Promise.resolve({ error: { message: 'Invalid authentication credentials' } }),
@@ -115,7 +115,7 @@ describe('useChat', () => {
     (global.fetch as unknown) = fetchSpy;
 
     // grecaptcha.executeがエラーを返すようにモックする
-    (window as any).grecaptcha = {
+    (window as Record<string, unknown>).grecaptcha = {
       execute: vi.fn().mockRejectedValue(new Error('reCAPTCHA取得失敗')),
     };
 
@@ -248,7 +248,7 @@ describe('useChat', () => {
 
   it('firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される', async () => {
     const mockIdToken = 'dummy-id-token';
-    (window as any).firebaseAuth = {
+    (window as Record<string, unknown>).firebaseAuth = {
       currentUser: {
         getIdToken: vi.fn().mockResolvedValue(mockIdToken),
       },

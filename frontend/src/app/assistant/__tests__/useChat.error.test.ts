@@ -9,7 +9,7 @@ describe('useChat error handling', () => {
         ok: false,
         json: () => Promise.resolve({ error: { message: 'APIエラー' } }),
       })
-    ) as any;
+    ) as unknown as typeof fetch;
     const { result } = renderHook(() => useChat());
     act(() => {
       result.current.setInput('error test');
@@ -27,7 +27,7 @@ describe('useChat error handling', () => {
         ok: false,
         json: () => Promise.resolve({ error: { message: 'Invalid authentication credentials' } }),
       })
-    ) as any;
+    ) as unknown as typeof fetch;
     const { result } = renderHook(() => useChat());
     act(() => {
       result.current.setInput('auth error');

@@ -44,9 +44,9 @@ describe("structured-data utils", () => {
   });
 
   it("型安全性: 型不正な引数でTypeScriptエラー（実行時はthrowしない）", () => {
-    // @ts-expect-error
+    // @ts-expect-error 型不正な引数(undefined)でエラーを期待
     expect(() => generateBreadcrumbStructuredData(undefined)).toThrow();
-    // @ts-expect-error
+    // @ts-expect-error 型不正な引数(undefined)でエラーを期待
     expect(() => generateFAQStructuredData(undefined)).toThrow();
   });
 });

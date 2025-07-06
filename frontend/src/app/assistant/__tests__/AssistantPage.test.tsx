@@ -31,7 +31,7 @@ describe("AssistantPage", () => {
     expect(screen.getByTestId("chat-input")).toBeInTheDocument();
   });
   it("useChatの返り値が空オブジェクトでもエラーにならず描画される", () => {
-    vi.spyOn(useChatModule, "useChat").mockReturnValue({} as any);
+    vi.spyOn(useChatModule, "useChat").mockReturnValue({} as unknown as ReturnType<typeof useChat>);
     expect(() => {
       render(<AssistantPage />);
     }).not.toThrow();
