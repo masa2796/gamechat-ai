@@ -1,23 +1,29 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="9" failures="0" errors="0" time="0.037505292">
-    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-05T10:04:46.675Z" hostname="MasakinoMacBook-Pro.local" tests="9" failures="0" errors="0" skipped="0" time="0.037505292">
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.015013542">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.003647541">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIエラー時はassistantロールのエラーメッセージが追加される" time="0.003654416">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 認証失敗時はassistantロールの認証エラーメッセージが追加される" time="0.0019985">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA失敗時はassistantロールのエラーメッセージが追加される" time="0.00407375">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIリクエストの内容とレスポンスを正しく処理する" time="0.00187675">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; API失敗時にリトライで成功した場合、エラーメッセージの後に正常応答が追加される" time="0.002412667">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA無効時はreCAPTCHAトークンが&quot;test&quot;でAPIリクエストされる" time="0.001088584">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される" time="0.002689625">
+<testsuites name="vitest tests" tests="1" failures="0" errors="0" time="0.023143917">
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-06T05:17:40.066Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.023143917">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.022304875">
+            <system-err>
+Error: useChat error!
+    at useChat [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx:24:26[90m)[39m
+    at AssistantPage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/index.tsx:15:7[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;useChat error!&apos;[39m
+}
+
+The above error occurred in the &lt;AssistantPage&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, TestErrorBoundary.
+
+
+            </system-err>
         </testcase>
     </testsuite>
 </testsuites>

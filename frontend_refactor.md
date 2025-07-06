@@ -219,3 +219,79 @@
 4. reCAPTCHA・認証トークン取得分岐のテスト追加
 
 ---
+
+#### カバレッジレポートから追加が必要なテスト（優先度付きタスクリスト）
+
+##### 【優先度：高】
+- [ ] **app/assistant/index.tsx のユニットテスト追加**
+    - 親コンポーネントとしての統合動作、子コンポーネント連携、props受け渡し、エラー時の挙動
+- [ ] **app/api/rag/query/route.ts のAPIテスト追加**
+    - APIリクエスト/レスポンス、バリデーション・異常系のテスト
+- [ ] **hooks/use-mobile.ts のユニットテスト追加**
+    - モバイル判定ロジックの正常系・異常系
+
+##### 【優先度：中】
+- [ ] **components/ui/skeleton.tsx のユニットテスト追加**
+    - スケルトン表示の有無、propsの型安全性
+- [ ] **lib/structured-data.ts, utils.ts のユニットテスト追加**
+    - ユーティリティ関数の正常系・異常系
+
+##### 【優先度：低】
+- [ ] **instrumentation-client.ts, instrumentation.ts のユニットテスト追加**
+    - 主要な関数・エクスポートのテスト
+
+---
+
+※ coverageレポートでカバレッジ0%のファイルは、設定ファイルや型定義・ビルド生成物を除き、上記のような業務ロジック・UI部品を優先してテスト追加してください。
+
+---
+
+### AssistantPage（index.tsx）ユニットテスト進捗（2025/07/06時点）
+
+- ✅ AssistantPage（index.tsx）レンダリング時にChatMessagesとChatInputが正しく表示される
+- ✅ ChatMessagesにmessages/loadingが正しく渡る
+- ✅ ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る
+- ✅ useChatの返り値が空の場合でもエラーにならず描画される
+- ✅ ChatInputでonSendが呼ばれたときsendMessageが呼ばれる
+- ✅ ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる
+- ✅ ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる
+- ✅ loading=true時にChatInput/ChatMessagesのローディングUIが表示される
+- ✅ messagesが空配列のときChatMessagesが空状態を表示する
+- ✅ 異常系：useChatがthrowした場合にエラーが伝播する（ErrorBoundaryでキャッチできる）
+
+---
+
+#### 【進捗まとめ】
+- AssistantPage（index.tsx）周辺のユニットテストは全観点で網羅・通過
+- テスト観点・カバレッジレポートに基づき、props受け渡し・UI・異常系も含めて型安全に検証済み
+- 主要なUI部品（ChatMessages/ChatInput）も個別テスト済み
+- useChatの異常系もErrorBoundaryでカバー
+
+---
+
+#### 【次の優先タスク】
+
+1. 🟡 app/api/rag/query/route.ts のAPIテスト追加
+   - APIリクエスト/レスポンス、バリデーション・異常系
+2. 🟡 hooks/use-mobile.ts のユニットテスト追加
+   - モバイル判定ロジックの正常系・異常系
+3. 🟡 components/ui/skeleton.tsx のユニットテスト追加
+   - スケルトン表示の有無、propsの型安全性
+4. 🟡 lib/structured-data.ts, utils.ts のユニットテスト追加
+   - ユーティリティ関数の正常系・異常系
+5. ⚪ instrumentation-client.ts, instrumentation.ts のユニットテスト追加
+   - 主要な関数・エクスポートのテスト
+
+---
+
+#### 【全体進捗】
+- AssistantPage/ChatMessages/ChatInputのテストは完了
+- coverageレポートでカバレッジ0%の業務ロジック・UI部品を優先してテスト追加中
+- テスト観点・進捗は本ファイルで随時管理
+
+---
+
+#### 【備考】
+- テストは@testing-library/react + vitest形式、型はtypes.tsを参照し厳密に管理
+- 進捗・観点の追加/修正は随時反映
+- カバレッジ50%以上・主要ロジック網羅を目標

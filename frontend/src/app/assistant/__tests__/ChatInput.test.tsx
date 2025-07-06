@@ -244,4 +244,19 @@ describe('ChatInput', () => {
     button = screen.getByRole('button', { name: '送信' });
     expect(button).toBeDisabled();
   });
+
+  it("loading=true時にChatInputの送信ボタンがdisabledになる", () => {
+    render(
+      <ChatInput
+        input="test"
+        onInputChange={() => {}}
+        onSend={() => {}}
+        loading={true}
+        sendMode="enter"
+        onSendModeChange={() => {}}
+      />
+    );
+    const button = screen.getByRole('button', { name: '送信' });
+    expect(button).toBeDisabled();
+  });
 });

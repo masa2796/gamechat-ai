@@ -24,4 +24,14 @@ describe('ChatMessages', () => {
     render(<ChatMessages messages={[]} loading={true} />);
     expect(screen.getByText('送信中...')).toBeInTheDocument();
   });
+
+  it('loading=true時にChatMessagesのローディングUI（送信中...）が表示される', () => {
+    render(<ChatMessages messages={[]} loading={true} />);
+    expect(screen.getByText('送信中...')).toBeInTheDocument();
+  });
+
+  it('messagesが空配列のときChatMessagesが空状態を表示する', () => {
+    render(<ChatMessages messages={[]} loading={false} />);
+    expect(screen.getByText('メッセージはまだありません')).toBeInTheDocument();
+  });
 });

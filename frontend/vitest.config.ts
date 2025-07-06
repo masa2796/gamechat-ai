@@ -15,6 +15,17 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html"],
       reportsDirectory: "./coverage",
+      exclude: [
+        "**/*.config.{js,ts}",
+        "**/out/**",
+        "**/public/**",
+        "**/*.d.ts",
+        "**/node_modules/**",
+        "**/src/types/**",
+        ".next/**",
+        "vendor-chunks/**",
+        "tests/e2e/**"
+      ]
     },
     reporters: ['default', 'junit'],
     outputFile: {
