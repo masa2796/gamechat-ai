@@ -125,9 +125,10 @@
   - 理由: エラーログ
   - テストで確認すべき内容例: `init`, `captureException` の `spyOn` モック確認
   - 実装完了: 全21テストケース追加。APIエラー報告、ユーザーアクション記録、パフォーマンス測定、エラー監視、メトリクス記録の動作確認済み。環境分岐・サーバーサイド処理・モック検証も網羅
-- [ ] `src/components/ui/input.tsx`  
+- [x] `src/components/ui/input.tsx`  
   - 理由: 状態変化
   - テストで確認すべき内容例: `onChange` や `value` の連携、ラベル描画確認など
+  - 実装完了: 全37テストケース追加。基本描画、Props処理、スタイル適用、イベントハンドリング、input types、制御/非制御コンポーネント、アクセシビリティ、エッジケースを網羅
 - [ ] `src/components/error-boundary.tsx`  
   - 理由: Catch確認
   - テストで確認すべき内容例: 子がエラーを投げたとき、fallback UIに切り替わるか
