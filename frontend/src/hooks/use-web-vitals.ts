@@ -11,13 +11,11 @@ interface WebVitalsMetric {
 
 function getEnvMode() {
   // テスト用: globalThis.__TEST_ENV__ を最優先
-  if (typeof globalThis !== 'undefined' && (globalThis as any).__TEST_ENV__) {
-    return (globalThis as any).__TEST_ENV__
+  const globalWithTestEnv = globalThis as typeof globalThis & { __TEST_ENV__?: string }
+  if (typeof globalThis !== 'undefined' && globalWithTestEnv.__TEST_ENV__) {
+    return globalWithTestEnv.__TEST_ENV__
   }
-  // Vite/Next.js両対応
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE) {
-    return import.meta.env.MODE
-  }
+  // Next.js環境では process.env.NODE_ENV を使用
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) {
     return process.env.NODE_ENV
   }

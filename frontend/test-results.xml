@@ -1,47 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="21" failures="0" errors="0" time="0.055475958">
-    <testsuite name="src/lib/__tests__/firebase.test.ts" timestamp="2025-07-06T22:48:30.168Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.055475958">
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in CI environment" time="0.016605375">
+<testsuites name="vitest tests" tests="2" failures="0" errors="0" time="0.030364709">
+    <testsuite name="src/hooks/__tests__/use-web-vitals.test.ts" timestamp="2025-07-06T22:57:13.048Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.030364709">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should register web-vitals metrics and call callback (development)" time="0.026033458">
         </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in test environment" time="0.002174708">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization on server-side" time="0.00118675">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy API key" time="0.001242625">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with Dummy API key (capital D)" time="0.000947667">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy project ID" time="0.001366584">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with missing required fields" time="0.001240292">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should initialize Firebase successfully with valid configuration" time="0.001517875">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should use existing app when already initialized" time="0.001246417">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle initialization errors gracefully" time="0.001443">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle non-Error exceptions gracefully" time="0.001168125">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should export all required Firebase objects" time="0.001012">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should maintain consistency between auth exports" time="0.00071925">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should initialize Analytics when measurementId is provided" time="0.011302209">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should skip Analytics initialization when measurementId is not provided" time="0.001775458">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics initialization when not supported" time="0.002378084">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics support check errors" time="0.002504791">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should have initAnalytics function available" time="0.001274791">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when not supported" time="0.000718417">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when config is invalid" time="0.000959417">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports with Analytics &gt; should export Analytics-related objects" time="0.0011095">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should call fetch in production" time="0.003306667">
         </testcase>
     </testsuite>
 </testsuites>

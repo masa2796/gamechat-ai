@@ -116,6 +116,7 @@
 - [x] `src/hooks/use-web-vitals.ts`  
   - 理由: 同上
   - テストで確認すべき内容例: `getCLS`, `getLCP` の記録を `mock` してコール確認、副作用（console.log, fetch）もspyで検証済み
+  - 修正完了: `import.meta.env.MODE`のNext.jsビルドエラーを修正し、環境判定ロジックを安全に実装済み
 - [x] `src/lib/firebase.ts`  
   - 理由: 非同期通信
   - テストで確認すべき内容例: `getAnalytics()` などの初期化モック、呼び出し確認
