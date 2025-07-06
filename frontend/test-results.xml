@@ -1,29 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="1" failures="0" errors="0" time="0.023143917">
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-06T05:17:40.066Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.023143917">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.022304875">
-            <system-err>
-Error: useChat error!
-    at useChat [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx:24:26[90m)[39m
-    at AssistantPage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/index.tsx:15:7[90m)[39m
-    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
-    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
-    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
-    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
-    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
-    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
-    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
-    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m {
-  [stack]: [36m[Getter/Setter][39m,
-  [message]: [32m&apos;useChat error!&apos;[39m
-}
-
-The above error occurred in the &lt;AssistantPage&gt; component.
-
-React will try to recreate this component tree from scratch using the error boundary you provided, TestErrorBoundary.
-
-
-            </system-err>
+<testsuites name="vitest tests" tests="6" failures="0" errors="0" time="0.018434084">
+    <testsuite name="src/hooks/__tests__/use-mobile.test.ts" timestamp="2025-07-06T06:18:06.442Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.018434084">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; モバイル判定: 767px以下でtrue" time="0.010124709">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; PC判定: 768px以上でfalse" time="0.001343375">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; ウィンドウ幅変更時に値が変わる" time="0.002278958">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; matchMedia未定義時でも例外を投げずfalse" time="0.000823041">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; addEventListenerが例外を投げても例外伝播しない" time="0.001571">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; 返り値はboolean型である" time="0.001193125">
         </testcase>
     </testsuite>
 </testsuites>

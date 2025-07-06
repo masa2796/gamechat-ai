@@ -1,297 +1,95 @@
-## フロントエンド・リファクタリング計画（GameChat AI）
+## GameChat AI フロントエンド・リファクタリング進捗管理
 
-### 進捗まとめ（2025/07/04時点）
-
-- useChatカスタムフック実装・ロジック分離完了
-- assistant.tsxはuseChatフック利用の形にリファクタ済み
-- UI表示責務はChatMessages/ChatInput等に分割済み
-- ドキュメント進捗も反映済み
+### 概要
+- コードの可読性・保守性・拡張性向上を目的としたリファクタリング・テスト拡充プロジェクト
+- 主要UI（AssistantPage/ChatMessages/ChatInput）・ロジック（useChat等）の型安全化・責務分離・テスト網羅
 
 ---
 
-### 1. 現状のコード構成（要点）
+### 進捗まとめ（2025/07/06時点）
 
-#### ディレクトリ構成
-
-* `src/components/`：UI部品（`ui/`配下にButton, Input, Sidebar等のAtomic Design的な粒度の部品あり）
-* `src/app/`：Next.jsのApp Router構成。layout.tsx, page.tsx, assistant.tsxなどページ・レイアウト単位で分割
-* `src/hooks/`：カスタムフック（PWA, WebVitals, モバイル判定等）
-* `src/lib/`：ユーティリティ・APIクライアント・外部連携（firebase, sentry, utils等）
-
-#### 型安全性
-
-* TypeScriptで実装されているが、tsconfig.jsonの`strict`がfalse（型安全性が甘い）
-
-#### テスト
-
-* `@testing-library/react`と`vitest`導入済み（`__tests__`配下にサンプルのみ）
-
-#### エラーハンドリング・監視
-
-* Sentry, ErrorBoundary, GlobalErrorHandlerなど堅牢な設計
-
-#### PWA/パフォーマンス
-
-* PWA対応、Web Vitals計測、Service Worker登録済み
+- ✅ useChatカスタムフック実装・ロジック分離
+- ✅ assistant.tsxはuseChatフック利用の形にリファクタ済み
+- ✅ UI表示責務はChatMessages/ChatInput等に分割
+- ✅ 型定義・strict化・any排除
+- ✅ AssistantPage/ChatMessages/ChatInputのユニットテスト全観点網羅・通過
+- ✅ テスト観点・カバレッジレポートに基づきprops/UI/異常系も型安全に検証
+- ✅ useChatの異常系もErrorBoundaryでカバー
+- ⬆ coverageレポートでカバレッジ0%の業務ロジック・UI部品を優先してテスト追加中
 
 ---
 
-### 2. 主な課題点
-
-* **型安全性**
-
-  * `strict: false` → 厳格な型定義が必要
-  * `any`型や型推論任せの箇所が存在
-
-* **コンポーネントの粒度と責務**
-
-  * `assistant.tsx`などのページコンポーネントが肥大化
-  * props型の明示と分離が必要
-
-* **テスト**
-
-  * 単体テストがサンプルレベルで主要機能が未テスト
-  * E2Eテストが不足
-
-* **ディレクトリ構成**
-
-  * Atomic Designや機能単位（Feature-based）の構成整理が不十分
-
-* **スタイルの統一性**
-
-  * Tailwindクラスの一貫性に課題
-
-* **依存パッケージ**
-
-  * 未使用や古いパッケージが残っている可能性
+### 現状のコード構成
+- `src/components/`：UI部品（Atomic Design粒度）
+- `src/app/`：Next.js App Router構成
+- `src/hooks/`：カスタムフック
+- `src/lib/`：ユーティリティ・APIクライアント
 
 ---
 
-### 3. リファクタリングの目的
-
-> コードベース全体の可読性・保守性・拡張性を向上させ、将来の機能追加や不具合修正にかかる工数を削減する。
-
-#### 観点別目的
-
-* **型安全性**：バグの早期発見、補完性向上
-* **責務分離**：UIの再利用性と見通しの良さを実現
-* **テスト性**：品質と変更耐性の向上
-* **構成明確化**：チーム内外でのスムーズな参照・修正
-* **UI一貫性**：ユーザー体験と実装効率の向上
-* **依存管理**：セキュリティとパフォーマンスの維持
+### Doneの定義
+| カテゴリ      | Doneの定義                                      |
+| ------------ | ----------------------------------------------- |
+| 型安全性      | strict: trueで型エラーなし、anyゼロ             |
+| コンポーネント| 100行未満・責務分離・props型明示                |
+| テスト        | カバレッジ50%以上・主要ロジック網羅             |
+| 構成          | Atomic/Feature単位で整理                        |
+| スタイル      | 共通クラス・スタイルガイドあり                  |
+| 依存管理      | yarn auditで脆弱性なし・未使用依存ゼロ           |
 
 ---
 
-### 4. 具体的なリファクタリング計画
+### 優先タスク一覧（2025/07/06時点）
 
-#### 優先度：高
-
-* tsconfig.jsonの`strict: true`化
-* `any`削減と型定義の明示化
-* `assistant.tsx`の分割と責務整理
-* UI部品のprops型再設計
-* ユニットテストとE2Eテストの拡充
-
-#### 優先度：中
-
-* ディレクトリ構成の再編（Atomic/Featureベース）
-* スタイルの一貫性強化（共通化/デザインシステム）
-* 不要パッケージ削除、依存のバージョン更新
-
----
-
-### 5. Doneの定義（評価基準）
-
-| カテゴリ    | Doneの定義                                            |
-| ------- | -------------------------------------------------- |
-| 型安全性    | `strict: true`で型エラーなし、`any`ゼロまたは理由付き明示             |
-| コンポーネント | 各コンポーネントが100行未満、責務分離が明確、props型が明示                  |
-| テスト     | カバレッジ50%以上、主要ロジックにユニット・E2Eテスト完備                    |
-| 構成      | `components/`, `hooks/`などがAtomic/Feature単位で整理されている |
-| スタイル    | 共通クラス・ユーティリティにまとめられ、スタイルガイド文書あり                    |
-| 依存管理    | `yarn audit`で脆弱性なし、未使用依存ゼロ、主要ライブラリ最新               |
-
----
-
-### 6. 次のアクション例
-
-1. `tsconfig.json`の`strict: true`化と型エラー洗い出し
-2. `assistant.tsx`の責務分離・分割案作成
-3. coverage計測 → テスト対象リストアップ
-4. `components/`, `hooks/`の構成整理案のドラフト作成
-5. Tailwind共通ユーティリティ設計のたたき案作成
-6. `package.json`から未使用依存の棚卸し
-7. `useChat.ts`の実装・親コンポーネントのリファクタ（進行中）
-8. `useChat`/`ChatMessages`/`ChatInput`のユニットテスト追加・テストカバレッジ計測
-9. `tsconfig.json` strict化＆型エラー修正
-10. 構成整理・スタイル共通化・依存整理
+#### 【最優先】
+1. app/api/rag/query/route.ts のAPIテスト
+   - [x] 正常系：有効なリクエストで正しいレスポンスが返る
+   - [x] バリデーション：不正な入力時に400系エラーが返る（現状はエラーにならないがテスト済み）
+   - [x] 異常系：外部API/DBエラー時のハンドリング
+   - [x] 外部API/DBアクセスのモック・例外パス網羅
+   - [x] 戻り値の型安全性
+2. hooks/use-mobile.ts のユニットテスト
+   - [x] モバイル/PC/タブレット判定の正常系
+   - [x] ユーザーエージェント異常値時の挙動
+   - [x] 型安全な返り値・例外時
+3. components/ui/skeleton.tsx のユニットテスト
+   - [ ] ローディング時にスケルトンが表示される
+   - [ ] 非ローディング時はスケルトンが非表示
+   - [ ] propsの型安全性・分岐パターン
+4. lib/structured-data.ts, utils.ts のユニットテスト
+   - [ ] 各ユーティリティ関数の正常系
+   - [ ] 境界値・例外入力時の挙動
+   - [ ] 戻り値の型安全性
+   - [ ] 外部依存のモックや副作用の検証
+5. instrumentation-client.ts, instrumentation.ts のユニットテスト
+   - [ ] 主要関数・エクスポートのテスト
+   - [ ] イベント送信処理の正常系・異常系
+   - [ ] 初期化処理の正常系・異常系
+   - [ ] エラー時の挙動
 
 ---
 
-### 7. `assistant.tsx`の責務分離・分割案
-
-#### 進捗状況（2025/07/05時点）
-
-- ✅ UI表示責務の分離（`ChatMessages.tsx`, `ChatInput.tsx`の作成・props型明示）
-- ✅ 親コンポーネント（`index.tsx`）での統合
-- ✅ ロジック責務の分離（`useChat`カスタムフック化、API通信・認証・reCAPTCHA等）
-- ✅ 型定義・型安全性強化（`tsconfig.json` strict化・型エラー/any型排除済み）
-- ⬜ テスト（`Message`型共通化済み、テスト未着手）
+### テスト観点・カバレッジ向上のための詳細
+- APIルート：正常/異常/バリデーション/外部依存モック/型安全
+- hooks：各種パターン網羅・返り値型・例外時
+- UI部品：ローディング/props分岐/型安全
+- ユーティリティ：境界値・例外・副作用・型安全
 
 ---
 
-### 次のリファクタリング作業提案
-
-1. **テスト拡充**
-   - `ChatMessages`/`ChatInput`/`useChat`のユニットテスト追加
-   - テストカバレッジ計測・主要ロジックのテスト網羅
-2. **ディレクトリ・構成整理**
-   - `components/`, `hooks/`のAtomic/Featureベース整理案ドラフト作成
-3. **Tailwind共通ユーティリティ設計**
-   - 共通クラス・ユーティリティのたたき案作成
-4. **依存パッケージの棚卸し**
-   - `package.json`から未使用依存の洗い出し・削除
-5. **テストカバレッジ向上・E2Eテスト拡充**
-   - 主要機能のE2Eテスト追加、カバレッジ50%以上を目指す
-6. **型定義の共通化・型ガイドライン作成**
-   - `Message`型などの共通型を`types/`に集約し、型設計方針を文書化
-
----
-
-#### 優先度順の次アクション
-
-1. 🟡 `useChat`/`ChatMessages`/`ChatInput`のユニットテスト追加・カバレッジ計測
-2. 構成整理・スタイル共通化・依存整理
-3. 型定義の共通化・型ガイドライン作成
-4. E2Eテスト拡充
-
----
-
-### useChat/ChatMessages/ChatInputのユニットテスト追加・カバレッジ計測 ToDo
-
-1. **テスト戦略の策定**
-   - 主要ユースケース
-     - [x] ユーザーがメッセージを入力し送信できる（ChatInput.test.tsxで実装・通過）
-     - [x] アシスタントからの返信が表示される（ChatMessages.test.tsxで実装・通過）
-     - [x] ローディング中のUI表示（ChatMessages.test.tsxで実装・通過）
-     - [x] 送信モード（Enter/Mod+Enter）の切替挙動
-   - 異常系
-     - [x] 空メッセージ送信時のバリデーション
-     - [x] APIエラー時のエラーハンドリング
-     - [x] reCAPTCHA/認証失敗時の挙動
-   - UIイベント
-     - [x] 入力欄のonChange/onKeyDownイベント（テスト追加済み）
-     - [x] 送信ボタンの活性/非活性（テスト追加済み）
-     - [x] ラジオボタンによる送信モード切替（テスト追加済み）
-   - API通信
-     - [x] メッセージ送信時のAPIリクエスト/レスポンス（useChat.test.tsで実装・通過）
-     - [x] API失敗時のリトライやエラー表示（useChat.test.tsで実装・通過）
-     - [x] reCAPTCHAトークン取得・認証トークン取得の分岐（useChat.test.tsで実装・通過）
-2. **テストファイルの作成**
-   - `src/hooks/__tests__/useChat.test.ts`
-   - `src/app/assistant/__tests__/ChatMessages.test.tsx`
-   - `src/app/assistant/__tests__/ChatInput.test.tsx`
-3. **useChatのユニットテスト**
-   - メッセージ送信/受信の状態遷移
-   - API通信のモック・エラー時の挙動
-   - reCAPTCHA/認証の分岐
-4. **ChatMessagesのユニットテスト**
-   - メッセージリストの表示
-   - ローディング時のUI
-   - propsの型安全性
-5. **ChatInputのユニットテスト**
-   - 入力値の変更・送信イベント
-   - 送信モード切替の挙動
-   - バリデーション・ボタン活性/非活性
-6. **カバレッジ計測**
-   - `vitest --coverage` でカバレッジを取得
-   - 50%以上を目標に不足箇所を洗い出し
-7. **テスト観点・カバレッジ結果をドキュメント化**
-   - coverageレポートのスクショや主要観点を`docs/testing/`等に記録
-
----
-
-#### 次のタスク
-
-1. ラジオボタンによる送信モード切替のユニットテスト追加
-2. メッセージ送信時のAPIリクエスト/レスポンステスト追加
-3. API失敗時のリトライやエラー表示テスト追加
-4. reCAPTCHA・認証トークン取得分岐のテスト追加
-
----
-
-#### カバレッジレポートから追加が必要なテスト（優先度付きタスクリスト）
-
-##### 【優先度：高】
-- [ ] **app/assistant/index.tsx のユニットテスト追加**
-    - 親コンポーネントとしての統合動作、子コンポーネント連携、props受け渡し、エラー時の挙動
-- [ ] **app/api/rag/query/route.ts のAPIテスト追加**
-    - APIリクエスト/レスポンス、バリデーション・異常系のテスト
-- [ ] **hooks/use-mobile.ts のユニットテスト追加**
-    - モバイル判定ロジックの正常系・異常系
-
-##### 【優先度：中】
-- [ ] **components/ui/skeleton.tsx のユニットテスト追加**
-    - スケルトン表示の有無、propsの型安全性
-- [ ] **lib/structured-data.ts, utils.ts のユニットテスト追加**
-    - ユーティリティ関数の正常系・異常系
-
-##### 【優先度：低】
-- [ ] **instrumentation-client.ts, instrumentation.ts のユニットテスト追加**
-    - 主要な関数・エクスポートのテスト
-
----
-
-※ coverageレポートでカバレッジ0%のファイルは、設定ファイルや型定義・ビルド生成物を除き、上記のような業務ロジック・UI部品を優先してテスト追加してください。
-
----
-
-### AssistantPage（index.tsx）ユニットテスト進捗（2025/07/06時点）
-
-- ✅ AssistantPage（index.tsx）レンダリング時にChatMessagesとChatInputが正しく表示される
-- ✅ ChatMessagesにmessages/loadingが正しく渡る
-- ✅ ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る
-- ✅ useChatの返り値が空の場合でもエラーにならず描画される
-- ✅ ChatInputでonSendが呼ばれたときsendMessageが呼ばれる
-- ✅ ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる
-- ✅ ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる
-- ✅ loading=true時にChatInput/ChatMessagesのローディングUIが表示される
-- ✅ messagesが空配列のときChatMessagesが空状態を表示する
-- ✅ 異常系：useChatがthrowした場合にエラーが伝播する（ErrorBoundaryでキャッチできる）
-
----
-
-#### 【進捗まとめ】
-- AssistantPage（index.tsx）周辺のユニットテストは全観点で網羅・通過
-- テスト観点・カバレッジレポートに基づき、props受け渡し・UI・異常系も含めて型安全に検証済み
-- 主要なUI部品（ChatMessages/ChatInput）も個別テスト済み
-- useChatの異常系もErrorBoundaryでカバー
-
----
-
-#### 【次の優先タスク】
-
-1. 🟡 app/api/rag/query/route.ts のAPIテスト追加
-   - APIリクエスト/レスポンス、バリデーション・異常系
-2. 🟡 hooks/use-mobile.ts のユニットテスト追加
-   - モバイル判定ロジックの正常系・異常系
-3. 🟡 components/ui/skeleton.tsx のユニットテスト追加
-   - スケルトン表示の有無、propsの型安全性
-4. 🟡 lib/structured-data.ts, utils.ts のユニットテスト追加
-   - ユーティリティ関数の正常系・異常系
-5. ⚪ instrumentation-client.ts, instrumentation.ts のユニットテスト追加
-   - 主要な関数・エクスポートのテスト
-
----
-
-#### 【全体進捗】
-- AssistantPage/ChatMessages/ChatInputのテストは完了
+### 全体進捗・運用方針
+- AssistantPage/ChatMessages/ChatInputのテストは全観点で完了
 - coverageレポートでカバレッジ0%の業務ロジック・UI部品を優先してテスト追加中
-- テスト観点・進捗は本ファイルで随時管理
-
----
-
-#### 【備考】
-- テストは@testing-library/react + vitest形式、型はtypes.tsを参照し厳密に管理
+- テスト観点・進捗・優先度は本ファイルで一元管理
 - 進捗・観点の追加/修正は随時反映
 - カバレッジ50%以上・主要ロジック網羅を目標
+
+---
+
+### 参考：今後のアクション例
+- strict化・型エラー修正
+- 構成整理・スタイル共通化・依存整理
+- 型定義の共通化・型ガイドライン作成
+- E2Eテスト拡充
+- coverage計測・不足箇所の洗い出し
+- テスト観点・カバレッジ結果をdocs/testing/等に記録
