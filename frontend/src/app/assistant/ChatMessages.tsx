@@ -1,14 +1,5 @@
 import React from "react";
-
-export type Message = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-export interface ChatMessagesProps {
-  messages: Message[];
-  loading?: boolean;
-}
+import type { ChatMessagesProps } from "../../types/chat";
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, loading }) => {
   return (

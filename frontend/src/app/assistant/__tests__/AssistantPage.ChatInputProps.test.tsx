@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import AssistantPage from "../index";
 import * as useChatModule from "../useChat";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import type { ChatInputProps } from "../types";
+import type { ChatInputProps } from "../../../types/chat";
 import type { Mock } from "vitest";
 
 const ChatInputMock = vi.fn((_props: ChatInputProps) => null);

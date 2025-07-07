@@ -1,5 +1,5 @@
 import React from "react";
-import type { ChatInputProps } from "./types";
+import type { ChatInputProps } from "../../types/chat";
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   input,

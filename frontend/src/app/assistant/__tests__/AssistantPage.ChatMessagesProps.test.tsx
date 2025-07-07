@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import AssistantPage from "../index";
 import * as useChatModule from "../useChat";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import type { Message, ChatMessagesProps } from "../types";
+import type { Message, ChatMessagesProps } from "../../../types/chat";
 
 const mockMessages: Message[] = [
   { role: "user", content: "test message" }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Message } from "./types";
+import type { Message } from "../../types/chat";
 
 // reCAPTCHAが無効かどうかを判定するヘルパー関数
 const isRecaptchaDisabled = () => {
