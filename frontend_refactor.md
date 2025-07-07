@@ -61,14 +61,14 @@
 ### 最低限やるべきリファクタリングタスク（2025/07/08追記）
 
 1. 型定義共通化の最小雛形作成
-   - [ ] `src/types/`や`src/app/assistant/types.ts`等に共通型ファイルを作成し、主要な型（Message, Props等）を集約
-   - [ ] 既存の型定義を一部移動し、import経路を統一
-   - [ ] 型ガイドラインのドラフトを`docs/`配下に記載
+   - [x] `src/types/`や`src/app/assistant/types.ts`等に共通型ファイルを作成し、主要な型（Message, Props等）を集約
+   - [x] 既存の型定義を一部移動し、import経路を統一
+   - [x] 型ガイドラインのドラフトを`docs/`配下に記載
 
 2. CIでlint/型チェック/テストがfailする仕組みの導入（最低限）
-   - [ ] GitHub Actionsや`package.json`のscriptsで`eslint`・`tsc`・`jest/vitest`等を実行し、エラー時にCIをfailさせる
-   - [ ] PR時に必ずCIが走るように設定
-   - [ ] カバレッジ閾値や型エラーでfailする最低限のルールを導入
+   - [x] GitHub Actionsや`package.json`のscriptsで`eslint`・`tsc`・`jest/vitest`等を実行し、エラー時にCIをfailさせる
+   - [x] PR時に必ずCIが走るように設定
+   - [x] カバレッジ閾値や型エラーでfailする最低限のルールを導入
 
 3. 依存整理のスクリプト実行・未使用パッケージの削除
    - [ ] `yarn/npm dedupe`や`yarn/npm audit`を実行し、脆弱性・重複依存を検出
