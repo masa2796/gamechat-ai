@@ -71,9 +71,9 @@
    - [x] カバレッジ閾値や型エラーでfailする最低限のルールを導入
 
 3. 依存整理のスクリプト実行・未使用パッケージの削除
-   - [ ] `yarn/npm dedupe`や`yarn/npm audit`を実行し、脆弱性・重複依存を検出
-   - [ ] `depcheck`等で未使用パッケージをリストアップし、`yarn remove`/`npm uninstall`で削除
-   - [ ] セキュリティ監査も最低限実施
+   - [x] `yarn/npm dedupe`や`yarn/npm audit`を実行し、脆弱性・重複依存を検出
+   - [x] `depcheck`等で未使用パッケージをリストアップし、`yarn remove`/`npm uninstall`で削除
+   - [x] セキュリティ監査も最低限実施
 
 4. docs/配下に現状の運用ルールのドラフト記載
    - [ ] `docs/guides/`や`docs/README.md`に「現状の運用ルール（例：ブランチ戦略・レビュー手順・テスト観点）」のドラフトをMarkdownで記載
