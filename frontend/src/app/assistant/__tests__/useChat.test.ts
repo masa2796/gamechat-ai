@@ -26,7 +26,7 @@ describe('useChat', () => {
         json: () => Promise.resolve({ answer: 'テスト応答' }),
       })
     ) as unknown as typeof fetch;
-    delete (window as Record<string, unknown>).grecaptcha;
+    delete ((window as unknown) as Record<string, unknown>).grecaptcha;
 
     // 環境変数を保存
     originalEnv = process.env;
@@ -68,9 +68,21 @@ describe('useChat', () => {
     (global.fetch as unknown as typeof fetch) = vi.fn(() =>
       Promise.resolve({
         ok: false,
-        json: () => Promise.resolve({ error: { message: 'APIエラー発生' } }),
         status: 500,
-      })
+        json: () => Promise.resolve({ error: { message: 'APIエラー発生' } }),
+        headers: new Headers(),
+        redirected: false,
+        statusText: 'APIエラー発生',
+        type: 'basic',
+        url: '',
+        clone: () => new Response(),
+        body: null,
+        bodyUsed: false,
+        arrayBuffer: async () => new ArrayBuffer(0),
+        blob: async () => new Blob(),
+        formData: async () => new FormData(),
+        text: async () => '',
+      } as unknown as Response)
     );
     const { result } = renderHook(() => useChat());
     act(() => {
@@ -88,9 +100,21 @@ describe('useChat', () => {
     (global.fetch as unknown as typeof fetch) = vi.fn(() =>
       Promise.resolve({
         ok: false,
-        json: () => Promise.resolve({ error: { message: 'Invalid authentication credentials' } }),
-        status: 401,
-      })
+        status: 500,
+        json: () => Promise.resolve({ error: { message: 'APIエラー発生' } }),
+        headers: new Headers(),
+        redirected: false,
+        statusText: 'APIエラー発生',
+        type: 'basic',
+        url: '',
+        clone: () => new Response(),
+        body: null,
+        bodyUsed: false,
+        arrayBuffer: async () => new ArrayBuffer(0),
+        blob: async () => new Blob(),
+        formData: async () => new FormData(),
+        text: async () => '',
+      } as unknown as Response)
     );
     const { result } = renderHook(() => useChat());
     act(() => {
@@ -115,7 +139,7 @@ describe('useChat', () => {
     (global.fetch as unknown) = fetchSpy;
 
     // grecaptcha.executeがエラーを返すようにモックする
-    (window as Record<string, unknown>).grecaptcha = {
+    ((window as unknown) as Record<string, unknown>).grecaptcha = {
       execute: vi.fn().mockRejectedValue(new Error('reCAPTCHA取得失敗')),
     };
 
@@ -248,7 +272,7 @@ describe('useChat', () => {
 
   it('firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される', async () => {
     const mockIdToken = 'dummy-id-token';
-    (window as Record<string, unknown>).firebaseAuth = {
+    ((window as unknown) as Record<string, unknown>).firebaseAuth = {
       currentUser: {
         getIdToken: vi.fn().mockResolvedValue(mockIdToken),
       },

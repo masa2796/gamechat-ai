@@ -1,5 +1,7 @@
 import React from "react";
-import type { ChatMessagesProps } from "../../types/chat";
+import type { ChatMessagesProps, Message } from "../../types/chat";
+
+export type { Message };
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, loading }) => {
   return (

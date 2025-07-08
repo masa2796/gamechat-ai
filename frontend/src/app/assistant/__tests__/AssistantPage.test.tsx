@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import AssistantPage from "../index";
 import * as useChatModule from "../useChat";
+import { useChat } from "../useChat";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
 vi.mock("../ChatMessages", () => ({
