@@ -9,13 +9,27 @@ interface WebVitalsMetric {
   rating: 'good' | 'needs-improvement' | 'poor'
 }
 
+function getEnvMode() {
+  // テスト用: globalThis.__TEST_ENV__ を最優先
+  const globalWithTestEnv = globalThis as typeof globalThis & { __TEST_ENV__?: string }
+  if (typeof globalThis !== 'undefined' && globalWithTestEnv.__TEST_ENV__) {
+    return globalWithTestEnv.__TEST_ENV__
+  }
+  // Next.js環境では process.env.NODE_ENV を使用
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) {
+    return process.env.NODE_ENV
+  }
+  return 'development'
+}
+
 export function useWebVitals() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const reportWebVitals = (metric: WebVitalsMetric) => {
+      const mode = getEnvMode()
       // 本番環境でのみ送信
-      if (process.env.NODE_ENV === 'production') {
+      if (mode === 'production') {
         fetch('/api/performance', {
           method: 'POST',
           headers: {
@@ -33,7 +47,7 @@ export function useWebVitals() {
       }
 
       // 開発環境ではコンソールに出力
-      if (process.env.NODE_ENV === 'development') {
+      if (mode === 'development') {
         console.log('Web Vitals:', metric)
       }
     }
@@ -56,24 +70,11 @@ export function useWebVitals() {
           // onINP might not be available in older versions
           console.log('onINP not available')
         }
-      }).catch(() => {
-        // web-vitalsが利用できない場合は代替実装
-        const observer = new PerformanceObserver((list) => {
-          for (const entry of list.getEntries()) {
-            if (entry.entryType === 'navigation') {
-              const navEntry = entry as PerformanceNavigationTiming
-              reportWebVitals({
-                name: 'FCP',
-                value: navEntry.loadEventEnd - navEntry.loadEventStart,
-                id: 'fallback-fcp',
-                rating: 'good'
-              })
-            }
-          }
-        })
-        
-        if ('observe' in observer) {
-          observer.observe({ entryTypes: ['navigation'] })
+      }).catch((error: unknown) => {
+        if (error instanceof Error) {
+          console.error(error);
+        } else {
+          console.error(String(error));
         }
       })
     }
