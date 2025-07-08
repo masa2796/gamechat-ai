@@ -126,7 +126,11 @@ export const useChat = () => {
     } catch (error) {
       let displayMessage = "エラーが発生しました。もう一度お試しください。";
       if (error instanceof Error) {
-        if (error.message.includes("Invalid authentication credentials") || error.message.includes("401")) {
+        if (
+          error.message.includes("認証") ||
+          error.message.includes("Invalid authentication credentials") ||
+          error.message.includes("401")
+        ) {
           displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
         } else {
           displayMessage = error.message;

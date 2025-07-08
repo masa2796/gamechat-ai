@@ -100,11 +100,11 @@ describe('useChat', () => {
     (global.fetch as unknown as typeof fetch) = vi.fn(() =>
       Promise.resolve({
         ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: { message: 'APIエラー発生' } }),
+        status: 401,
+        json: () => Promise.resolve({ error: { message: '認証エラー発生' } }),
         headers: new Headers(),
         redirected: false,
-        statusText: 'APIエラー発生',
+        statusText: '認証エラー発生',
         type: 'basic',
         url: '',
         clone: () => new Response(),
