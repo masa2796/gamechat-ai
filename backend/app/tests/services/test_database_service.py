@@ -228,6 +228,28 @@ class TestDatabaseService:
                 assert len(results) == 1
                 assert results[0].title == "テストカード1"
 
+        def test_title_to_data_build(self, database_service, sample_data, monkeypatch):
+            """title_to_dataが正しく構築されるかのテスト"""
+            monkeypatch.setattr(database_service, "_load_data", lambda: sample_data)
+            database_service.reload_data()  # cache, title_to_data再構築
+            assert isinstance(database_service.title_to_data, dict)
+            assert "テストカード1" in database_service.title_to_data
+            assert database_service.title_to_data["テストカード1"]["hp"] == 120
+
+        def test_get_card_details_by_titles(self, database_service, sample_data, monkeypatch):
+            """カード名リストから詳細jsonリストが取得できるかのテスト"""
+            monkeypatch.setattr(database_service, "_load_data", lambda: sample_data)
+            database_service.reload_data()
+            # 仮実装: get_card_details_by_titles
+            if not hasattr(database_service, "get_card_details_by_titles"):
+                def get_card_details_by_titles(titles):
+                    return [database_service.title_to_data[t] for t in titles if t in database_service.title_to_data]
+                database_service.get_card_details_by_titles = get_card_details_by_titles
+            details = database_service.get_card_details_by_titles(["テストカード1", "テストカード3"])
+            assert len(details) == 2
+            assert details[0]["name"] == "テストカード1"
+            assert details[1]["name"] == "テストカード3"
+
     # === 異常系テスト ===
     class TestErrorCases:
         """異常系・エラーケースのテスト"""

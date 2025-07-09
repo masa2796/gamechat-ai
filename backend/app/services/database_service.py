@@ -21,6 +21,7 @@ class DatabaseService:
         self.data_path = settings.DATA_FILE_PATH
         self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
         self.cache: Optional[List[Dict[str, Any]]] = None
+        self.title_to_data: dict[str, dict] = {}
         
         # StorageServiceを初期化
         self.storage_service = StorageService()
@@ -55,6 +56,8 @@ class DatabaseService:
         data = self.storage_service.load_json_data("data")
         if data:
             self.cache = data
+            # title_to_dataを構築
+            self.title_to_data = {self._extract_title(item): item for item in data if self._extract_title(item)}
             GameChatLogger.log_success("database_service", "データファイルを読み込みました", {
                 "source": "data.json",
                 "data_count": len(data)
@@ -66,6 +69,8 @@ class DatabaseService:
         data = self.storage_service.load_json_data("convert_data")
         if data:
             self.cache = data
+            # title_to_dataを構築
+            self.title_to_data = {self._extract_title(item): item for item in data if self._extract_title(item)}
             GameChatLogger.log_info("database_service", "フォールバックファイルを使用", {
                 "source": "convert_data.json",
                 "data_count": len(data)
@@ -175,6 +180,12 @@ class DatabaseService:
             )
             for result in filtered_results[:top_k]
         ]
+
+    def reload_data(self):
+        """明示的にデータを再ロードするメソッド"""
+        self.cache = None
+        data_list = self._load_data()
+        self.title_to_data = {self._extract_title(item): item for item in data_list if self._extract_title(item)}
 
     def _calculate_filter_score(
         self, 

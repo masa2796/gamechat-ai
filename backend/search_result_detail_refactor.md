@@ -3,58 +3,197 @@
 ## 概要
 
 現状の検索（構造化DB検索・ベクトル検索・ハイブリッド検索）では、検索結果としてカード名や一部の情報のみが返却されています。
-今後は、検索で得られたカード名を用いて、構造化DBから該当カードの詳細なjsonデータを取得し、APIレスポンスとして返却する仕組みに変更します。
+今後は、検索で得られたカード名を用いて、構造化DBから該当カードの詳細jsonデータを取得し、APIレスポンスとして返却する仕組みに変更します。
 
 将来的には、取得したjsonデータをフロントエンドで一覧表示できるようにします。
 
 ---
 
 ## 目的
-- 検索結果の情報量を増やし、ユーザー体験を向上させる
-- フロントエンドでカード詳細の一覧表示や、さらなるUI拡張を可能にする
+
+* 検索結果の情報量を増やし、ユーザー体験を向上させる
+* フロントエンドでカード詳細の一覧表示や、さらなるUI拡張を可能にする
 
 ---
 
-## 仕様案
+## フロー図
 
-### 1. 検索フローの変更
-- 構造化DB検索・ベクトル検索・ハイブリッド検索の各サービスで、検索結果としてカード名（title等）一覧を取得
-- そのカード名リストを用いて、構造化DB（例: data/data.json等）から該当カードの詳細jsonデータを一括取得
-- APIレスポンスとして、カード詳細のjsonリストを返却
-
-### 2. 取得データの例
-```json
-[
-  {
-    "title": "ピカチュウ",
-    "type": "でんき",
-    "hp": 60,
-    "description": "...",
-    ...
-  },
-  ...
-]
+```
+ユーザー入力（自然言語クエリ）
+↓
+LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド）
+↓
+該当検索手法でカード名を取得
+↓
+カード名から構造化DBを検索し詳細データを取得
+↓
+フロントエンドで一覧表示
 ```
 
-### 3. フロントエンド対応（将来）
-- 取得したjsonリストを一覧形式で描画
-- 各カードの詳細表示やフィルタリング、ソート等のUI拡張も可能
+---
+
+## 改修タスク一覧（詳細化）
+
+### ✅ フェーズ 1: 構造化DBの詳細取得基盤（既存コード改修）
+
+1. **構造化DB（data/data.json）をメモリにロードする処理を既存サービスへ追加**
+   - 対象: `backend/app/services/database_service.py` の `DatabaseService`
+     - data.jsonを読み込み、`title_to_data: dict[str, dict]` を生成・保持するロジックを追加
+     - 初期化時または明示的なロードメソッドで実装
+   - 必要に応じて `StorageService` も修正
+   - **[済] 2025/07/10: `reload_data()` でtitle_to_data構築ロジックを追加し、テストも通過**
+
+2. **既存のカード検索サービスを「カード名リスト返却」へ統一**
+   - 対象: 
+     - `DatabaseService`（構造化検索）
+     - `VectorService`（ベクトル検索, `backend/app/services/vector_service.py`）
+     - `HybridSearchService`（ハイブリッド, `backend/app/services/hybrid_search_service.py`）
+   - 返却値を「カード名リスト（List[str]）」に統一するよう各メソッドを修正
+   - 既存の `ContextItem` 返却箇所をカード名抽出に変更
+
+3. **カード名リストから詳細jsonリストを取得するメソッドを追加**
+   - 対象: `DatabaseService`
+     - `get_card_details_by_titles(titles: list[str]) -> list[dict]` を新規実装
+   - 既存API/サービス（`HybridSearchService`や`RagService`）でこのメソッドを利用するよう改修
+
+4. **APIレスポンスを「詳細jsonリスト」へ変更**
+   - 対象: 
+     - `backend/app/routers/rag.py` の `/rag/query` エンドポイント
+     - `RagService` の `process_query` など
+   - 返却値を「詳細jsonリスト」に変更し、フロントエンド仕様に合わせる
+
+5. **既存ユニットテストの修正・追加**
+   - 対象: 
+     - `backend/app/tests/services/test_database_service.py`
+     - `backend/app/tests/services/test_hybrid_search_consolidated.py`
+     - `backend/app/tests/api/test_api.py`
+     - 必要に応じて他のテストも
+   - 返却値の仕様変更に合わせてテストを修正
+   - `get_card_details_by_titles` のテストも追加
 
 ---
 
-## 実装タスク例
-1. サービス層でカード名リストから構造化DBを再検索するメソッドを追加
-2. 検索APIのレスポンス形式を詳細jsonリストに変更
-3. テストの修正・追加
-4. フロントエンドでの一覧表示（別issueで対応）
+### ✅ フェーズ 2: ベクトル検索実装
+
+6. **description / Q&A / flavorText のみをembedding & vector DBに登録**
+   - 対象: `EmbeddingService`, `VectorService` など
+   - 埋め込み生成対象をdescription/Q&A/flavorTextに限定するロジックを追加
+
+7. **類似検索からカード名を取得**
+   - 対象: `VectorService`
+   - 検索結果からカード名リストを返すように修正
 
 ---
 
-## 備考
-- 構造化DBは現状の`data/data.json`等を想定
-- パフォーマンスやキャッシュも考慮し、必要に応じて最適化を検討
+### ✅ フェーズ 3: LLMによる検索分顛
+
+8. **LLMで「構造化 / ベクトル / ハイブリッド」の分顛を実装**
+   - 対象: `ClassificationService`, `HybridSearchService`
+   - LLMによるクエリタイプ判定・分岐ロジックの実装
+
+9. **ハイブリッド検索ロジックを実装**
+   - 対象: `HybridSearchService`
+   - 構造化・ベクトル両検索の結果を組み合わせるロジックを実装
 
 ---
 
-## 関連
-- #検索 #構造化DB #API設計 #フロントエンド #一覧表示
+### ✅ フェーズ 4: フロントエンド対応
+
+10. 返却jsonを一覧表示
+11. ソート・フィルタ対応
+12. 非同期表示の機構化
+
+---
+
+## API仕様（現状と変更点まとめ）
+
+### 1. 既存API仕様（2025/07/10時点）
+
+#### `/rag/query`（POST）
+- 概要: RAG検索（構造化/ベクトル/ハイブリッド）
+- リクエストボディ例:
+```json
+{
+  "question": "HP100以上のカード",
+  "top_k": 10,
+  "with_context": true,
+  "recaptchaToken": "..."
+}
+```
+- レスポンス例（従来）:
+```json
+{
+  "answer": "HP100以上のカードは...",
+  "context": [
+    { "title": "リザードン", "text": "HP:120...", "score": 4.0 },
+    { "title": "カメックス", "text": "HP:110...", "score": 3.8 }
+  ],
+  "classification": { ... },
+  "search_info": { ... },
+  "performance": { ... }
+}
+```
+- 備考: context配列は「カード名＋一部テキスト」のみ返却
+
+---
+
+### 2. 今回の主な変更点
+
+- 検索で得られた「カード名リスト」から、構造化DB（data/data.json）で詳細データ（json）を取得し、APIレスポンスとして返却
+- context配列が「カード詳細jsonリスト」に拡張される
+- フロントエンドでそのまま詳細一覧表示が可能に
+
+#### 変更後のレスポンス例
+```json
+{
+  "answer": "HP100以上のカードは...",
+  "context": [
+    {
+      "name": "リザードン",
+      "hp": 120,
+      "type": "炎",
+      "attacks": [...],
+      ... // data.jsonの1件分
+    },
+    {
+      "name": "カメックス",
+      "hp": 110,
+      "type": "水",
+      ...
+    }
+  ],
+  "classification": { ... },
+  "search_info": { ... },
+  "performance": { ... }
+}
+```
+- context配列が「カード詳細jsonリスト」になる点が最大の違い
+- 既存のtitle/text/score形式は廃止し、data.jsonの1件分（dict）をそのまま返却
+
+---
+
+### 3. 仕様比較表
+
+| 項目         | 変更前（従来）         | 変更後（本改修）         |
+|--------------|------------------------|--------------------------|
+| context型    | List[ContextItem]      | List[dict]（詳細json）   |
+| context内容  | title, text, score     | data.jsonの1件分         |
+| 検索フロー   | 検索→カード名返却      | 検索→カード名→詳細取得   |
+| フロント表示 | 一部情報のみ           | 詳細一覧表示が容易        |
+
+---
+
+### 4. 参考: 主要エンドポイント
+
+- `/rag/query` : RAG検索（今回の詳細返却対応）
+- `/rag/search-test` : ハイブリッド検索テスト用
+- `/chat` : チャット形式（RAG検索ラップ）
+
+---
+
+### 5. 今後の注意点
+- 既存のAPI利用クライアントは、contextの型変更に注意
+- テスト・フロントエンドも新仕様に合わせて修正が必要
+- 旧仕様（title/text/score）での利用は非推奨
+
+---
