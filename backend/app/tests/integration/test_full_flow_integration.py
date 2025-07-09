@@ -1,8 +1,8 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from app.services.hybrid_search_service import HybridSearchService
 from app.services.rag_service import RagService
-from app.models.rag_models import RagRequest, ContextItem
+from app.models.rag_models import RagRequest
 from app.models.classification_models import ClassificationResult, QueryType
 
 class TestFullFlowIntegration:
@@ -192,17 +192,11 @@ class TestFullFlowIntegration:
             reasoning="複合条件を検出、ハイブリッド検索が適切"
         )
         
-        # DB検索結果のモック
-        mock_db_results = [
-            ContextItem(title="カメックス", text="水タイプで高いダメージの技を持つ", score=0.9),
-            ContextItem(title="ブラストイズ", text="水タイプの強力なカード", score=0.8)
-        ]
+        # DB検索結果のモック（カード名リストに修正）
+        mock_db_results = ["カメックス", "ブラストイズ"]
         
-        # ベクトル検索結果のモック
-        mock_vector_results = [
-            ContextItem(title="強力な水カード特集", text="戦略的に優秀な水タイプ", score=0.85),
-            ContextItem(title="高ダメージ技解説", text="効果的な攻撃技の紹介", score=0.8)
-        ]
+        # ベクトル検索結果のモック（カード名リストに修正）
+        mock_vector_results = ["強力な水カード特集", "高ダメージ技解説"]
         
         # サービスのモック化
         mock_classify = AsyncMock(return_value=mock_classification)
@@ -220,7 +214,7 @@ class TestFullFlowIntegration:
         )
         
         # 複雑なクエリの処理確認
-        assert result["classification"].query_type == QueryType.HYBRID
+        assert result["classification"].query_type == "hybrid"
         assert result["classification"].confidence >= 0.8
         assert len(result["classification"].filter_keywords) >= 4
         assert len(result["classification"].search_keywords) >= 1

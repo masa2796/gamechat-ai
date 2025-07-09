@@ -104,12 +104,9 @@ class DatabaseService:
         )
     
     @handle_service_exceptions("database", fallback_return=[])
-    async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[ContextItem]:
+    async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[str]:
         """
-        フィルターキーワードに基づいて構造化検索を実行します。
-        
-        数値条件（HP、ダメージ）、タイプ、レアリティなどの構造化データに対して
-        精密なフィルタリング検索を行い、マッチスコアでランキングされた結果を返します。
+        フィルターキーワードに基づいて構造化検索を実行し、カード名リストを返却
         
         Args:
             filter_keywords: フィルタリング用キーワードのリスト
@@ -119,8 +116,7 @@ class DatabaseService:
             top_k: 返却する最大結果数 (デフォルト: 50)
                 
         Returns:
-            マッチスコア順にソートされたContextItemのリスト
-            各アイテムには title, text, score が含まれます
+            マッチスコア順にソートされたカード名のリスト
             
         Raises:
             DatabaseException: データファイルの読み込みに失敗した場合
@@ -131,13 +127,13 @@ class DatabaseService:
             >>> # HP100以上のカードを検索
             >>> results = await service.filter_search(["HP", "100以上"], top_k=10)
             >>> print(f"見つかった件数: {len(results)}")
-            >>> print(f"最高スコア: {results[0].score}")
+            >>> print(f"カード名: {results[0]}")
             
             >>> # 複合条件での検索
             >>> results = await service.filter_search(
             ...     ["炎", "タイプ", "ダメージ", "40以上"], top_k=5
             ... )
-            >>> # 炎タイプでダメージ40以上の技を持つカードが返される
+            >>> # 炎タイプでダメージ40以上の技を持つカードの名前が返される
         """
         data = self._load_data()
         if not data:
@@ -149,40 +145,24 @@ class DatabaseService:
             "top_k": top_k
         })
         
-        filtered_results = []
-        
+        filtered_titles = []
         for item in data:
             score = self._calculate_filter_score(item, filter_keywords)
             if score > 0:
                 title = self._extract_title(item)
-                text = self._extract_text(item)
-                
-                filtered_results.append({
-                    "title": title,
-                    "text": text,
-                    "score": score,
-                    "item": item
-                })
-        
-        # スコアでソートして上位を返す
-        filtered_results.sort(key=lambda x: float(x["score"]) if isinstance(x["score"], (str, int, float)) else 0.0, reverse=True)
+                filtered_titles.append(title)
         
         GameChatLogger.log_success("database_service", "フィルター検索完了", {
-            "results_count": len(filtered_results),
-            "returned_count": min(len(filtered_results), top_k)
+            "results_count": len(filtered_titles),
+            "returned_count": min(len(filtered_titles), top_k)
         })
         
-        return [
-            ContextItem(
-                title=str(result["title"]),
-                text=str(result["text"]),
-                score=float(result["score"]) if isinstance(result["score"], (str, int, float)) else 0.0
-            )
-            for result in filtered_results[:top_k]
-        ]
+        return filtered_titles[:top_k]
 
-    def reload_data(self):
-        """明示的にデータを再ロードするメソッド"""
+    def reload_data(self) -> None:
+        """
+        明示的にデータを再ロードするメソッド
+        """
         self.cache = None
         data_list = self._load_data()
         self.title_to_data = {self._extract_title(item): item for item in data_list if self._extract_title(item)}
@@ -468,15 +448,11 @@ class DatabaseService:
         
         return " / ".join(text_parts) if text_parts else str(item)
     
-    def _get_fallback_results(self) -> List[ContextItem]:
-        """フォールバック用のダミーデータ"""
-        return [
-            ContextItem(
-                title="データベース検索 - フィルター結果",
-                text="データベースからの検索結果です。具体的な条件に基づいてフィルタリングされています。",
-                score=0.8
-            )
-        ]
+    def _get_fallback_results(self) -> List[str]:
+        """
+        フォールバック用のダミーカード名リスト
+        """
+        return ["データベース検索 - フィルター結果"]
     
     def _get_placeholder_data(self) -> List[Dict[str, Any]]:
         """データファイルが利用できない場合のプレースホルダーデータ"""

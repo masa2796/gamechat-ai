@@ -62,9 +62,9 @@ class VectorService:
         namespaces: Optional[List[str]] = None,
         classification: Optional[ClassificationResult] = None,
         min_score: Optional[float] = None
-    ) -> List[ContextItem]:
+    ) -> List[str]:
         """
-        ベクトル検索を実行（分類結果に基づく最適化対応）
+        ベクトル検索を実行し、カード名リストを返却
         
         Args:
             query_embedding: クエリの埋め込みベクトル
@@ -107,7 +107,7 @@ class VectorService:
             "confidence": classification.confidence if classification else None
         })
         
-        all_results = []
+        all_titles = []
         
         for namespace in namespaces:
             try:
@@ -121,18 +121,11 @@ class VectorService:
                 )
                 
                 matches = results.matches if hasattr(results, "matches") else results
-                GameChatLogger.log_info("vector_service", "検索結果取得", {
-                    "namespace": namespace,
-                    "results_count": len(matches)
-                })
                 
-                for i, match in enumerate(matches):
+                for match in matches:
                     # scoreの型安全な取得
                     score_value = getattr(match, 'score', None)
-                    if score_value is not None:
-                        score = float(score_value)
-                    else:
-                        score = 0.0
+                    score = float(score_value) if score_value is not None else 0.0
                     
                     # スコア閾値による除外
                     if min_score is not None and score < min_score:
@@ -140,20 +133,12 @@ class VectorService:
                         
                     meta = getattr(match, 'metadata', None)
                     if meta and hasattr(meta, 'get'):
-                        text = meta.get('text')
                         title = meta.get('title', f"{namespace} - 情報")
                     else:
-                        text = getattr(match, 'text', None)
                         title = f"{namespace} - 情報"
                     
-                    if text:
-                        all_results.append({
-                            "title": title,
-                            "text": text,
-                            "score": score,
-                            "namespace": namespace,
-                            "id": getattr(match, 'id', None)
-                        })
+                    if title:
+                        all_titles.append(title)
                         
             except Exception as ns_error:
                 GameChatLogger.log_error("vector_service", f"Namespace {namespace} での検索エラー", ns_error, {
@@ -162,32 +147,10 @@ class VectorService:
                 continue
         
         GameChatLogger.log_success("vector_service", "ベクトル検索完了", {
-            "total_results": len(all_results),
-            "threshold_passed": len(all_results)
+            "total_results": len(all_titles)
         })
         
-        if all_results:
-            all_results.sort(key=lambda x: x["score"] or 0, reverse=True)
-            
-            best_match = max(all_results, key=lambda x: x["score"] or 0)
-            GameChatLogger.log_info("vector_service", "最高スコア結果", {
-                "score": best_match['score'],
-                "namespace": best_match['namespace'],
-                "title": best_match['title'][:50]
-            })
-            
-            return [
-                ContextItem(
-                    title=result["title"],
-                    text=result["text"],
-                    score=result["score"]
-                )
-                for result in all_results[:top_k]
-            ]
-        else:
-            GameChatLogger.log_warning("vector_service", "閾値を通過した検索結果なし")
-            # フォールバック処理
-            return self._handle_no_results(classification)
+        return all_titles[:top_k]
     
     def _optimize_search_params(
         self, 
@@ -272,26 +235,11 @@ class VectorService:
             "hp", "weakness", "type", "set-info", "releaseDate", "category", "rarity"
         ]
     
-    def _handle_no_results(self, classification: Optional[ClassificationResult]) -> List[ContextItem]:
-        """検索結果がない場合のフォールバック処理"""
-        
-        config = settings.VECTOR_SEARCH_CONFIG
-        
-        if not config["fallback_enabled"]:
-            return []
-        
-        print("📝 フォールバック: 該当する情報が見つかりませんでした")
-        
-        # ユーザーに有用な情報を提供
-        fallback_message = self._generate_fallback_message(classification)
-        
-        return [
-            ContextItem(
-                title="検索結果について",
-                text=fallback_message,
-                score=0.1  # 低スコアでフォールバックと識別
-            )
-        ]
+    def _handle_no_results(self, classification: Optional[ClassificationResult]) -> List[str]:
+        """
+        検索結果がない場合のフォールバック（カード名リスト）
+        """
+        return ["検索結果について"]
     
     def _handle_search_error(self, classification: Optional[ClassificationResult], error: Exception) -> List[ContextItem]:
         """検索エラー時の処理"""

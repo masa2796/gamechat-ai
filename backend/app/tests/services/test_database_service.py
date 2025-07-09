@@ -117,17 +117,11 @@ class TestDatabaseService:
         @pytest.mark.asyncio
         async def test_filter_search_with_valid_keywords_hp_condition(self, database_service, sample_data, monkeypatch):
             """HP条件でのフィルター検索テスト"""
-            # データ読み込みをモック
             monkeypatch.setattr(database_service, "_load_data", lambda: sample_data)
-            
             results = await database_service.filter_search(["HP", "100以上"], top_k=5)
-            
             # HP100以上のカードを確認
             assert len(results) == 2  # HP120とHP150のカード
-            assert all(isinstance(item, ContextItem) for item in results)
-            
-            # 結果の内容を確認
-            names = [item.title for item in results]
+            names = results
             assert "テストカード1" in names  # HP120
             assert "テストカード3" in names  # HP150
 
@@ -135,29 +129,21 @@ class TestDatabaseService:
         async def test_filter_search_with_valid_keywords_type_condition(self, database_service, sample_data, monkeypatch):
             """タイプ条件でのフィルター検索テスト"""
             monkeypatch.setattr(database_service, "_load_data", lambda: sample_data)
-            
             results = await database_service.filter_search(["炎"], top_k=5)
-            
             assert len(results) == 1
-            assert results[0].title == "テストカード1"
-            assert results[0].score == 2.5  # タイプマッチ(+2.0) + テキストマッチ(+0.5)
+            assert results[0] == "テストカード1"
 
         @pytest.mark.asyncio
         async def test_filter_search_damage_and_type_condition(self, database_service, mock_data, monkeypatch):
             """ダメージ条件とタイプ条件の複合検索テスト"""
-            # データ読み込みをモック
             monkeypatch.setattr(database_service, "_load_data", lambda: mock_data)
-            
-            # 水タイプで40以上のダメージを持つカードの検索
             keywords = ["ダメージ", "40以上", "技", "水", "タイプ"]
             results = await database_service.filter_search(keywords, 5)
-            
-            # 結果を確認
             assert len(results) >= 1  # カメックスとゼニガメが該当するはず
             assert isinstance(results, list)
             # 水タイプで40以上のダメージ技を持つカードが上位に来ることを確認
             if len(results) > 0:
-                assert results[0].score >= 5.0  # 複合条件マッチで高スコア
+                assert results[0] in ["カメックス", "ゼニガメ"]
 
         def test_calculate_filter_score_basic_hp_match(self, database_service):
             """HP条件の基本スコア計算テスト"""
@@ -220,13 +206,10 @@ class TestDatabaseService:
         async def test_filter_search_with_custom_paths(self, mock_settings, sample_data):
             """カスタムパスでの検索テスト"""
             service = DatabaseService()
-            
-            # _load_dataメソッドをモックして、設定されたパスが使用されることを確認
             with patch.object(service, '_load_data', return_value=sample_data):
                 results = await service.filter_search(["炎"], top_k=5)
-                
                 assert len(results) == 1
-                assert results[0].title == "テストカード1"
+                assert results[0] == "テストカード1"
 
         def test_title_to_data_build(self, database_service, sample_data, monkeypatch):
             """title_to_dataが正しく構築されるかのテスト"""
@@ -308,10 +291,9 @@ class TestDatabaseService:
             monkeypatch.setattr(database_service, "_load_data", lambda: [])
             
             results = await database_service.filter_search(["HP", "100以上"], top_k=5)
-            
             # フォールバック結果を確認
             assert len(results) == 1
-            assert "データベース検索" in results[0].title
+            assert "データベース検索" in results[0]
 
         def test_calculate_filter_score_no_match(self, database_service):
             """マッチなしのスコア計算テスト"""
