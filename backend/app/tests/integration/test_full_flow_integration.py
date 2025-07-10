@@ -209,6 +209,14 @@ class TestFullFlowIntegration:
         monkeypatch.setattr(hybrid_search_service.embedding_service, "get_embedding_from_classification", mock_embedding)
         monkeypatch.setattr(hybrid_search_service.vector_service, "search", mock_vector_search)
         
+        # title_to_dataに必要な詳細jsonをセット
+        hybrid_search_service.database_service.title_to_data = {
+            "カメックス": {"name": "カメックス", "type": "水", "hp": 150, "attacks": [{"name": "ハイドロポンプ", "damage": 80}]},
+            "ブラストイズ": {"name": "ブラストイズ", "type": "水", "hp": 140, "attacks": [{"name": "バブルこうせん", "damage": 60}]},
+            "強力な水カード特集": {"name": "強力な水カード特集", "type": "水", "hp": 120, "attacks": [{"name": "アクアテール", "damage": 70}]},
+            "高ダメージ技解説": {"name": "高ダメージ技解説", "type": "水", "hp": 100, "attacks": [{"name": "ハイドロキャノン", "damage": 100}]}
+        }
+        
         result = await hybrid_search_service.search(
             "ダメージが40以上の技を持つ、水タイプで強いカードを教えて", 5
         )
