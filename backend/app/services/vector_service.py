@@ -422,3 +422,27 @@ class VectorService:
         
         # ContextItemに変換
         return [ContextItem(**result) for result in all_results]
+    
+    def extract_embedding_text(self, card: dict) -> str:
+        """
+        カードデータからembedding対象テキストを抽出する（新仕様対応）
+        - effect_1, effect_2, effect_3 など複数effectフィールド
+        - qaリスト内のquestion/answer
+        - flavorText（存在する場合）
+        """
+        texts = []
+        # effect系フィールド
+        for key in [f"effect_{i}" for i in range(1, 10)]:
+            if key in card and card[key]:
+                texts.append(card[key])
+        # Q&A
+        if "qa" in card and isinstance(card["qa"], list):
+            for qa_item in card["qa"]:
+                if "question" in qa_item and qa_item["question"]:
+                    texts.append(qa_item["question"])
+                if "answer" in qa_item and qa_item["answer"]:
+                    texts.append(qa_item["answer"])
+        # flavorText
+        if "flavorText" in card and card["flavorText"]:
+            texts.append(card["flavorText"])
+        return "\n".join(texts)

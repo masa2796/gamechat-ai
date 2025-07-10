@@ -1,3 +1,14 @@
+# 進捗まとめ（2025/07/10時点）
+
+- フェーズ1: バックエンドの詳細jsonリスト返却対応（1〜5）は全て完了
+    - DatabaseService/HybridSearchService/RagServiceの改修済み
+    - `/rag/query`エンドポイントのレスポンスも詳細jsonリスト化済み
+    - 既存テスト（test_database_service.py, test_hybrid_search_consolidated.py, test_api.py等）も全て新仕様に修正し、全テストパスを確認
+- フェーズ2以降（ベクトル検索のembedding対象限定、LLMによる検索分岐、フロントエンド対応等）は今後着手予定
+- 旧仕様（title/text/score形式）は廃止、今後は詳細jsonリストのみサポート
+
+---
+
 # 検索結果カード名から構造化DBで詳細データを取得する仕組みへの変更案
 
 ## 概要
@@ -80,12 +91,28 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 ### ✅ フェーズ 2: ベクトル検索実装
 
 6. **description / Q&A / flavorText のみをembedding & vector DBに登録**
-   - 対象: `EmbeddingService`, `VectorService` など
-   - 埋め込み生成対象をdescription/Q&A/flavorTextに限定するロジックを追加
+   - 6.1 embedding対象フィールドの仕様整理・設計
+     - description/Q&A/flavorTextのみをembedding対象とする仕様を明文化
+     - data.jsonの構造確認・対象フィールドの抽出ロジック設計
+   - 6.2 EmbeddingServiceの改修
+     - embedding生成時に対象フィールドのみ抽出する処理を追加
+     - 既存のembedding生成ロジックの分岐・テスト追加
+   - 6.3 VectorServiceの改修
+     - ベクトルDB登録時に対象フィールドのみをembedding化
+     - 既存DBの再構築・テスト追加
+   - 6.4 既存embeddingデータの再生成・移行
+     - 旧embeddingデータのクリア
+     - 新仕様でembeddingデータを再生成
 
 7. **類似検索からカード名を取得**
-   - 対象: `VectorService`
-   - 検索結果からカード名リストを返すように修正
+   - 7.1 類似検索ロジックの改修
+     - 検索結果からカード名リストのみ返却するよう修正
+     - 既存のContextItem返却箇所をカード名抽出に変更
+   - 7.2 API/サービスの返却値統一
+     - 類似検索APIの返却値をカード名リストに統一
+     - 既存テストの修正・追加
+   - 7.3 integrationテストの追加・修正
+     - embedding対象限定・カード名リスト返却仕様に合わせてintegrationテストを追加・修正
 
 ---
 
