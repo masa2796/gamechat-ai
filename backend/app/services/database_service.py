@@ -476,3 +476,9 @@ class DatabaseService:
                 "tags": ["エラー", "データ"]
             }
         ]
+    
+    def get_card_details_by_titles(self, titles: list[str]) -> list[dict]:
+        """
+        カード名リストから詳細データ(dict)リストを取得
+        """
+        return [self.title_to_data[title] for title in titles if title in self.title_to_data]

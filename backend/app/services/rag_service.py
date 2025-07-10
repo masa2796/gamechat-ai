@@ -72,13 +72,13 @@ class RagService:
                     {"question": rag_req.question[:100], "top_k": optimized_top_k}
                 )
             
-            context_items = search_result["merged_results"]
+            context_items = search_result["merged_results"]  # ここは詳細json(dict)リスト
             
             # LLM応答生成（パフォーマンス監視付き）
             llm_start = time.perf_counter()
             answer = await self.llm_service.generate_answer(
                 query=rag_req.question,
-                context_items=context_items,
+                context_items=context_items,  # そのまま渡す
                 classification=search_result["classification"],
                 search_info=search_result.get("search_quality", {})
             )
@@ -103,7 +103,7 @@ class RagService:
             if rag_req.with_context:
                 response = {
                     "answer": answer,
-                    "context": [c.model_dump() for c in context_items],
+                    "context": context_items,  # そのまま返す
                     "classification": search_result["classification"].model_dump(),
                     "search_info": {
                         "query_type": search_result["classification"].query_type,
@@ -275,7 +275,7 @@ class RagService:
     
     async def _generate_answer_with_timeout(self, rag_req: RagRequest, search_result: Dict[str, Any]) -> str:
         """タイムアウト対応LLM応答生成"""
-        context_items = search_result.get("merged_results", [])
+        context_items = search_result.get("merged_results", [])  # 詳細jsonリスト
         
         if not context_items or search_result.get("_timeout"):
             # 検索結果が無い、またはタイムアウトした場合のフォールバック
@@ -284,7 +284,7 @@ class RagService:
         # LLM応答生成（バックグラウンドタスクとしても実行可能）
         answer = await self.llm_service.generate_answer(
             query=rag_req.question,
-            context_items=context_items[:5],  # 上位5件のみ使用（パフォーマンス向上）
+            context_items=context_items[:5],  # 上位5件のみ使用
             classification=search_result.get("classification")
         )
         
@@ -308,12 +308,12 @@ class RagService:
         )
         
         # レスポンス構築
-        context_items = search_result.get("merged_results", [])
+        context_items = search_result.get("merged_results", [])  # 詳細jsonリスト
         
         if rag_req.with_context:
             response = {
                 "answer": answer,
-                "context": [c.model_dump() for c in context_items[:10]],  # 上位10件
+                "context": context_items[:10],  # 上位10件
                 "classification": search_result.get("classification", {}).model_dump() if search_result.get("classification") else {},
                 "search_info": {
                     "query_type": search_result.get("classification", {}).query_type if search_result.get("classification") else "unknown",

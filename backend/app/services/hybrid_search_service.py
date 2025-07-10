@@ -89,7 +89,9 @@ class HybridSearchService:
             db_titles, vector_titles, classification, top_k, search_quality
         )
         
-        print(f"最終結果: {len(merged_titles)}件")
+        # ここで詳細jsonリストへ変換
+        merged_details = self.database_service.get_card_details_by_titles(merged_titles)
+        print(f"最終結果: {len(merged_details)}件")
         print(f"検索品質: {search_quality}")
         
         return {
@@ -97,7 +99,7 @@ class HybridSearchService:
             "search_strategy": search_strategy,
             "db_results": db_titles,
             "vector_results": vector_titles,
-            "merged_results": merged_titles,
+            "merged_results": merged_details,  # ここを詳細jsonリストに
             "search_quality": search_quality,
             "optimization_applied": True
         }

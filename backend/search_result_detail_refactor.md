@@ -50,17 +50,20 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
      - `HybridSearchService`（ハイブリッド, `backend/app/services/hybrid_search_service.py`）
    - 返却値を「カード名リスト（List[str]）」に統一するよう各メソッドを修正
    - 既存の `ContextItem` 返却箇所をカード名抽出に変更
+   - **[済] 2025/07/10: 返却値をList[str]に統一し、ContextItem→カード名リスト化・型チェック・テスト修正も完了。integrationテストも全通過**
 
 3. **カード名リストから詳細jsonリストを取得するメソッドを追加**
    - 対象: `DatabaseService`
      - `get_card_details_by_titles(titles: list[str]) -> list[dict]` を新規実装
    - 既存API/サービス（`HybridSearchService`や`RagService`）でこのメソッドを利用するよう改修
+   - **[済] 2025/07/10: DatabaseServiceにメソッド実装、HybridSearchService/RagServiceで詳細jsonリスト返却に統一。**
 
 4. **APIレスポンスを「詳細jsonリスト」へ変更**
    - 対象: 
      - `backend/app/routers/rag.py` の `/rag/query` エンドポイント
      - `RagService` の `process_query` など
    - 返却値を「詳細jsonリスト」に変更し、フロントエンド仕様に合わせる
+   - **[済] 2025/07/10: merged_results, context などが詳細jsonリストとなるよう全サービス・APIを修正。**
 
 5. **既存ユニットテストの修正・追加**
    - 対象: 
@@ -70,6 +73,7 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
      - 必要に応じて他のテストも
    - 返却値の仕様変更に合わせてテストを修正
    - `get_card_details_by_titles` のテストも追加
+   - **[済] 2025/07/10: すべてのテストを詳細jsonリスト仕様に修正し、全テストパスを確認。**
 
 ---
 
@@ -197,3 +201,22 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 - 旧仕様（title/text/score）での利用は非推奨
 
 ---
+
+## API仕様（詳細jsonリスト返却例）
+
+#### `/rag/query`（POST, 2025/07/10以降）
+- 概要: RAG検索（構造化/ベクトル/ハイブリッド）
+- レスポンス例（抜粋）:
+```json
+{
+  "answer": "...",
+  "context": [
+    {"name": "ピカチュウ", "type": "電気", "hp": 60, ...},
+    {"name": "リザードン", "type": "炎", "hp": 120, ...},
+    ...
+  ],
+  "classification": { ... },
+  "search_info": { ... },
+  "performance": { ... }
+}
+```
