@@ -88,6 +88,15 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 
 ---
 
+### ✅ embedding_service/vector_serviceの仕様変更に伴うテスト改修
+
+- embedding_service, vector_serviceのAPI例外仕様変更に伴い、関連テスト（test_embedding_consolidated.py等）を修正
+- APIキー未設定時の例外をEmbeddingExceptionで検証するよう修正
+- 既存テストのアサーション・例外型をサービス実装に合わせて調整
+- **[済] 2025/07/11: embedding_serviceのテスト修正・全テストパスを確認**
+
+---
+
 ### ✅ フェーズ 2: ベクトル検索実装
 
 6. **description / Q&A / flavorText のみをembedding & vector DBに登録**

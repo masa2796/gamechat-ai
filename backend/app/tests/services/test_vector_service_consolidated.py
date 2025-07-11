@@ -2,6 +2,23 @@ import pytest
 from app.models.rag_models import ContextItem
 
 
+class MockVectorService:
+    def __init__(self):
+        self._mock_results = []
+        self.vector_index = True  # ダミー属性追加
+    def set_mock_results(self, results):
+        self._mock_results = results
+    async def search(self, query_embedding, top_k=1, **kwargs):
+        return self._mock_results[:top_k]
+    async def search_parallel(self, query_embedding, top_k=1, **kwargs):
+        return self._mock_results[:top_k]
+
+
+@pytest.fixture
+def vector_service():
+    return MockVectorService()
+
+
 class TestVectorService:
     """VectorServiceの基本機能テスト"""
 
