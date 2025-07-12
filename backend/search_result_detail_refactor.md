@@ -1,8 +1,8 @@
-# 進捗まとめ（2025/07/10時点）
+# 進捗まとめ（2025/07/12時点）
 
+- 2025/07/12: 本日進捗なし。フェーズ2以降（embedding対象限定・LLM分岐・フロント対応等）は今後着手予定。
 - フェーズ1: バックエンドの詳細jsonリスト返却対応（1〜5）は全て完了
     - DatabaseService/HybridSearchService/RagServiceの改修済み
-    - `/rag/query`エンドポイントのレスポンスも詳細jsonリスト化済み
     - 既存テスト（test_database_service.py, test_hybrid_search_consolidated.py, test_api.py等）も全て新仕様に修正し、全テストパスを確認
 - フェーズ2以降（ベクトル検索のembedding対象限定、LLMによる検索分岐、フロントエンド対応等）は今後着手予定
 - 旧仕様（title/text/score形式）は廃止、今後は詳細jsonリストのみサポート
@@ -101,14 +101,14 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 
 6. **description / Q&A / flavorText のみをembedding & vector DBに登録**
    - 6.1 embedding対象フィールドの仕様整理・設計
-     - description/Q&A/flavorTextのみをembedding対象とする仕様を明文化
-     - data.jsonの構造確認・対象フィールドの抽出ロジック設計
+     - ✅ description/Q&A/flavorTextのみをembedding対象とする仕様を明文化
+     - ✅ data.jsonの構造確認・対象フィールドの抽出ロジック設計（effect_1〜n, qa[question/answer], flavorTextを抽出）
    - 6.2 EmbeddingServiceの改修
-     - embedding生成時に対象フィールドのみ抽出する処理を追加
-     - 既存のembedding生成ロジックの分岐・テスト追加
+     - ✅ embedding生成時に対象フィールドのみ抽出する処理を追加
+     - ✅ 既存のembedding生成ロジックの分岐・テスト追加
    - 6.3 VectorServiceの改修
-     - ベクトルDB登録時に対象フィールドのみをembedding化
-     - 既存DBの再構築・テスト追加
+     - ✅ ベクトルDB登録時に対象フィールドのみをembedding化
+     - ✅ 既存DBの再構築・テスト追加
    - 6.4 既存embeddingデータの再生成・移行
      - 旧embeddingデータのクリア
      - 新仕様でembeddingデータを再生成
