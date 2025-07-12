@@ -357,19 +357,19 @@ class HybridSearchService:
         top_k: int
     ) -> List[str]:
         """重み付きマージ - スコアを正規化して統合（レガシー）"""
-        all_results = []
+        all_results: list[dict[str, float | str]] = []
         # DBの結果に重み付け（0.4）
         for item in db_results:
             all_results.append({
                 "title": f"[DB] {item.title}",
-                "score": item.score * 0.4
+                "score": float(item.score) * 0.4
             })
         # ベクトルの結果に重み付け（0.6）
         for item in vector_results:
             all_results.append({
                 "title": f"[Vec] {item.title}",
-                "score": item.score * 0.6
+                "score": float(item.score) * 0.6
             })
         # スコアでソートして上位のtitleのみ返す
-        all_results.sort(key=lambda x: x["score"], reverse=True)
-        return [item["title"] for item in all_results[:top_k]]
+        all_results.sort(key=lambda x: float(x["score"]), reverse=True)
+        return [str(item["title"]) for item in all_results[:top_k]]
