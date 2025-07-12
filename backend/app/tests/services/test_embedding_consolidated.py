@@ -78,13 +78,9 @@ class TestEmbeddingService:
         # クライアントをNoneに設定（APIキーなしの状態をシミュレート）
         embedding_service.client = None
         embedding_service.is_mocked = False  # 実際のOpenAI呼び出しをシミュレート
-        
-        with pytest.raises(Exception) as exc_info:
+        from app.core.exceptions import EmbeddingException
+        with pytest.raises(EmbeddingException):
             await embedding_service.get_embedding("テストテキスト")
-        
-        # エラーメッセージの確認
-        error_msg = str(exc_info.value)
-        assert "OpenAI APIキーが設定されていません" in error_msg or "API_KEY_NOT_SET" in error_msg
 
     @pytest.mark.asyncio
     async def test_api_safety_verification(self, embedding_service):

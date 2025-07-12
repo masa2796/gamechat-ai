@@ -474,3 +474,9 @@ def mock_rag_service(mock_all_services):
         mock_instance.process_query = mock_process_query
         
         yield mock_instance
+
+
+@pytest.fixture
+def game_card_titles(test_data_factory):
+    """ゲームカード名リスト"""
+    return test_data_factory.create_game_card_titles()

@@ -5,24 +5,27 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # プロジェクトルートディレクトリを取得
-project_root = Path(__file__).parent.parent
-dotenv_path = project_root / 'backend' / '.env'  # backend/.envのみ参照
-load_dotenv(dotenv_path=dotenv_path)
-openai.api_key = os.getenv("BACKEND_OPENAI_API_KEY")
-
-def build_text(data):
-    return data.get('text', '')
+project_root = Path(__file__).resolve().parent.parent.parent
+backend_env_path = project_root / 'backend' / '.env'
+load_dotenv(dotenv_path=backend_env_path)
+openai_api_key = os.getenv("BACKEND_OPENAI_API_KEY")
+openai.api_key = openai_api_key
 
 def main():
-    # 環境変数からパスを取得、なければデフォルトパスを使用
-    data_path = os.getenv("CONVERTED_DATA_FILE_PATH", str(project_root / 'data' / 'convert_data.json'))
-    out_path = os.getenv("EMBEDDING_FILE_PATH", str(project_root / 'data' / 'embedding_list.jsonl'))
-    
+    # 相対パスでデータファイルを指定
+    data_path = project_root / 'data' / 'convert_data.json'
+    out_path = project_root / 'data' / 'embedding_list.jsonl'
+
+    if not data_path.exists():
+        print(f"Error: 入力ファイルが存在しません: {data_path}")
+        return
+
     with open(data_path, encoding='utf-8') as f:
         data_list = json.load(f)
 
     for data in data_list:
-        text = build_text(data)
+        text = data.get('text', '')
+        namespace = data.get('namespace', 'default')
         print(f"Embedding対象テキスト: {text}")
 
         response = openai.embeddings.create(
@@ -34,9 +37,9 @@ def main():
         with open(out_path, 'a', encoding='utf-8') as f_out:
             f_out.write(json.dumps({
                 "id": data.get("id"),  
-                "namespace": data.get("namespace"),
-                "text": text,
-                "embedding": embedding
+                "namespace": namespace,
+                "embedding": embedding,
+                "metadata": {namespace: text}
             }, ensure_ascii=False) + '\n')
 
         print(f"ベクトルを {out_path} に追記しました。")
