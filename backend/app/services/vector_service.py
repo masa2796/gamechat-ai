@@ -362,7 +362,7 @@ class VectorService:
         namespaces: Optional[List[str]] = None,
         classification: Optional[ClassificationResult] = None,
         min_score: Optional[float] = None
-    ) -> List[ContextItem]:
+    ) -> List[str]:
         """
         並列ベクトル検索を実行（パフォーマンス最適化版）
         """
@@ -420,8 +420,8 @@ class VectorService:
                 "title": best_match['title'][:50]
             })
         
-        # ContextItemに変換
-        return [ContextItem(**result) for result in all_results]
+        # カード名リストに変換
+        return [result["title"] for result in all_results if "title" in result]
     
     def extract_embedding_text(self, card: dict) -> str:
         """

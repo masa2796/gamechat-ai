@@ -319,17 +319,17 @@ class HybridSearchService:
         vector_results: List[ContextItem],
         classification: ClassificationResult,
         top_k: int
-    ) -> List[ContextItem]:
+    ) -> List[str]:
         """検索結果をマージして最適な結果を選択（レガシー）"""
         
         if not db_results and not vector_results:
             return []
         
         if not db_results:
-            return vector_results[:top_k]
+            return [item.title for item in vector_results[:top_k]]
         
         if not vector_results:
-            return db_results[:top_k]
+            return [item.title for item in db_results[:top_k]]
         
         # 両方の結果がある場合のマージ戦略
         if classification.query_type == "hybrid":
@@ -341,42 +341,35 @@ class HybridSearchService:
             if len(merged) < top_k:
                 remaining = top_k - len(merged)
                 merged.extend(vector_results[:remaining])
-            return merged
+            return [item.title for item in merged]
         else:  # semantic
             # 意味検索優先の場合はベクトルの結果を優先し、不足分をDBで補完
             merged = vector_results[:top_k]
             if len(merged) < top_k:
                 remaining = top_k - len(merged)
                 merged.extend(db_results[:remaining])
-            return merged
+            return [item.title for item in merged]
     
     def _weighted_merge(
         self, 
         db_results: List[ContextItem], 
         vector_results: List[ContextItem],
         top_k: int
-    ) -> List[ContextItem]:
+    ) -> List[str]:
         """重み付きマージ - スコアを正規化して統合（レガシー）"""
         all_results = []
-        
         # DBの結果に重み付け（0.4）
         for item in db_results:
-            weighted_item = ContextItem(
-                title=f"[DB] {item.title}",
-                text=item.text,
-                score=item.score * 0.4
-            )
-            all_results.append(weighted_item)
-        
+            all_results.append({
+                "title": f"[DB] {item.title}",
+                "score": item.score * 0.4
+            })
         # ベクトルの結果に重み付け（0.6）
         for item in vector_results:
-            weighted_item = ContextItem(
-                title=f"[Vec] {item.title}",
-                text=item.text,
-                score=item.score * 0.6
-            )
-            all_results.append(weighted_item)
-        
-        # スコアでソートして上位を返す
-        all_results.sort(key=lambda x: x.score, reverse=True)
-        return all_results[:top_k]
+            all_results.append({
+                "title": f"[Vec] {item.title}",
+                "score": item.score * 0.6
+            })
+        # スコアでソートして上位のtitleのみ返す
+        all_results.sort(key=lambda x: x["score"], reverse=True)
+        return [item["title"] for item in all_results[:top_k]]

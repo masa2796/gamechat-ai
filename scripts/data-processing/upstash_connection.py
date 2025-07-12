@@ -9,15 +9,22 @@ dotenv_path_global = os.path.join(os.path.dirname(__file__), '..', 'backend', '.
 load_dotenv(dotenv_path=dotenv_path_global)
 
 def upload_embeddings_to_upstash():
+    # backend/.envを明示的にロード
+    project_root = Path(__file__).resolve().parent.parent.parent
+    backend_env_path = project_root / 'backend' / '.env'
+    load_dotenv(dotenv_path=backend_env_path, override=True)
     url = os.getenv("UPSTASH_VECTOR_REST_URL")
     token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     if not url or not token:
-        print("Error: UPSTASH_VECTOR_REST_URL or UPSTASH_VECTOR_REST_TOKEN not found.")
+        print("Error: UPSTASH_VECTOR_REST_URL or UPSTASH_VECTOR_REST_TOKEN not found in backend/.env.")
         return
 
     index = Index(url=url, token=token)
-    embedding_list_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'embedding_list.jsonl')
+    embedding_list_path = project_root / 'data' / 'embedding_list.jsonl'
 
+    if not embedding_list_path.exists():
+        print(f"Error: 入力ファイルが存在しません: {embedding_list_path}")
+        return
     with open(embedding_list_path, encoding='utf-8') as f:
         for line in f:
             if not line.strip():

@@ -110,18 +110,19 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
      - ✅ ベクトルDB登録時に対象フィールドのみをembedding化
      - ✅ 既存DBの再構築・テスト追加
    - 6.4 既存embeddingデータの再生成・移行
-     - 旧embeddingデータのクリア
-     - 新仕様でembeddingデータを再生成
+     - ✅ 旧embeddingデータのクリア
+     - ✅ 新仕様でembeddingデータを再生成
 
 7. **類似検索からカード名を取得**
    - 7.1 類似検索ロジックの改修
-     - 検索結果からカード名リストのみ返却するよう修正
-     - 既存のContextItem返却箇所をカード名抽出に変更
+     - ✅ 検索結果からカード名リストのみ返却するよう修正
+     - ✅ 既存のContextItem返却箇所をカード名抽出に変更
    - 7.2 API/サービスの返却値統一
-     - 類似検索APIの返却値をカード名リストに統一
-     - 既存テストの修正・追加
+     - ✅ 類似検索APIの返却値をカード名リストに統一
+     - ✅ 既存テスト（test_vector_service_consolidated.py, test_hybrid_search_consolidated.py, test_api.py等）を現仕様に修正
    - 7.3 integrationテストの追加・修正
-     - embedding対象限定・カード名リスト返却仕様に合わせてintegrationテストを追加・修正
+     - ✅ embedding対象限定・カード名リスト返却仕様に合わせてintegrationテストを追加・修正
+     - ✅ 全テストパスを確認
 
 ---
 

@@ -1,6 +1,4 @@
 import pytest
-from app.models.rag_models import ContextItem
-
 
 class MockVectorService:
     def __init__(self):
@@ -23,16 +21,16 @@ class TestVectorService:
     """VectorServiceの基本機能テスト"""
 
     @pytest.mark.asyncio
-    async def test_search_returns_context(
+    async def test_search_returns_card_names(
         self, 
         vector_service, 
         mock_upstash_response
     ):
-        """ベクター検索によるコンテキスト取得テスト"""
+        """ベクター検索によるカード名リスト取得テスト"""
+        vector_service.set_mock_results(["カードA"])
         result = await vector_service.search([0.1] * 1536, top_k=1)
         assert isinstance(result, list)
-        # ContextItem型で返ることを確認
-        assert all(isinstance(item, ContextItem) for item in result)
+        assert all(isinstance(item, str) for item in result)
 
     @pytest.mark.asyncio
     async def test_search_with_multiple_results(
@@ -41,26 +39,25 @@ class TestVectorService:
         test_data_factory
     ):
         """複数結果の検索テスト"""
-        # ContextItemリストを使う
-        context_items = [ContextItem(title=f"カード{i}", text="説明", score=1.0, namespace="test") for i in range(3)]
-        vector_service.set_mock_results(context_items)
+        card_names = [f"カード{i}" for i in range(3)]
+        vector_service.set_mock_results(card_names)
         result = await vector_service.search([0.1] * 1536, top_k=3)
         assert len(result) == 3
-        assert all(isinstance(item, ContextItem) for item in result)
-        assert [item.title for item in result] == [f"カード{i}" for i in range(3)]
+        assert all(isinstance(item, str) for item in result)
+        assert result == card_names
 
     @pytest.mark.asyncio
-    async def test_search_parallel_returns_context(
+    async def test_search_parallel_returns_card_names(
         self,
         vector_service,
         test_data_factory
     ):
         """search_parallelのテスト"""
-        context_items = [ContextItem(title=f"カード{i}", text="説明", score=1.0, namespace="test") for i in range(5)]
-        vector_service.set_mock_results(context_items)
+        card_names = [f"カード{i}" for i in range(5)]
+        vector_service.set_mock_results(card_names)
         result = await vector_service.search_parallel([0.1] * 1536, top_k=5)
         assert isinstance(result, list)
-        assert all(isinstance(item, ContextItem) for item in result)
+        assert all(isinstance(item, str) for item in result)
         assert len(result) == 5
 
 
@@ -74,11 +71,11 @@ class TestVectorServiceOptimization:
         test_data_factory
     ):
         """スコアベースフィルタリングテスト"""
-        context_items = [ContextItem(title=f"高品質{i}", text="説明", score=0.9, namespace="test") for i in range(4)]
-        vector_service.set_mock_results(context_items)
+        card_names = [f"高品質{i}" for i in range(4)]
+        vector_service.set_mock_results(card_names)
         result = await vector_service.search([0.1] * 1536, top_k=4, min_score=0.8)
         assert isinstance(result, list)
-        assert all(isinstance(item, ContextItem) for item in result)
+        assert all(isinstance(item, str) for item in result)
         assert len(result) == 4
 
     @pytest.mark.asyncio
@@ -89,11 +86,11 @@ class TestVectorServiceOptimization:
         semantic_classification
     ):
         """動的top_k調整テスト"""
-        context_items = [ContextItem(title=f"高品質{i}", text="説明", score=0.9, namespace="test") for i in range(5)]
-        vector_service.set_mock_results(context_items)
+        card_names = [f"高品質{i}" for i in range(5)]
+        vector_service.set_mock_results(card_names)
         result = await vector_service.search([0.1] * 1536, top_k=3, classification=semantic_classification)
         assert isinstance(result, list)
-        assert all(isinstance(item, ContextItem) for item in result)
+        assert all(isinstance(item, str) for item in result)
         assert len(result) == 3
 
     @pytest.mark.asyncio
@@ -108,13 +105,15 @@ class TestVectorServiceOptimization:
             [0.2] * 1536,
             [0.3] * 1536
         ]
+        card_names = [f"カード{i}" for i in range(2)]
+        vector_service.set_mock_results(card_names)
         results = []
         for vector in query_vectors:
             result = await vector_service.search(vector, top_k=2)
             results.append(result)
         assert len(results) == 3
         assert all(len(result) <= 2 for result in results)
-        assert all(isinstance(item, ContextItem) for result in results for item in result)
+        assert all(isinstance(item, str) for result in results for item in result)
 
 
 class TestVectorServiceConfiguration:
@@ -135,9 +134,10 @@ class TestVectorServiceConfiguration:
     @pytest.mark.asyncio
     async def test_connection_error_handling(self, vector_service):
         """接続エラーハンドリングテスト"""
+        vector_service.set_mock_results(["カードA"])
         result = await vector_service.search([0.1] * 1536, top_k=1)
         assert isinstance(result, list)
-        assert all(isinstance(item, ContextItem) for item in result)
+        assert all(isinstance(item, str) for item in result)
 
     @pytest.mark.asyncio
     async def test_empty_results_handling(self, vector_service):
