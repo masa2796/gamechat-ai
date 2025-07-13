@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class VectorService:
+    # 検索ごとにカード名→スコアの辞書を保持
+    last_scores: dict = {}
     _instance = None
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -108,6 +110,7 @@ class VectorService:
         })
         
         all_titles = []
+        scores = {}
         
         for namespace in namespaces:
             try:
@@ -130,15 +133,14 @@ class VectorService:
                     # スコア閾値による除外
                     if min_score is not None and score < min_score:
                         continue
-                        
                     meta = getattr(match, 'metadata', None)
                     if meta and hasattr(meta, 'get'):
                         title = meta.get('title', f"{namespace} - 情報")
                     else:
                         title = f"{namespace} - 情報"
-                    
                     if title:
                         all_titles.append(title)
+                        scores[title] = score
                         
             except Exception as ns_error:
                 GameChatLogger.log_error("vector_service", f"Namespace {namespace} での検索エラー", ns_error, {
@@ -149,7 +151,7 @@ class VectorService:
         GameChatLogger.log_success("vector_service", "ベクトル検索完了", {
             "total_results": len(all_titles)
         })
-        
+        self.last_scores = scores
         return all_titles[:top_k]
     
     def _optimize_search_params(

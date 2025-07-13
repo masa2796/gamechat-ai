@@ -8,6 +8,54 @@ from .vector_service import VectorService
 from .embedding_service import EmbeddingService
 
 class HybridSearchService:
+    def _merge_results_weighted(
+        self,
+        db_titles: list[str],
+        vector_titles: list[str],
+        db_scores: dict,
+        vector_scores: dict,
+        classification: ClassificationResult,
+        top_k: int,
+        search_quality: dict
+    ) -> list[str]:
+        """
+        スコア加重型のマージロジック（カード名リスト）
+        - DB/ベクトル両方のスコアを活用し、重複除去・加重平均・スコア順ソート
+        - 設計方針（重複除去・優先順位・重み付け・クエリタイプ分岐）に準拠
+        """
+        if not db_titles and not vector_titles:
+            return self._handle_no_results_optimized(classification)
+
+        query_type = getattr(classification, "query_type", None)
+        # スコア辞書を構築
+        db_weight = 0.7
+        vector_weight = 0.3
+        merged_scores = {}
+        all_titles = list(dict.fromkeys(db_titles + vector_titles))
+        for title in all_titles:
+            db_score = db_scores.get(title)
+            vec_score = vector_scores.get(title)
+            if db_score is not None and vec_score is not None:
+                merged_scores[title] = db_score * db_weight + vec_score * vector_weight
+            elif db_score is not None:
+                merged_scores[title] = db_score
+            elif vec_score is not None:
+                merged_scores[title] = vec_score
+            else:
+                merged_scores[title] = 0.0
+
+        # クエリタイプごとに優先度を調整
+        if query_type == "filterable":
+            # DBスコアを優先
+            sorted_titles = sorted(all_titles, key=lambda t: (t in db_titles, merged_scores[t]), reverse=True)
+        elif query_type == "semantic":
+            # ベクトルスコアを優先
+            sorted_titles = sorted(all_titles, key=lambda t: (t in vector_titles, merged_scores[t]), reverse=True)
+        else:
+            # 加重スコア順
+            sorted_titles = sorted(all_titles, key=lambda t: merged_scores[t], reverse=True)
+
+        return sorted_titles[:top_k]
     """分類に基づく統合検索サービス（最適化対応）"""
     
     def __init__(self) -> None:
@@ -85,8 +133,11 @@ class HybridSearchService:
         )
         
         # Step 5: 最適化されたマージ・選択
-        merged_titles = self._merge_results_optimized(
-            db_titles, vector_titles, classification, top_k, search_quality
+        # DB/ベクトルのスコアを取得
+        db_scores = getattr(self.database_service, "last_scores", {}) if hasattr(self.database_service, "last_scores") else {}
+        vector_scores = getattr(self.vector_service, "last_scores", {}) if hasattr(self.vector_service, "last_scores") else {}
+        merged_titles = self._merge_results_weighted(
+            db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality
         )
         
         # ここで詳細jsonリストへ変換

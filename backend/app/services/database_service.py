@@ -7,6 +7,8 @@ from ..core.logging import GameChatLogger
 from .storage_service import StorageService
 
 class DatabaseService:
+    # 検索ごとにカード名→スコアの辞書を保持
+    last_scores: dict = {}
     _instance = None
     def __new__(cls, *args: object, **kwargs: object) -> "DatabaseService":
         if cls._instance is None:
@@ -146,11 +148,14 @@ class DatabaseService:
         })
         
         filtered_titles = []
+        scores = {}
         for item in data:
             score = self._calculate_filter_score(item, filter_keywords)
             if score > 0:
                 title = self._extract_title(item)
                 filtered_titles.append(title)
+                scores[title] = score
+        self.last_scores = scores
         
         GameChatLogger.log_success("database_service", "フィルター検索完了", {
             "results_count": len(filtered_titles),
