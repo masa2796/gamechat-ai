@@ -84,7 +84,7 @@
 3. トラブルシューティングで問題解決方法を学習
 
 ### 🔍 検索システムを理解したい
-1. [`guides/hybrid_search_guide.md`](./guides/hybrid_search_guide.md) でシステム全体を把握
+1. [`guides/hybrid_search_guide.md`](./guides/hybrid_search_guide.md) でシステム全体と「LLMによるクエリ分類（FILTERABLE/SEMANTIC/HYBRID）」の基準・プロンプト例を把握
 2. [`guides/vector_search_optimization_guide.md`](./guides/vector_search_optimization_guide.md) で最適化を学習
 
 ### 🤖 AI応答を最適化したい

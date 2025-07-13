@@ -256,18 +256,29 @@ class HybridSearchService:
         # 結果がない場合の処理
         if not db_titles and not vector_titles:
             return self._handle_no_results_optimized(classification)
-        
-        # 単一ソースの場合
-        if not db_titles:
-            return self._filter_by_quality(vector_titles, search_quality, top_k)
-        
-        if not vector_titles:
-            return self._filter_by_quality(db_titles, search_quality, top_k)
-        
-        # 両方ある場合は重複除去してマージ
-        all_titles = db_titles + vector_titles
-        unique_titles = list(dict.fromkeys(all_titles))
-        return unique_titles[:top_k]
+
+        query_type = getattr(classification, "query_type", None)
+        # FILTERABLE: DB優先、足りなければベクトルで補完
+        if query_type == "filterable":
+            merged = db_titles[:top_k]
+            if len(merged) < top_k:
+                remaining = top_k - len(merged)
+                # ベクトル結果からDBにないものを追加
+                supplement = [t for t in vector_titles if t not in merged][:remaining]
+                merged.extend(supplement)
+            return merged
+        # SEMANTIC: ベクトル優先、足りなければDBで補完
+        elif query_type == "semantic":
+            merged = vector_titles[:top_k]
+            if len(merged) < top_k:
+                remaining = top_k - len(merged)
+                supplement = [t for t in db_titles if t not in merged][:remaining]
+                merged.extend(supplement)
+            return merged
+        # HYBRIDまたはその他: DB→ベクトルの順で重複除去しつつ結合
+        else:
+            all_titles = db_titles + [t for t in vector_titles if t not in db_titles]
+            return all_titles[:top_k]
     
     def _filter_by_quality(
         self, 
@@ -322,54 +333,15 @@ class HybridSearchService:
     ) -> List[str]:
         """検索結果をマージして最適な結果を選択（レガシー）"""
         
+        # レガシー用途: ContextItem型のままの時のみ利用
         if not db_results and not vector_results:
             return []
-        
         if not db_results:
             return [item.title for item in vector_results[:top_k]]
-        
         if not vector_results:
             return [item.title for item in db_results[:top_k]]
-        
-        # 両方の結果がある場合のマージ戦略
-        if classification.query_type == "hybrid":
-            # ハイブリッドの場合は重み付けマージ
-            return self._weighted_merge(db_results, vector_results, top_k)
-        elif classification.query_type == "filterable":
-            # フィルター優先の場合はDBの結果を優先し、不足分をベクトルで補完
-            merged = db_results[:top_k]
-            if len(merged) < top_k:
-                remaining = top_k - len(merged)
-                merged.extend(vector_results[:remaining])
-            return [item.title for item in merged]
-        else:  # semantic
-            # 意味検索優先の場合はベクトルの結果を優先し、不足分をDBで補完
-            merged = vector_results[:top_k]
-            if len(merged) < top_k:
-                remaining = top_k - len(merged)
-                merged.extend(db_results[:remaining])
-            return [item.title for item in merged]
+        # HYBRID/その他: DB→ベクトルの順で重複除去しつつ結合
+        all_titles = [item.title for item in db_results]
+        all_titles += [item.title for item in vector_results if item.title not in all_titles]
+        return all_titles[:top_k]
     
-    def _weighted_merge(
-        self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
-        top_k: int
-    ) -> List[str]:
-        """重み付きマージ - スコアを正規化して統合（レガシー）"""
-        all_results: list[dict[str, float | str]] = []
-        # DBの結果に重み付け（0.4）
-        for item in db_results:
-            all_results.append({
-                "title": f"[DB] {item.title}",
-                "score": float(item.score) * 0.4
-            })
-        # ベクトルの結果に重み付け（0.6）
-        for item in vector_results:
-            all_results.append({
-                "title": f"[Vec] {item.title}",
-                "score": float(item.score) * 0.6
-            })
-        # スコアでソートして上位のtitleのみ返す
-        all_results.sort(key=lambda x: float(x["score"]), reverse=True)
-        return [str(item["title"]) for item in all_results[:top_k]]
