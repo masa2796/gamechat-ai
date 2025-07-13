@@ -10,7 +10,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onSendModeChange,
 }) => {
   return (
-    <div className="flex flex-col gap-2 p-2 border-t bg-background">
+    <div className="flex flex-col gap-2 p-2 bg-background">
       <div className="flex gap-2">
         <input
           className="flex-1 border rounded px-3 py-2 text-base"
