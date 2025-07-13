@@ -32,6 +32,8 @@ export const useChat = () => {
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
+  // context（カード詳細jsonリスト）を保持
+  const [cardContext, setCardContext] = useState<import("../../types/rag").RagContextItem[] | undefined>(undefined);
 
   // 送信モードの初期化
   useEffect(() => {
@@ -132,7 +134,8 @@ export const useChat = () => {
         role: "assistant",
         content: data.answer || "エラーが発生しました"
       };
-      // contextやclassification等を必要に応じてここで利用可能
+      // context（カード詳細jsonリスト）をstateに格納
+      setCardContext(data.context);
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       let displayMessage = "エラーが発生しました。もう一度お試しください。";
@@ -166,6 +169,8 @@ export const useChat = () => {
     setSendMode,
     sendMessage,
     recaptchaReady,
-    setRecaptchaReady // 追加
+    setRecaptchaReady,
+    cardContext,
+    setCardContext
   };
 };

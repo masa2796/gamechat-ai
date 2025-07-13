@@ -8,6 +8,7 @@ export type Message = {
 export interface ChatMessagesProps {
   messages: Message[];
   loading?: boolean;
+  cardContext?: import("./rag").RagContextItem[];
 }
 
 export interface ChatInputProps {

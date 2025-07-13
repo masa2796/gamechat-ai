@@ -2,7 +2,7 @@ import React from "react";
 
 export interface RagContextItem {
   id?: string;
-  name: string;
+  name?: string; // API型に合わせてstring | undefined
   image_before?: string;
   type?: string;
   rarity?: string;
@@ -12,6 +12,7 @@ export interface RagContextItem {
   cost?: number;
   effect_1?: string;
   url?: string;
+  is_suggestion?: boolean;
 }
 
 type Props = {
@@ -21,7 +22,7 @@ type Props = {
 
 export const CardList: React.FC<Props> = ({ cards, showSampleUI = false }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginTop: '1.2rem' }}>
-    {cards.map(card => (
+    {cards.filter(card => !card.is_suggestion).map(card => (
       <div key={card.id || card.name} style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 8px #0001', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <img src={card.image_before} alt={card.name} style={{ width: 120, height: 180, objectFit: 'contain', marginBottom: '0.5rem' }} />
         <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.2rem' }}>{card.name}</div>
