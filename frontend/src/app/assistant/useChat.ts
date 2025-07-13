@@ -1,5 +1,7 @@
+"use client";
 import { useState, useEffect, useCallback } from "react";
 import type { Message } from "../../types/chat";
+import type { RagResponse } from "../../types/rag";
 
 // reCAPTCHAが無効かどうかを判定するヘルパー関数
 const isRecaptchaDisabled = () => {
@@ -71,6 +73,14 @@ export const useChat = () => {
     const userMessage: Message = { role: "user", content: input.trim() };
     setLoading(true);
     setInput("");
+
+    // 「サンプル出力」ならCardListを表示する特殊メッセージを追加
+    if (input.trim() === "サンプル出力") {
+      setMessages(prev => [...prev, userMessage, { role: "assistant", content: "__show_sample_cards__" }]);
+      setLoading(false);
+      return;
+    }
+
     setMessages(prev => [...prev, userMessage]);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL 
@@ -114,14 +124,15 @@ export const useChat = () => {
         const errorData = await res.json().catch(() => ({ error: { message: `HTTP error! status: ${res.status}` } }));
         throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
       }
-      const data = await res.json();
+      const data: RagResponse = await res.json();
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
-      const botMessage: Message = { 
-        role: "assistant", 
-        content: data.answer || "エラーが発生しました" 
+      const botMessage: Message = {
+        role: "assistant",
+        content: data.answer || "エラーが発生しました"
       };
+      // contextやclassification等を必要に応じてここで利用可能
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       let displayMessage = "エラーが発生しました。もう一度お試しください。";

@@ -75,12 +75,6 @@ describe('AppSidebar', () => {
       expect(screen.getByText('チャット')).toBeInTheDocument()
     })
 
-    it('GitHubリンクが表示される', () => {
-      render(<AppSidebar />)
-      
-      expect(screen.getByText('GitHub')).toBeInTheDocument()
-      expect(screen.getByText('View Source')).toBeInTheDocument()
-    })
   })
 
   describe('アイコン', () => {
@@ -91,12 +85,6 @@ describe('AppSidebar', () => {
       expect(messagesSquareIcons).toHaveLength(2) // Header and content
     })
 
-    it('GitHubアイコンが表示される', () => {
-      render(<AppSidebar />)
-      
-      expect(screen.getByTestId('github-icon')).toBeInTheDocument()
-    })
-
     it('アイコンに適切なクラスが設定される', () => {
       render(<AppSidebar />)
       
@@ -104,45 +92,25 @@ describe('AppSidebar', () => {
       messagesSquareIcons.forEach(icon => {
         expect(icon).toHaveClass('size-4')
       })
-
-      const githubIcon = screen.getByTestId('github-icon')
-      expect(githubIcon).toHaveClass('size-4')
     })
   })
 
   describe('リンク', () => {
-    it('ヘッダーのリンクが正しいhrefを持つ', () => {
+    it('ヘッダーとチャットリンクが正しいhrefを持つ', () => {
       render(<AppSidebar />)
-      
-      const headerLinks = screen.getAllByRole('link')
-      const homeLink = headerLinks.find(link => link.getAttribute('href') === '/')
-      expect(homeLink).toBeInTheDocument()
-    })
-
-    it('チャットリンクが正しいhrefを持つ', () => {
-      render(<AppSidebar />)
-      
-      const chatLinks = screen.getAllByRole('link')
-      const chatLink = chatLinks.filter(link => link.getAttribute('href') === '/')
-      expect(chatLink).toHaveLength(2) // Header and content
-    })
-
-    it('GitHubリンクが正しいhrefを持つ', () => {
-      render(<AppSidebar />)
-      
-      const githubLink = screen.getByRole('link', { name: /github/i })
-      expect(githubLink).toHaveAttribute('href', 'https://github.com/your-repo')
-      expect(githubLink).toHaveAttribute('target', '_blank')
+      const links = screen.getAllByRole('link')
+      // 2つのリンクがあり、どちらも"/"である
+      expect(links).toHaveLength(2)
+      links.forEach(link => expect(link).toHaveAttribute('href', '/'))
     })
   })
 
   describe('メニューボタン', () => {
     it('適切なサイズのメニューボタンが表示される', () => {
       render(<AppSidebar />)
-      
       const largeButtons = screen.getAllByTestId('sidebar-menu-button')
       const lgButtons = largeButtons.filter(button => button.getAttribute('data-size') === 'lg')
-      expect(lgButtons).toHaveLength(2) // Header and footer
+      expect(lgButtons).toHaveLength(1) // Headerのみ
     })
 
     it('通常サイズのメニューボタンが表示される', () => {
@@ -198,24 +166,15 @@ describe('AppSidebar', () => {
 
     it('リンクが適切にアクセシブル', () => {
       render(<AppSidebar />)
-      
       const links = screen.getAllByRole('link')
-      expect(links.length).toBeGreaterThan(0)
-      
-      // GitHub link should have target="_blank" for external link
-      const githubLink = screen.getByRole('link', { name: /github/i })
-      expect(githubLink).toHaveAttribute('target', '_blank')
+      expect(links.length).toBe(2)
     })
 
     it('適切なテキストコンテンツを持つ', () => {
       render(<AppSidebar />)
-      
-      // All text should be accessible
       expect(screen.getByText('GameChat AI')).toBeInTheDocument()
       expect(screen.getByText('チャットボット')).toBeInTheDocument()
       expect(screen.getByText('チャット')).toBeInTheDocument()
-      expect(screen.getByText('GitHub')).toBeInTheDocument()
-      expect(screen.getByText('View Source')).toBeInTheDocument()
     })
   })
 
@@ -250,38 +209,27 @@ describe('AppSidebar', () => {
   describe('コンポーネント統合', () => {
     it('すべてのサブコンポーネントが正しく統合される', () => {
       render(<AppSidebar />)
-      
-      // Verify all major components are present
       expect(screen.getByTestId('sidebar')).toBeInTheDocument()
       expect(screen.getByTestId('sidebar-header')).toBeInTheDocument()
       expect(screen.getByTestId('sidebar-content')).toBeInTheDocument()
       expect(screen.getByTestId('sidebar-footer')).toBeInTheDocument()
       expect(screen.getByTestId('sidebar-rail')).toBeInTheDocument()
-      
-      // Verify menu structure
       const menus = screen.getAllByTestId('sidebar-menu')
-      expect(menus).toHaveLength(3) // Header, content, footer
-      
+      expect(menus).toHaveLength(3)
       const menuItems = screen.getAllByTestId('sidebar-menu-item')
-      expect(menuItems).toHaveLength(3) // Header, content, footer items
-      
+      expect(menuItems).toHaveLength(2) // Header, content
       const menuButtons = screen.getAllByTestId('sidebar-menu-button')
-      expect(menuButtons).toHaveLength(3) // Header, content, footer buttons
+      expect(menuButtons).toHaveLength(2) // Header, content
     })
   })
 
   describe('スタイリング', () => {
     it('適切なCSSクラスが適用される', () => {
       render(<AppSidebar />)
-      
-      // Check if icons have correct styling classes
       const messagesSquareIcons = screen.getAllByTestId('messages-square-icon')
       messagesSquareIcons.forEach(icon => {
         expect(icon).toHaveClass('size-4')
       })
-
-      const githubIcon = screen.getByTestId('github-icon')
-      expect(githubIcon).toHaveClass('size-4')
     })
   })
 
