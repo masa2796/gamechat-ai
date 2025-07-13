@@ -16,7 +16,8 @@ class HybridSearchService:
         vector_scores: dict,
         classification: ClassificationResult,
         top_k: int,
-        search_quality: dict
+        search_quality: dict,
+        quality_threshold: float = 0.0
     ) -> list[str]:
         """
         スコア加重型のマージロジック（カード名リスト）
@@ -55,7 +56,22 @@ class HybridSearchService:
             # 加重スコア順
             sorted_titles = sorted(all_titles, key=lambda t: merged_scores[t], reverse=True)
 
-        return sorted_titles[:top_k]
+        # 品質スコアによるフィルタリング
+        if quality_threshold > 0.0:
+            filtered_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
+        else:
+            filtered_titles = sorted_titles
+
+        # 上位N件抽出
+        result_titles = filtered_titles[:top_k]
+
+        # 不足時の補完・提案メッセージ生成
+        if len(result_titles) < top_k:
+            suggestion_title = self._generate_search_suggestion(classification)
+            # ダミーのdictを返す場合はここでtitleを渡すだけ、詳細json化は呼び出し側で対応
+            result_titles.append(suggestion_title)
+
+        return result_titles
     """分類に基づく統合検索サービス（最適化対応）"""
     
     def __init__(self) -> None:
@@ -136,15 +152,28 @@ class HybridSearchService:
         # DB/ベクトルのスコアを取得
         db_scores = getattr(self.database_service, "last_scores", {}) if hasattr(self.database_service, "last_scores") else {}
         vector_scores = getattr(self.vector_service, "last_scores", {}) if hasattr(self.vector_service, "last_scores") else {}
+        # 品質スコア閾値（例: 0.3未満は除外）
+        quality_threshold = 0.3
         merged_titles = self._merge_results_weighted(
-            db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality
+            db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
         )
-        
-        # ここで詳細jsonリストへ変換
-        merged_details = self.database_service.get_card_details_by_titles(merged_titles)
+
+        # ここで詳細jsonリストへ変換（title_to_dataに無い場合は提案メッセージ用のdictを生成）
+        merged_details = []
+        for title in merged_titles:
+            if title in self.database_service.title_to_data:
+                merged_details.append(self.database_service.title_to_data[title])
+            else:
+                # 提案メッセージ用のdict
+                merged_details.append({
+                    "name": "ご提案",
+                    "type": "info",
+                    "content": title,
+                    "is_suggestion": True
+                })
         print(f"最終結果: {len(merged_details)}件")
         print(f"検索品質: {search_quality}")
-        
+
         return {
             "classification": classification,
             "search_strategy": search_strategy,
@@ -354,8 +383,8 @@ class HybridSearchService:
         if classification.query_type == QueryType.SEMANTIC:
             suggestions = [
                 "• より具体的なカード名やキャラクター名で検索",
-                "• 「技」「HP」「タイプ」などの具体的な属性を含めた検索",
-                "• 「強い草タイプのカード」のように条件を明確化"
+                "• 「効果」「HP」「攻撃力」などの具体的な属性を含めた検索",
+                "• 「フェアリーのカード」のように条件を明確化"
             ]
         
         elif classification.query_type == QueryType.FILTERABLE:
