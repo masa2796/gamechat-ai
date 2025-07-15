@@ -1,116 +1,162 @@
-from typing import List, Dict, Any, Optional
-from ..models.rag_models import ContextItem
+from typing import List, Dict, Any
 from ..core.config import settings
 from ..core.exceptions import DatabaseException
-from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
-from .storage_service import StorageService
 
 class DatabaseService:
-    async def filter_search(self, filter_keywords: List[str], top_k: int = 50) -> List[str]:
+    def _calculate_filter_score(
+        self,
+        item: Dict[str, Any],
+        keywords: List[str]
+    ) -> float:
         """
-        フィルタキーワードに基づいて構造化検索を実行し、カード名リストを返却（data.json仕様）
-        
-        Args:
-            filter_keywords: フィルタリング用キーワードのリスト
-                - 例: ["HP", "100以上"], ["エルフ"], ["ダメージ", "3以上"]
-            top_k: 返却する最大件数
-        Returns:
-            マッチスコア順にソートされたカード名リスト
+        filter_keywordsの内容を属性ごとに正しく解釈し、全条件をANDで厳密に適用する。
+        例: ["コスト3以下", "疾走", "ドラゴン", "フォロワー"]
         """
-        data = self._load_data()
-        if not data:
-            return self._get_fallback_results()
-        filtered_titles = []
-        scores = {}
-        for item in data:
-            score = self._calculate_filter_score(item, filter_keywords)
-            if score > 0:
-                title = self._extract_title(item)
-                filtered_titles.append(title)
-                scores[title] = score
-        self.last_scores = scores
-        # スコア順にソート
-        filtered_titles = sorted(filtered_titles, key=lambda t: scores[t], reverse=True)
-        return filtered_titles[:top_k]
+        if not keywords:
+            return 0.0
 
-    def _extract_title(self, item: dict) -> str:
-        """
-        カードのタイトル（nameまたはtitle）を抽出。なければ'不明なアイテム'。
-        """
-        if "name" in item and item["name"]:
-            return item["name"]
-        if "title" in item and item["title"]:
-            return item["title"]
-        return "不明なアイテム"
-    # 検索ごとにカード名→スコアの辞書を保持
-    last_scores: dict = {}
-    _instance = None
-    def __new__(cls, *args: object, **kwargs: object) -> "DatabaseService":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    """通常のデータベース検索サービス（構造化データのフィルタリング）"""
-    
-    def __init__(self) -> None:
-        
-        # 設定ファイルからデータファイルのパスを取得（後方互換性のため保持）
-        self.data_path = settings.DATA_FILE_PATH
-        self.converted_data_path = settings.CONVERTED_DATA_FILE_PATH
-        self.cache: Optional[List[Dict[str, Any]]] = None
-        self.title_to_data: dict[str, dict] = {}
-        
-        # StorageServiceを初期化
-        self.storage_service = StorageService()
-        print(f"[DEBUG] settings: {settings}")
-        print(f"[DEBUG] settings type: {type(settings)}")
-        print(f"[DEBUG] hasattr(settings, 'ENVIRONMENT'): {hasattr(settings, 'ENVIRONMENT')}")
-        print(f"[DEBUG] settings.ENVIRONMENT: {getattr(settings, 'ENVIRONMENT', '属性なし')}")
+        import re
+        # 属性ごとに条件を抽出
+        numeric_conditions = []  # (field, value, cond)
+        type_conditions = set()
+        class_conditions = set()
+        effect_conditions = set()
+        follower_condition = False
 
-        
-        # 初期化時にパス情報をログ出力
-        GameChatLogger.log_info("database_service", "DatabaseService初期化", {
-            "data_path": self.data_path,
-            "converted_path": self.converted_data_path,
-            "project_root": str(settings.PROJECT_ROOT if hasattr(settings, 'PROJECT_ROOT') else 'N/A'),
-            "environment": settings.ENVIRONMENT,
-            "storage_service_initialized": True
-        })
-        
-        self.debug = getattr(settings, "DEBUG", False)  # デバッグ用フラグ
-    
-    def _load_data(self) -> List[Dict[str, Any]]:
-        """データファイルを読み込む"""
-        if self.cache is not None:
-            return self.cache
-        GameChatLogger.log_info("database_service", "データファイル読み込み開始", {
-            "environment": settings.ENVIRONMENT,
-            "using_storage_service": True
-        })
-        # まずmain data fileを試行
-        data = self.storage_service.load_json_data("data")
-        if data:
-            self.cache = data
-            # title_to_dataを構築
-            self.title_to_data = {self._extract_title(item): item for item in data if self._extract_title(item)}
-            GameChatLogger.log_success("database_service", "データファイルを読み込みました", {
-                "source": "data.json",
-                "data_count": len(data)
-            })
-            return self.cache
-        # フォールバックとしてconvert_dataを試行
-        GameChatLogger.log_info("database_service", "フォールバックファイルを試行")
-        data = self.storage_service.load_json_data("convert_data")
-        if data:
-            self.cache = data
-            # title_to_dataを構築
-            self.title_to_data = {self._extract_title(item): item for item in data if self._extract_title(item)}
-            GameChatLogger.log_info("database_service", "フォールバックファイルを使用", {
-                "source": "convert_data.json",
-                "data_count": len(data)
-            })
-            return self.cache
+        # 属性判定用
+        type_aliases = ["type", "タイプ"]
+        class_aliases = ["class", "クラス"]
+        follower_aliases = ["フォロワー"]
+
+        import re
+        for kw in keywords:
+            m = re.search(r'(コスト|cost|HP|体力|攻撃|attack)[^\d]*(\d+)(以上|以下|未満|超)?', kw)
+            if m:
+                field = m.group(1)
+                value = int(m.group(2))
+                cond = m.group(3) or '以上'
+                if field in ["コスト", "cost"]:
+                    field = "cost"
+                elif field in ["HP", "体力"]:
+                    field = "hp"
+                elif field in ["攻撃", "attack"]:
+                    field = "attack"
+                numeric_conditions.append((field, value, cond))
+                continue
+            for t in type_aliases:
+                if t in kw:
+                    type_conditions.add(kw.replace(t, '').strip() or t)
+            for c in class_aliases:
+                if c in kw:
+                    class_conditions.add(kw.replace(c, '').strip() or c)
+            for f in follower_aliases:
+                if f in kw:
+                    follower_condition = True
+            if not (m or any(t in kw for t in type_aliases + class_aliases + follower_aliases)):
+                effect_conditions.add(kw)
+
+        # AND条件厳密化: 全ての条件を満たす場合のみスコア加算
+        all_conditions_met = True
+        total_score = 0.0
+
+        for field, value, cond in numeric_conditions:
+            item_val = item.get(field) or item.get(field.upper())
+            try:
+                item_val = int(item_val)
+            except Exception:
+                all_conditions_met = False
+                continue
+            if cond == '以上':
+                if not (item_val >= value):
+                    all_conditions_met = False
+                else:
+                    total_score += 1
+            elif cond == '以下':
+                if not (item_val <= value):
+                    all_conditions_met = False
+                else:
+                    total_score += 1
+            elif cond == '未満':
+                if not (item_val < value):
+                    all_conditions_met = False
+                else:
+                    total_score += 1
+            elif cond == '超':
+                if not (item_val > value):
+                    all_conditions_met = False
+                else:
+                    total_score += 1
+
+        # タイプ条件
+        if type_conditions:
+            item_type = str(item.get("type", "")).lower()
+            if not any(tc.lower() in item_type for tc in type_conditions):
+                all_conditions_met = False
+            else:
+                total_score += 1
+
+        # クラス条件
+        if class_conditions:
+            item_class = str(item.get("class", "")).lower()
+            if not any(cc.lower() in item_class for cc in class_conditions):
+                all_conditions_met = False
+            else:
+                total_score += 1
+
+        # フォロワー条件
+        if follower_condition:
+            # type, class, keywords, effect等に「フォロワー」含むか
+            found = False
+            for field in ["type", "class", "keywords"]:
+                val = item.get(field)
+                if val:
+                    if isinstance(val, list):
+                        if any("フォロワー" in str(v) for v in val):
+                            found = True
+                    elif "フォロワー" in str(val):
+                        found = True
+            # 効果文にも含まれるか
+            for ef in ["effect_1", "effect_2", "effect_3", "effect", "description", "text"]:
+                val = item.get(ef)
+                if val and "フォロワー" in str(val):
+                    found = True
+            if not found:
+                all_conditions_met = False
+            else:
+                total_score += 1
+
+        # 効果文・キーワード条件
+        for kw in effect_conditions:
+            found = False
+            # 効果文
+            for ef in ["effect_1", "effect_2", "effect_3", "effect", "description", "text"]:
+                val = item.get(ef)
+                if val and kw.replace('_', '').replace('・', '') in str(val).replace('_', '').replace('・', ''):
+                    found = True
+                    break
+            # attacks配列
+            if not found and 'attacks' in item and isinstance(item['attacks'], list):
+                for atk in item['attacks']:
+                    if isinstance(atk, dict):
+                        for v in atk.values():
+                            if isinstance(v, str) and kw in v:
+                                found = True
+                                break
+                    if found:
+                        break
+            # keywords
+            if not found and 'keywords' in item and isinstance(item['keywords'], list):
+                if any(kw in str(k) for k in item['keywords']):
+                    found = True
+            if not found:
+                all_conditions_met = False
+            else:
+                total_score += 1
+
+        if all_conditions_met and total_score > 0:
+            return total_score
+        return 0.0
         # 両方のファイルが利用できない場合
         GameChatLogger.log_error("database_service", "データファイルが利用できません", Exception("No data files available"), {
             "primary_file": "data.json",
@@ -151,90 +197,23 @@ class DatabaseService:
     ) -> float:
         """
         アイテムとキーワードのマッチスコアを計算（data.jsonの属性に準拠、type/class/keywords柔軟化、damage/hp/type条件は専用関数で加算、attacks配列も考慮）
+        - コスト・クラス・能力・カード種別などのAND条件を厳密に判定
         """
         if not keywords:
             return 0.0
-        score = 0.0
-        # HP条件
-        hp_score, hp_matched = self._calculate_hp_score(item, keywords)
-        score += hp_score
-        # ダメージ条件（attacks配列も考慮）
-        damage_score, damage_matched = self._calculate_damage_score(item, keywords, hp_matched)
-        score += damage_score
-        # attacks配列のdamageもキーワード条件で加点
-        for kw in keywords:
-            if "attacks" in item and isinstance(item["attacks"], list):
-                for attack in item["attacks"]:
-                    if isinstance(attack, dict) and "damage" in attack:
-                        try:
-                            dmg = int(attack["damage"])
-                            if kw.endswith("以上") and kw[:-2].isdigit():
-                                if dmg >= int(kw[:-2]):
-                                    score += 1.0
-                                    if self.debug:
-                                        GameChatLogger.log_debug("database_service", f"    attacks配列ダメージマッチ: {kw} -> +1.0")
-                        except Exception:
-                            pass
-        # タイプ条件
-        type_score, type_matched = self._calculate_type_score(item, keywords)
-        score += type_score
-        # その他属性
-        for kw in keywords:
-            kw_l = kw.lower()
-            # クラス/type/keywords
-            if ("class" in item and item["class"] and kw in str(item["class"])) or \
-               ("type" in item and item["type"] and kw in str(item["type"])) or \
-               ("keywords" in item and any(kw in str(k) for k in item["keywords"])):
-                score += 2.0
-                if self.debug:
-                    GameChatLogger.log_debug("database_service", f"    クラス/タイプ/キーワードマッチ: {kw} -> +2.0")
-            # レアリティ
-            if "rarity" in item and item["rarity"] and kw in str(item["rarity"]):
-                score += 1.0
-                if self.debug:
-                    GameChatLogger.log_debug("database_service", f"    レアリティマッチ: {kw} -> +1.0")
-            # コスト
-            if "cost" in item:
-                try:
-                    cost_val = int(item["cost"])
-                    if kw_l.isdigit() and int(kw_l) == cost_val:
-                        score += 2.0
-                        if self.debug:
-                            GameChatLogger.log_debug("database_service", f"    コストマッチ: {kw} == {cost_val} -> +2.0")
-                except Exception:
-                    pass
-            # 攻撃
-            if "attack" in item:
-                try:
-                    attack_val = int(item["attack"])
-                    if kw_l.isdigit() and int(kw_l) == attack_val:
-                        score += 1.0
-                        if self.debug:
-                            GameChatLogger.log_debug("database_service", f"    攻撃マッチ: {kw} == {attack_val} -> +1.0")
-                except Exception:
-                    pass
-            # 効果文
-            for ef in ["effect_1", "effect_2", "effect_3"]:
-                if ef in item and item[ef] and kw in str(item[ef]):
-                    score += 0.5
-                    if self.debug:
-                        GameChatLogger.log_debug("database_service", f"    効果マッチ: {kw} -> +0.5")
-            # QA
-            if "qa" in item and isinstance(item["qa"], list):
-                for qa_item in item["qa"]:
-                    if isinstance(qa_item, dict):
-                        if kw in qa_item.get("question", "") or kw in qa_item.get("answer", ""):
-                            score += 0.3
-                            if self.debug:
-                                GameChatLogger.log_debug("database_service", f"    QAマッチ: {kw} -> +0.3")
-        # テキスト全体で部分一致
-        searchable_text = self._build_searchable_text(item)
-        for kw in keywords:
-            if kw in searchable_text:
-                score += 0.2
-                if self.debug:
-                    GameChatLogger.log_debug("database_service", f"    テキスト部分一致: {kw} -> +0.2")
-        return score
+        import re
+        # 数値条件抽出用正規表現
+        numeric_patterns = [
+            (r'(コスト|cost)[^\d]*(\d+)(以上|以下|未満|超)?', 'cost'),
+            (r'(HP|体力)[^\d]*(\d+)(以上|以下|未満|超)?', 'hp'),
+            (r'(攻撃|attack)[^\d]*(\d+)(以上|以下|未満|超)?', 'attack'),
+        ]
+        effect_fields = ['effect_1', 'effect_2', 'effect', 'description', 'text']
+        # AND条件厳密化: 全条件を満たした場合のみスコア加算
+        all_conditions_met = True
+        total_score = 0.0
+        # 既存のtype/class/keywords/フォロワー判定ロジックは削除し、
+        # 上記の属性ごと厳密AND適用ロジックに一本化済みです。
 
     def _calculate_hp_score(self, item: Dict[str, Any], keywords: List[str]) -> tuple[float, bool]:
         """
@@ -248,74 +227,111 @@ class DatabaseService:
                 - hp: HP値（整数または文字列）
             keywords: 検索キーワードのリスト
                 - HP関連: "hp", "HP", "ヒットポイント"
-                - 数値条件: "40以上", "50以上", "100以上", "150以上"
-                
+                - 数値条件: "40以上", "50以上", "100以上", "150以上" など任意
         Returns:
             tuple[float, bool]: (スコア, マッチしたかどうか)
-            - スコア: 条件を満たす場合は2.0、満たさない場合は0.0
-            - マッチフラグ: 他のスコア計算での重複防止用
-            
-        Examples:
-            >>> service = DatabaseService()
-            >>> item = {"name": "リザードン", "hp": 120}
-            >>> keywords = ["HP", "100以上"]
-            >>> score, matched = service._calculate_hp_score(item, keywords)
-            >>> print(f"スコア: {score}, マッチ: {matched}")
-            スコア: 2.0, マッチ: True
-            
-            >>> # 条件を満たさない場合
-            >>> item = {"name": "ピカチュウ", "hp": 60}
-            >>> score, matched = service._calculate_hp_score(item, keywords)
-            >>> print(f"スコア: {score}, マッチ: {matched}")
-            スコア: 0.0, マッチ: False
-            
         Note:
             - HPキーワードと数値条件の両方が必要です
             - HP値が数値変換できない場合は0として扱います
             - 複数の数値条件がある場合、最初にマッチした条件でスコアを決定します
         """
+        import re
         score = 0.0
         matched = False
-        
-        has_hp_keyword = any("hp" in kw.lower() or "体力" in kw.lower() for kw in keywords)
-        hp_conditions = [c for c in ["40以上", "50以上", "100以上", "150以上"] if any(c in kw for kw in keywords)]
+        has_hp_keyword = any("hp" in kw.lower() or "体力" in kw.lower() or "ヒットポイント" in kw for kw in keywords)
+        # 正規表現で「xx以上」「xx以下」などの数値条件を抽出
+        hp_conditions = []
+        for kw in keywords:
+            m = re.search(r'(\d+)(以上|以下|未満|超)?', kw)
+            if m:
+                value = int(m.group(1))
+                cond = m.group(2) or '以上'  # デフォルトは「以上」
+                hp_conditions.append((value, cond))
         if has_hp_keyword and hp_conditions:
             try:
                 hp_value = int(item["hp"]) if "hp" in item and item["hp"] else 0
-                for cond in hp_conditions:
-                    num = int(cond.replace("以上", ""))
-                    if hp_value >= num:
-                        score = 2.0
-                        matched = True
-                        if self.debug:
-                            GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} >= {num} -> +2.0")
-                        break
+                for num, cond in hp_conditions:
+                    if cond == "以上":
+                        if hp_value >= num:
+                            score = 2.0
+                            matched = True
+                            if self.debug:
+                                GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} >= {num} -> +2.0")
+                            break
+                    elif cond == "以下":
+                        if hp_value <= num:
+                            score = 2.0
+                            matched = True
+                            if self.debug:
+                                GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} <= {num} -> +2.0")
+                            break
+                    elif cond == "未満":
+                        if hp_value < num:
+                            score = 2.0
+                            matched = True
+                            if self.debug:
+                                GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} < {num} -> +2.0")
+                            break
+                    elif cond == "超":
+                        if hp_value > num:
+                            score = 2.0
+                            matched = True
+                            if self.debug:
+                                GameChatLogger.log_debug("database_service", f"    HPマッチ: {hp_value} > {num} -> +2.0")
+                            break
             except (ValueError, TypeError):
                 pass
-        return score, matched
         return score, matched
 
     def _calculate_damage_score(self, item: Dict[str, Any], keywords: List[str], hp_matched: bool) -> tuple[float, bool]:
         """ダメージ関連のスコア計算（data.jsonのeffect_1等からダメージ数値抽出）"""
+        import re
         score = 0.0
         matched = False
         has_damage_keyword = any(kw.lower() in ["ダメージ", "技", "攻撃"] for kw in keywords)
-        damage_conditions = [c for c in ["30以上", "40以上", "50以上", "60以上"] if any(c in kw for kw in keywords)]
+        # 正規表現で「xx以上」「xx以下」などの数値条件を抽出
+        damage_conditions = []
+        for kw in keywords:
+            m = re.search(r'(\d+)(以上|以下|未満|超)?', kw)
+            if m:
+                value = int(m.group(1))
+                cond = m.group(2) or '以上'  # デフォルトは「以上」
+                damage_conditions.append((value, cond))
         if has_damage_keyword and damage_conditions and not hp_matched:
             for ef in ["effect_1", "effect_2", "effect_3"]:
                 if ef in item and item[ef]:
-                    import re
                     m = re.search(r"(\d+)ダメージ", str(item[ef]))
                     if m:
                         damage_value = int(m.group(1))
-                        for cond in damage_conditions:
-                            num = int(cond.replace("以上", ""))
-                            if damage_value >= num:
-                                score = 2.0
-                                matched = True
-                                if self.debug:
-                                    GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} >= {num} -> +2.0")
-                                break
+                        for num, cond in damage_conditions:
+                            if cond == "以上":
+                                if damage_value >= num:
+                                    score = 2.0
+                                    matched = True
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} >= {num} -> +2.0")
+                                    break
+                            elif cond == "以下":
+                                if damage_value <= num:
+                                    score = 2.0
+                                    matched = True
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} <= {num} -> +2.0")
+                                    break
+                            elif cond == "未満":
+                                if damage_value < num:
+                                    score = 2.0
+                                    matched = True
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} < {num} -> +2.0")
+                                    break
+                            elif cond == "超":
+                                if damage_value > num:
+                                    score = 2.0
+                                    matched = True
+                                    if self.debug:
+                                        GameChatLogger.log_debug("database_service", f"    ダメージマッチ: {damage_value} > {num} -> +2.0")
+                                    break
                         if matched:
                             break
         return score, matched

@@ -38,28 +38,24 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, loading, c
       {messages.length === 0 && !loading && (
         <div className="text-muted-foreground text-center py-8">メッセージはまだありません</div>
       )}
-      {/* APIからcontextが取得できた場合はCardListで表示 */}
-      {cardContext && cardContext.length > 0 && (
-        <div style={{ margin: '1.2rem 0' }}>
-          <CardList cards={cardContext} />
-        </div>
-      )}
       {messages.map((msg, idx) => {
-        // サンプル出力時はサンプルUIデザインで表示
         if (msg.role === "assistant" && msg.content === "__show_sample_cards__") {
           return (
             <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
               <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
-              <div style={{ background: '#f0f4ff', color: '#222', borderRadius: '18px 18px 18px 2px', padding: '0.7rem 1.1rem', maxWidth: '100%', fontSize: '1rem', width: '100%' }}>
-                サンプル出力<br />
-                <CardList cards={sampleCards} showSampleUI={false} />
+              <div style={{ flex: 1 }}>
+                <CardList cards={sampleCards} />
               </div>
-              <div style={{ flex: 1 }} />
             </div>
           );
-        }
-        // ユーザー発言
-        if (msg.role === "user") {
+        } else if (msg.role === "assistant") {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
+              <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
+              <div style={{ flex: 1 }}>{msg.content}</div>
+            </div>
+          );
+        } else if (msg.role === "user") {
           return (
             <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
               <div style={{ flex: 1 }} />
@@ -67,19 +63,79 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, loading, c
               <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="user" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
             </div>
           );
+        } else {
+          // fallback: system等
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
+              <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
+              <div style={{ flex: 1 }}>{msg.content}</div>
+              <div style={{ flex: 1 }} />
+            </div>
+          );
         }
-        // 通常AI発言
-        return (
-          <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
-            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
-            <div style={{ background: '#f0f4ff', color: '#222', borderRadius: '18px 18px 18px 2px', padding: '0.7rem 1.1rem', maxWidth: '100%', fontSize: '1rem' }}>{msg.content}</div>
-            <div style={{ flex: 1 }} />
-          </div>
-        );
       })}
+      {/* context（カード詳細jsonリスト）があれば常に下部に一覧表示 */}
+      {cardContext && cardContext.length > 0 && (
+        <div style={{ margin: '1.2rem 0' }}>
+          <CardList cards={cardContext} />
+        </div>
+      )}
       {loading && (
-        <div className="text-center text-xs text-muted-foreground py-2">送信中...</div>
+        <div className="text-muted-foreground text-center py-4">送信中...</div>
       )}
     </div>
   );
-};
+  return (
+    <div className="flex flex-col gap-2 px-2 py-4 overflow-y-auto flex-1">
+      {messages.length === 0 && !loading && (
+        <div className="text-muted-foreground text-center py-8">メッセージはまだありません</div>
+      )}
+      {messages.map((msg, idx) => {
+        if (msg.role === "assistant" && msg.content === "__show_sample_cards__") {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
+              <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
+              <div style={{ flex: 1 }}>
+                <CardList cards={sampleCards} />
+              </div>
+            </div>
+          );
+        } else if (msg.role === "assistant") {
+          return (
+            <React.Fragment key={idx}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
+                <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
+                <div style={{ flex: 1 }}>{msg.content}</div>
+              </div>
+              {cardContext && cardContext.length > 0 && idx === messages.length - 1 && (
+                <div style={{ margin: '1.2rem 0', marginLeft: 40 }}>
+                  <CardList cards={cardContext} />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        } else if (msg.role === "user") {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
+              <div style={{ flex: 1 }} />
+              <div style={{ background: '#1976d2', color: '#fff', borderRadius: '18px 18px 2px 18px', padding: '0.7rem 1.1rem', maxWidth: '70%', fontSize: '1rem' }}>{msg.content}</div>
+              <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="user" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
+            </div>
+          );
+        } else {
+          // fallback: system等
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: '0.7rem', margin: '1.2rem 0' }}>
+              <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="ai" style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee' }} />
+              <div style={{ flex: 1 }}>{msg.content}</div>
+              <div style={{ flex: 1 }} />
+            </div>
+          );
+        }
+      })}
+      {loading && (
+        <div className="text-muted-foreground text-center py-4">送信中...</div>
+      )}
+    </div>
+  );
+}
