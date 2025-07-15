@@ -132,8 +132,12 @@ export const useChat = () => {
       }
       // context（カード詳細jsonリスト）をstateに格納
       setCardContext(data.context);
-      // answerフィールドは利用せず、context配列の有無でUI側がCardList等を表示する
-      // ここではassistantメッセージ自体は追加しない（CardList表示はUI側で制御）
+      // answerフィールドが存在する場合はassistantメッセージとして追加
+      if (data.answer) {
+        const assistantMessage: Message = { role: "assistant", content: data.answer };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+      // context配列の有無でUI側がCardList等を表示する（CardList表示はUI側で制御）
     } catch (error) {
       let displayMessage = "エラーが発生しました。もう一度お試しください。";
       if (error instanceof Error) {

@@ -59,8 +59,11 @@ describe('useChat', () => {
     await act(async () => {
       await result.current.sendMessage();
     });
-    expect(result.current.messages.length).toBe(1); // userのみ
+    expect(result.current.messages.length).toBe(2); // user, assistant
     expect(result.current.messages[0].content).toBe('こんにちは');
+    // assistant応答も確認（mock応答）
+    expect(result.current.messages[1].role).toBe('assistant');
+    expect(result.current.messages[1].content).toBe('テスト応答');
   });
 
   it('APIエラー時はassistantロールのエラーメッセージが追加される', async () => {
