@@ -130,13 +130,10 @@ export const useChat = () => {
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
-      const botMessage: Message = {
-        role: "assistant",
-        content: data.answer || "エラーが発生しました"
-      };
       // context（カード詳細jsonリスト）をstateに格納
       setCardContext(data.context);
-      setMessages(prev => [...prev, botMessage]);
+      // answerフィールドは利用せず、context配列の有無でUI側がCardList等を表示する
+      // ここではassistantメッセージ自体は追加しない（CardList表示はUI側で制御）
     } catch (error) {
       let displayMessage = "エラーが発生しました。もう一度お試しください。";
       if (error instanceof Error) {

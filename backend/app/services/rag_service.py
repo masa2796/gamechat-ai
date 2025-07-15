@@ -74,35 +74,18 @@ class RagService:
             
             context_items = search_result["merged_results"]  # ここは詳細json(dict)リスト
             
-            # LLM応答生成（パフォーマンス監視付き）
-            llm_start = time.perf_counter()
-            answer = await self.llm_service.generate_answer(
-                query=rag_req.question,
-                context_items=context_items,  # そのまま渡す
-                classification=search_result["classification"],
-                search_info=search_result.get("search_quality", {})
-            )
-            llm_duration = time.perf_counter() - llm_start
-            
-            # ボトルネック検出
-            if llm_duration > 3.0:
-                bottleneck_detector.check_operation(
-                    "llm_generation",
-                    llm_duration,
-                    {"question": rag_req.question[:100], "context_count": len(context_items)}
-                )
-            
-            # 全体の処理時間を記録
+            # LLM応答生成をスキップし、answerは空文字で返す
+            llm_duration = 0.0
             total_duration = time.perf_counter() - start_time
             logger.info(
                 f"⏱️ RAG処理完了: total={total_duration:.3f}s, "
                 f"search={search_duration:.3f}s, llm={llm_duration:.3f}s"
             )
-            
+
             # レスポンス構築
             if rag_req.with_context:
                 response = {
-                    "answer": answer,
+                    "answer": "",
                     "context": context_items,  # そのまま返す
                     "classification": search_result["classification"].model_dump(),
                     "search_info": {
@@ -120,7 +103,7 @@ class RagService:
                 }
             else:
                 response = {
-                    "answer": answer,
+                    "answer": "",
                     "performance": {
                         "total_duration": total_duration,
                         "search_duration": search_duration,
@@ -312,7 +295,7 @@ class RagService:
         
         if rag_req.with_context:
             response = {
-                "answer": answer,
+                "answer": "",
                 "context": context_items[:10],  # 上位10件
                 "classification": search_result.get("classification", {}).model_dump() if search_result.get("classification") else {},
                 "search_info": {
@@ -330,7 +313,7 @@ class RagService:
             }
         else:
             response = {
-                "answer": answer,
+                "answer": "",
                 "performance": {
                     "total_duration": total_duration,
                     "search_duration": search_duration,

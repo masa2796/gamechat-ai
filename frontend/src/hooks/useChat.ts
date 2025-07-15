@@ -139,10 +139,8 @@ export const useChat = () => {
       const data = await res.json();
       if (data.error) throw new Error(data.error.message || "APIエラーが発生しました");
 
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: data.answer || "エラーが発生しました"
-      }]);
+      // answerフィールドは利用せず、context配列の有無でUI側がCardList等を表示する
+      // ここではassistantメッセージ自体は追加しない（CardList表示はUI側で制御）
     } catch (error) {
       const err = error instanceof Error ? error : new Error("APIエラー");
       console.error("Error:", err);

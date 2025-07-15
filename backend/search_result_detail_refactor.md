@@ -1,3 +1,77 @@
+# 【具体的な修正案】（2025/07/15追記）
+
+## バックエンドAPI/サービスの修正フロー
+
+
+---
+
+1. **クエリ分類（LLM）**【済】
+   - ユーザーから受け取ったクエリを `ClassificationService` でLLMに投げ、
+     - 構造化DB検索（filterable）
+     - ベクトル検索（semantic）
+     - ハイブリッド検索（hybrid）
+     のいずれかに分類する。
+
+2. **カード名リストの取得**【済】
+   - 分類結果に応じて、
+     - 構造化DB検索 → `DatabaseService.search()`
+     - ベクトル検索 → `VectorService.search()`
+     - ハイブリッド検索 → `HybridSearchService.search()`
+     を呼び出し、「カード名リスト（List[str]）」を取得する。
+
+3. **カード詳細データの取得**【済】
+   - 取得したカード名リストを `DatabaseService.get_card_details_by_titles(titles: list[str])` に渡し、
+     - data/data.json から該当カードの詳細jsonリスト（List[dict]）を取得する。
+
+4. **APIレスポンスの生成**【未】
+   - contextフィールドに「カード詳細jsonリスト」を格納し、
+     - answerフィールドは空文字またはnull（LLMによる回答生成は行わない）
+     - classification, search_info, performance などは従来通り付与
+   - 例：
+     ```json
+     {
+       "answer": "",
+       "context": [ { ...data.jsonの1件... }, ... ],
+       "classification": { ... },
+       "search_info": { ... },
+       "performance": { ... }
+     }
+     ```
+
+
+5. **フロントエンド**【未】
+   - context配列をそのまま一覧表示（CardList等）
+   - answerフィールドは利用しない
+
+---
+【修正案】
+
+- APIから受け取ったレスポンスの `context` 配列（カード詳細リスト）を `CardList` コンポーネント等にそのまま渡して一覧表示する。
+- `answer` フィールドは一切表示・利用しない。
+- 例：
+  ```tsx
+  import { CardList } from '@/components/CardList';
+  import type { RagContextItem } from '@/types/rag';
+
+  // ...APIレスポンス取得処理...
+  // const response: RagResponse = ...
+
+  <CardList cards={response.context ?? []} />
+  ```
+- チャットUIや回答欄などで `answer` を参照している箇所があれば削除・非表示にする。
+- サジェストや補足情報（is_suggestion: true）はCardList側で除外して表示する（既存実装で対応済み）。
+
+【着手・進捗管理】
+- CardListでcontext配列の一覧表示 → 【済】（既存実装で対応済み）
+- answerフィールドの非表示・未使用化 → 【未】（チャットUI等で利用していれば削除）
+
+## 実装時のポイント
+- LLMによる回答生成（answer生成）は行わず、answerは空文字/未使用とする
+- contextは必ず「詳細jsonリスト」とする
+- 既存のContextItem型やtitle/text/score形式は廃止
+- テスト・APIドキュメントも新仕様に合わせて修正
+
+---
 # 進捗まとめ（2025/07/12時点）
 
 - 2025/07/12: 本日進捗なし。フェーズ2以降（embedding対象限定・LLM分岐・フロント対応等）は今後着手予定。
@@ -45,16 +119,18 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 
 ## 改修タスク一覧（詳細化）
 
-### ✅ フェーズ 1: 構造化DBの詳細取得基盤（既存コード改修）
 
-1. **構造化DB（data/data.json）をメモリにロードする処理を既存サービスへ追加**
+---
+## ✅ フェーズ 1: 構造化DBの詳細取得基盤（既存コード改修）
+
+1. **構造化DB（data/data.json）をメモリにロードする処理を既存サービスへ追加**【済】
    - 対象: `backend/app/services/database_service.py` の `DatabaseService`
      - data.jsonを読み込み、`title_to_data: dict[str, dict]` を生成・保持するロジックを追加
      - 初期化時または明示的なロードメソッドで実装
    - 必要に応じて `StorageService` も修正
    - **[済] 2025/07/10: `reload_data()` でtitle_to_data構築ロジックを追加し、テストも通過**
 
-2. **既存のカード検索サービスを「カード名リスト返却」へ統一**
+2. **既存のカード検索サービスを「カード名リスト返却」へ統一**【済】
    - 対象: 
      - `DatabaseService`（構造化検索）
      - `VectorService`（ベクトル検索, `backend/app/services/vector_service.py`）
@@ -63,20 +139,20 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
    - 既存の `ContextItem` 返却箇所をカード名抽出に変更
    - **[済] 2025/07/10: 返却値をList[str]に統一し、ContextItem→カード名リスト化・型チェック・テスト修正も完了。integrationテストも全通過**
 
-3. **カード名リストから詳細jsonリストを取得するメソッドを追加**
+3. **カード名リストから詳細jsonリストを取得するメソッドを追加**【済】
    - 対象: `DatabaseService`
      - `get_card_details_by_titles(titles: list[str]) -> list[dict]` を新規実装
    - 既存API/サービス（`HybridSearchService`や`RagService`）でこのメソッドを利用するよう改修
    - **[済] 2025/07/10: DatabaseServiceにメソッド実装、HybridSearchService/RagServiceで詳細jsonリスト返却に統一。**
 
-4. **APIレスポンスを「詳細jsonリスト」へ変更**
+4. **APIレスポンスを「詳細jsonリスト」へ変更**【済】
    - 対象: 
      - `backend/app/routers/rag.py` の `/rag/query` エンドポイント
      - `RagService` の `process_query` など
    - 返却値を「詳細jsonリスト」に変更し、フロントエンド仕様に合わせる
    - **[済] 2025/07/10: merged_results, context などが詳細jsonリストとなるよう全サービス・APIを修正。**
 
-5. **既存ユニットテストの修正・追加**
+5. **既存ユニットテストの修正・追加**【済】
    - 対象: 
      - `backend/app/tests/services/test_database_service.py`
      - `backend/app/tests/services/test_hybrid_search_consolidated.py`
@@ -88,18 +164,20 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 
 ---
 
-### ✅ embedding_service/vector_serviceの仕様変更に伴うテスト改修
+---
+## ✅ embedding_service/vector_serviceの仕様変更に伴うテスト改修
 
-- embedding_service, vector_serviceのAPI例外仕様変更に伴い、関連テスト（test_embedding_consolidated.py等）を修正
-- APIキー未設定時の例外をEmbeddingExceptionで検証するよう修正
-- 既存テストのアサーション・例外型をサービス実装に合わせて調整
+- embedding_service, vector_serviceのAPI例外仕様変更に伴い、関連テスト（test_embedding_consolidated.py等）を修正【済】
+- APIキー未設定時の例外をEmbeddingExceptionで検証するよう修正【済】
+- 既存テストのアサーション・例外型をサービス実装に合わせて調整【済】
 - **[済] 2025/07/11: embedding_serviceのテスト修正・全テストパスを確認**
 
 ---
 
-### ✅ フェーズ 2: ベクトル検索実装
+---
+## ✅ フェーズ 2: ベクトル検索実装
 
-6. **description / Q&A / flavorText のみをembedding & vector DBに登録**
+6. **description / Q&A / flavorText のみをembedding & vector DBに登録**【済】
    - 6.1 embedding対象フィールドの仕様整理・設計
      - ✅ description/Q&A/flavorTextのみをembedding対象とする仕様を明文化
      - ✅ data.jsonの構造確認・対象フィールドの抽出ロジック設計（effect_1〜n, qa[question/answer], flavorTextを抽出）
@@ -113,7 +191,7 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
      - ✅ 旧embeddingデータのクリア
      - ✅ 新仕様でembeddingデータを再生成
 
-7. **類似検索からカード名を取得**
+7. **類似検索からカード名を取得**【済】
    - 7.1 類似検索ロジックの改修
      - ✅ 検索結果からカード名リストのみ返却するよう修正
      - ✅ 既存のContextItem返却箇所をカード名抽出に変更
@@ -126,9 +204,10 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 
 ---
 
-### ✅ フェーズ 3: LLMによる検索分顛
+---
+## ✅ フェーズ 3: LLMによる検索分顛
 
-8. **LLMで「構造化 / ベクトル / ハイブリッド」の分顛を実装**
+8. **LLMで「構造化 / ベクトル / ハイブリッド」の分顛を実装**【済】
 
    - 対象: `ClassificationService`, `HybridSearchService`
    - LLMによるクエリタイプ判定・分岐ロジックの実装
@@ -154,7 +233,7 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
         - `/rag/query`等のAPIで分岐が正しく動作するかintegrationテスト
         - フロントエンドからの利用も想定した動作確認
 
-9. **ハイブリッド検索ロジックを実装**
+9. **ハイブリッド検索ロジックを実装**【済】
 
    - 対象: `HybridSearchService`
    - 構造化・ベクトル両検索の結果を組み合わせるロジックを実装
@@ -197,16 +276,54 @@ LLMで検索タイプを分顛（構造化 / ベクトル / ハイブリッド�
 
 ---
 
-### ✅ フェーズ 4: フロントエンド対応
+---
+## ✅ フェーズ 4: フロントエンド対応
 
-10. 返却jsonを一覧表示
-   - **やるべきこと（細分化）**
+
+10. 返却jsonを一覧表示【済】
+   - **やるべきこと（細分化・現状整理）**
      1. APIレスポンス（詳細jsonリスト）の型定義・型チェック　→　**[済] 完了**
-2. 一覧表示用のUIコンポーネント設計・実装（カード/テーブル等）　→　**[済] CardList.tsxでカード一覧UIを実装済み。ChatMessages.tsxでサンプルデータによる動作確認も完了。**
-3. 必要な項目（name, type, hp, attacks等）の表示レイアウト決定　→　**[済] CardList.tsxで主要項目のレイアウト決定済み**
-4. サンプルデータでのUI動作確認・調整　→　**[済] ChatMessages.tsxでサンプルデータによるUI動作確認済み**
-5. バックエンドAPI連携・データ取得処理の実装　→　**useChat()でAPI連携・context取得済み。ChatMessages→CardListへのcontext連携も実装済み。is_suggestionな提案カードはCardListで除外されるよう修正済み。**
-6. UIテスト・表示崩れ/例外ケースの検証　→　**e2eテストでチャットUI動作検証済み。CardListの詳細UIテスト・例外ケースは今後追加予定**
+     2. 一覧表示用のUIコンポーネント設計・実装（カード/テーブル等）　→　**[済] CardList.tsxでカード一覧UIを実装済み。ChatMessages.tsxでサンプルデータによる動作確認も完了。**
+     3. 必要な項目（name, type, hp, attacks等）の表示レイアウト決定　→　**[済] CardList.tsxで主要項目のレイアウト決定済み**
+     4. サンプルデータでのUI動作確認・調整　→　**[済] ChatMessages.tsxでサンプルデータによるUI動作確認済み**
+     5. バックエンドAPI連携・データ取得処理の実装　→　**useChat()でAPI連携・context取得済み。ChatMessages→CardListへのcontext連携も実装済み。is_suggestionな提案カードはCardListで除外されるよう修正済み。**
+     6. UIテスト・表示崩れ/例外ケースの検証　→　**e2eテストでチャットUI動作検証済み。CardListの詳細UIテスト・例外ケースは今後追加予定**
+
+---
+
+### ⏩ 次にやるべきタスク（2025/07/14時点・フロントエンド中心）
+
+
+---
+## ⏩ 今後着手すべきタスク（2025/07/15時点・フロントエンド中心）
+
+### 11. ソート・フィルタ対応【未着手】
+  - ソート・フィルタ条件（例: HP順/タイプ/名前/攻撃数等）の要件整理・優先順位決定
+  - UI上のソート・フィルタ操作部品の設計・実装（ドロップダウン/ボタン等）
+  - ソート・フィルタロジックの実装（フロント/バックエンドどちらで行うか検討。現状はフロントで十分）
+  - 条件変更時の再描画・パフォーマンス検証
+  - テストケース追加（各条件での表示確認、例外ケースも含む）
+
+### 12. 非同期表示・UX向上【未着手】
+  - ローディング/スケルトンUIの設計・実装（`Skeleton`コンポーネント活用）
+  - APIリクエストの非同期化・エラーハンドリング強化（`useChat`のloading/error状態をCardList等に反映）
+  - 検索中/取得中/エラー時の状態管理・UI反映（例: ローディング中はスケルトン、エラー時はメッセージ表示）
+  - ページネーションや無限スクロール等のUX向上施策検討（カード件数が多い場合）
+  - 非同期処理のテスト・例外ケース検証
+
+### 13. UI/テスト強化・リファクタ【未着手】
+  - CardList/ChatMessagesのUI細部調整（デザイン・アクセシビリティ・レスポンシブ対応）
+  - サンプルデータ→API実データでの動作確認・境界値テスト
+  - e2eテスト・ユニットテストの追加（特にソート・フィルタ・非同期表示まわり）
+  - 型定義の整理・共通化（types/rag.ts, types/chat.ts等）
+  - 不要なpropsや未使用コードの整理
+
+---
+
+#### 【備考】
+- 現状、API連携・カード詳細表示の基本フローは実装済み。今後は「ソート・フィルタ」「非同期表示」「UI/テスト強化」が主な開発ポイント。
+- バックエンド側は現状のAPI仕様で十分。必要に応じてフィルタ条件追加APIやパフォーマンス改善も検討。
+- 旧仕様（title/text/score形式）は廃止済み。今後はdata.jsonの詳細jsonリストのみサポート。
 
 11. ソート・フィルタ対応
    - **やるべきこと（細分化）**

@@ -24,7 +24,7 @@ export interface RagContextItem {
 }
 
 export interface RagResponse {
-  answer: string;
+  answer?: string; // 非推奨: 互換性維持のため残すが利用しない
   context?: RagContextItem[];
   classification?: any; // 必要に応じて型定義を追加
   search_info?: {

@@ -1,111 +1,195 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="201" failures="0" errors="0" time="3.510120294">
-    <testsuite name="src/__tests__/instrumentation-client.test.ts" timestamp="2025-07-13T21:32:21.039Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.001112542">
-        <testcase classname="src/__tests__/instrumentation-client.test.ts" name="instrumentation-client.ts &gt; onRouterTransitionStartがSentry.captureRouterTransitionStartを参照している" time="0.000600666">
+<testsuites name="vitest tests" tests="201" failures="4" errors="0" time="3.021575415">
+    <testsuite name="src/__tests__/instrumentation-client.test.ts" timestamp="2025-07-15T00:18:19.641Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.001491458">
+        <testcase classname="src/__tests__/instrumentation-client.test.ts" name="instrumentation-client.ts &gt; onRouterTransitionStartがSentry.captureRouterTransitionStartを参照している" time="0.000780083">
         </testcase>
     </testsuite>
-    <testsuite name="src/__tests__/instrumentation.test.ts" timestamp="2025-07-13T21:32:21.040Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.005672">
-        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register関数がエクスポートされている" time="0.002398625">
+    <testsuite name="src/__tests__/instrumentation.test.ts" timestamp="2025-07-15T00:18:19.643Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.0019795">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register関数がエクスポートされている" time="0.000692917">
         </testcase>
-        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; onRequestErrorがSentry.captureRequestErrorを参照している" time="0.001195458">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; onRequestErrorがSentry.captureRequestErrorを参照している" time="0.000233">
         </testcase>
-        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=nodejsでsentry.server.configをimportする" time="0.000632167">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=nodejsでsentry.server.configをimportする" time="0.000175083">
         </testcase>
-        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=edgeでsentry.edge.configをimportする" time="0.000287709">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/hooks/__tests__/use-mobile.test.ts" timestamp="2025-07-13T21:32:21.040Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.022789458">
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; モバイル判定: 767px以下でtrue" time="0.012004208">
-        </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; PC判定: 768px以上でfalse" time="0.001581583">
-        </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; ウィンドウ幅変更時に値が変わる" time="0.002470375">
-        </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; matchMedia未定義時でも例外を投げずfalse" time="0.000842292">
-        </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; addEventListenerが例外を投げても例外伝播しない" time="0.0016165">
-        </testcase>
-        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; 返り値はboolean型である" time="0.001197333">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=edgeでsentry.edge.configをimportする" time="0.000212917">
         </testcase>
     </testsuite>
-    <testsuite name="src/hooks/__tests__/use-pwa.test.ts" timestamp="2025-07-13T21:32:21.041Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.079403875">
-        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; 初期状態でisInstallable, isInstalledがbooleanで返る" time="0.010367">
+    <testsuite name="src/lib/__tests__/firebase.test.ts" timestamp="2025-07-15T00:18:19.644Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.079283375">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in CI environment" time="0.031013833">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; beforeinstallpromptイベントでisInstallableがtrueになる" time="0.065350167">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in test environment" time="0.002702166">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; showInstallPromptがwindowに定義される（PWA環境のみ）" time="0.002881792">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization on server-side" time="0.00122725">
         </testcase>
-    </testsuite>
-    <testsuite name="src/hooks/__tests__/use-web-vitals.test.ts" timestamp="2025-07-13T21:32:21.043Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.037958459">
-        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should register web-vitals metrics and call callback (development)" time="0.032408792">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy API key" time="0.002057417">
         </testcase>
-        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should call fetch in production" time="0.004031417">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with Dummy API key (capital D)" time="0.00126975">
         </testcase>
-    </testsuite>
-    <testsuite name="src/components/__tests__/app-sidebar.test.tsx" timestamp="2025-07-13T21:32:21.043Z" hostname="MasakinoMacBook-Pro.local" tests="19" failures="0" errors="0" skipped="0" time="0.1507025">
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; 基本的な構造が正しく表示される" time="0.064817042">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy project ID" time="0.000770209">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; アプリケーションタイトルが表示される" time="0.006427666">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with missing required fields" time="0.000657375">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; ナビゲーションメニューが表示される" time="0.0034955">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should initialize Firebase successfully with valid configuration" time="0.001547792">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アイコン &gt; MessagesSquareアイコンが表示される" time="0.003736375">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should use existing app when already initialized" time="0.001452292">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アイコン &gt; アイコンに適切なクラスが設定される" time="0.003146875">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle initialization errors gracefully" time="0.001645375">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; リンク &gt; ヘッダーとチャットリンクが正しいhrefを持つ" time="0.035122083">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle non-Error exceptions gracefully" time="0.001932875">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; メニューボタン &gt; 適切なサイズのメニューボタンが表示される" time="0.003265459">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should export all required Firebase objects" time="0.001713084">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; メニューボタン &gt; 通常サイズのメニューボタンが表示される" time="0.001589334">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should maintain consistency between auth exports" time="0.00160075">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; プロパティ &gt; Sidebarコンポーネントにpropsが渡される" time="0.002333542">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should initialize Analytics when measurementId is provided" time="0.013263375">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; プロパティ &gt; その他のpropsが正しく渡される" time="0.002098958">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should skip Analytics initialization when measurementId is not provided" time="0.001435917">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; セマンティックな構造を持つ" time="0.001855792">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics initialization when not supported" time="0.002631583">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; リンクが適切にアクセシブル" time="0.004223167">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics support check errors" time="0.00454">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; 適切なテキストコンテンツを持つ" time="0.00348575">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should have initAnalytics function available" time="0.001028417">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レスポンシブ &gt; モバイルでの表示に対応" time="0.001850875">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when not supported" time="0.001709041">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; エラーハンドリング &gt; 無効なpropsでもレンダリングされる" time="0.002039042">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when config is invalid" time="0.000766583">
         </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; エラーハンドリング &gt; 空のpropsでもレンダリングされる" time="0.001902167">
-        </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; コンポーネント統合 &gt; すべてのサブコンポーネントが正しく統合される" time="0.002217708">
-        </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; スタイリング &gt; 適切なCSSクラスが適用される" time="0.001345">
-        </testcase>
-        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; パフォーマンス &gt; 複数回レンダリングしても問題ない" time="0.003067458">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports with Analytics &gt; should export Analytics-related objects" time="0.002803666">
         </testcase>
     </testsuite>
-    <testsuite name="src/components/__tests__/error-boundary-simple.test.tsx" timestamp="2025-07-13T21:32:21.046Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.089632459">
-        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should render children when no error occurs" time="0.022842">
+    <testsuite name="src/lib/__tests__/sentry.test.ts" timestamp="2025-07-15T00:18:19.647Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.035706166">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error with context" time="0.008258167">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should render error UI when child throws error" time="0.04038275">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error without context" time="0.000978667">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should call console.error when error occurs" time="0.00633925">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should not capture error on server side" time="0.000249375">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should reset error state when reset button is clicked" time="0.014282875">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action with data" time="0.001542167">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should have reload button in error UI" time="0.004824666">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action without data" time="0.00152325">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should start performance transaction" time="0.000460333">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should return null on server side" time="0.000107917">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function with performance span" time="0.000345042">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function without span on server side" time="0.000488875">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryUser &gt; should set user information" time="0.001600625">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with default level" time="0.001681041">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with custom level" time="0.001439583">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryTag &gt; should set tag" time="0.001996833">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryContext &gt; should set context" time="0.001929959">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should run monitoring tests in development environment" time="0.001833375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should not run monitoring tests in production environment" time="0.000197667">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture production error with default severity" time="0.003043417">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture critical error with fatal level" time="0.001143667">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture high severity error with error level" time="0.001667875">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with default unit" time="0.001735625">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with custom unit and tags" time="0.001458041">
         </testcase>
     </testsuite>
-    <testsuite name="src/components/__tests__/error-boundary.test.tsx" timestamp="2025-07-13T21:32:21.046Z" hostname="MasakinoMacBook-Pro.local" tests="24" failures="0" errors="0" skipped="0" time="0.149424042">
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should render children when no error occurs" time="0.017510833">
+    <testsuite name="src/lib/__tests__/structured-data.test.ts" timestamp="2025-07-15T00:18:19.649Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.003277625">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateWebAppStructuredData: 正常系" time="0.000904916">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should render error UI when child throws error" time="0.017973875">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 正常系" time="0.0002145">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should call console.error when error occurs" time="0.004599209">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 境界値（空配列）" time="0.000297708">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should reset error state when reset button is clicked" time="0.009001375">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 正常系" time="0.00017225">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should have reload button in error UI" time="0.003713834">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 境界値（空配列）" time="0.000055292">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Custom Fallback Component &gt; should render custom fallback when provided" time="0.007156167">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; 型安全性: 型不正な引数でTypeScriptエラー（実行時はthrowしない）" time="0.000497959">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/utils.test.ts" timestamp="2025-07-15T00:18:19.650Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.005652084">
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; clsxとtailwind-mergeでクラス名を正規化する（正常系）" time="0.004336667">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 空やfalsy値は除外される" time="0.000278333">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 型安全性: ClassValue以外はTypeScriptエラー（実行時はthrowしない）" time="0.000076709">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 副作用なし: 入力配列を破壊しない" time="0.000320584">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/__tests__/app-sidebar.test.tsx" timestamp="2025-07-15T00:18:19.650Z" hostname="MasakinoMacBook-Pro.local" tests="19" failures="0" errors="0" skipped="0" time="0.118965">
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; 基本的な構造が正しく表示される" time="0.026039292">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; アプリケーションタイトルが表示される" time="0.005262334">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; ナビゲーションメニューが表示される" time="0.003416958">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アイコン &gt; MessagesSquareアイコンが表示される" time="0.002258417">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アイコン &gt; アイコンに適切なクラスが設定される" time="0.003877083">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; リンク &gt; ヘッダーとチャットリンクが正しいhrefを持つ" time="0.041785">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; メニューボタン &gt; 適切なサイズのメニューボタンが表示される" time="0.005663333">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; メニューボタン &gt; 通常サイズのメニューボタンが表示される" time="0.002177916">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; プロパティ &gt; Sidebarコンポーネントにpropsが渡される" time="0.003266291">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; プロパティ &gt; その他のpropsが正しく渡される" time="0.002339958">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; セマンティックな構造を持つ" time="0.00170775">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; リンクが適切にアクセシブル" time="0.004670042">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; 適切なテキストコンテンツを持つ" time="0.002210792">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レスポンシブ &gt; モバイルでの表示に対応" time="0.001294583">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; エラーハンドリング &gt; 無効なpropsでもレンダリングされる" time="0.001505">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; エラーハンドリング &gt; 空のpropsでもレンダリングされる" time="0.001182167">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; コンポーネント統合 &gt; すべてのサブコンポーネントが正しく統合される" time="0.001950833">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; スタイリング &gt; 適切なCSSクラスが適用される" time="0.002385375">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; パフォーマンス &gt; 複数回レンダリングしても問題ない" time="0.00418275">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/__tests__/error-boundary-simple.test.tsx" timestamp="2025-07-15T00:18:19.654Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.049587958">
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should render children when no error occurs" time="0.01496975">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should render error UI when child throws error" time="0.0133015">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should call console.error when error occurs" time="0.004395084">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should reset error state when reset button is clicked" time="0.012096959">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should have reload button in error UI" time="0.003601375">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/__tests__/error-boundary.test.tsx" timestamp="2025-07-15T00:18:19.656Z" hostname="MasakinoMacBook-Pro.local" tests="24" failures="0" errors="0" skipped="0" time="0.250302375">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should render children when no error occurs" time="0.019091916">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should render error UI when child throws error" time="0.017357625">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should call console.error when error occurs" time="0.004277875">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should reset error state when reset button is clicked" time="0.008979833">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should have reload button in error UI" time="0.002955">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Custom Fallback Component &gt; should render custom fallback when provided" time="0.00996375">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -145,7 +229,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Custom Fallback Component &gt; should call custom reset function" time="0.006943791">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Custom Fallback Component &gt; should call custom reset function" time="0.0208445">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -220,7 +304,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Callback &gt; should call onError callback when provided" time="0.002987667">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Callback &gt; should call onError callback when provided" time="0.007219">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -260,9 +344,9 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Callback &gt; should not call onError when no error occurs" time="0.001054375">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Callback &gt; should not call onError when no error occurs" time="0.0457755">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle different error types" time="0.003346875">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle different error types" time="0.026553125">
             <system-err>
 TypeError: Type error occurred
     at ThrowTypeError [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:166:13[90m)[39m
@@ -302,7 +386,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle errors with empty messages" time="0.003107417">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle errors with empty messages" time="0.006302417">
             <system-err>
 Error: 
     at EmptyErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:180:13[90m)[39m
@@ -342,7 +426,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle null/undefined errors gracefully" time="0.002475542">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle null/undefined errors gracefully" time="0.006728417">
             <system-err>
 [1mnull[22m
 
@@ -359,7 +443,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Environment-based Error Details &gt; should display error details in development mode" time="0.00471625">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Environment-based Error Details &gt; should display error details in development mode" time="0.005696667">
             <system-err>
 Error: Development error
     at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:212:13[90m)[39m
@@ -399,7 +483,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Environment-based Error Details &gt; should not display error details in production mode" time="0.003248208">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Environment-based Error Details &gt; should not display error details in production mode" time="0.002591208">
             <system-err>
 Error: Production error
     at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:234:13[90m)[39m
@@ -439,9 +523,9 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should wrap component with error boundary" time="0.00107525">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should wrap component with error boundary" time="0.001668041">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should handle errors in wrapped component" time="0.003102833">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should handle errors in wrapped component" time="0.0045225">
             <system-err>
 Error: HOC Error
     at ErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:259:13[90m)[39m
@@ -482,7 +566,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should accept custom error boundary props" time="0.001602791">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should accept custom error boundary props" time="0.001629">
             <system-err>
 Error: Custom HOC Error
     at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:270:13[90m)[39m
@@ -523,11 +607,11 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should pass props to wrapped component" time="0.000560875">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should pass props to wrapped component" time="0.000536083">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should set correct displayName" time="0.000110917">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should set correct displayName" time="0.000106334">
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Accessibility &gt; should have proper ARIA attributes" time="0.037559084">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Accessibility &gt; should have proper ARIA attributes" time="0.037167667">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -567,7 +651,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Accessibility &gt; should be keyboard accessible" time="0.004014083">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Accessibility &gt; should be keyboard accessible" time="0.003879">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -607,7 +691,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should handle errors in nested components" time="0.002998125">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should handle errors in nested components" time="0.006010375">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -650,7 +734,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should handle errors in conditional rendering" time="0.005960583">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should handle errors in conditional rendering" time="0.005001458">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -692,7 +776,7 @@ Error Info: {
 
             </system-err>
         </testcase>
-        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should maintain error state across re-renders" time="0.002987708">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should maintain error state across re-renders" time="0.003717042">
             <system-err>
 Error: Test error
     at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
@@ -735,226 +819,54 @@ Error Info: {
             </system-err>
         </testcase>
     </testsuite>
-    <testsuite name="src/lib/__tests__/firebase.test.ts" timestamp="2025-07-13T21:32:21.055Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.066791541">
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in CI environment" time="0.023576417">
+    <testsuite name="src/hooks/__tests__/use-mobile.test.ts" timestamp="2025-07-15T00:18:19.662Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.018409375">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; モバイル判定: 767px以下でtrue" time="0.0088065">
         </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in test environment" time="0.003275125">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; PC判定: 768px以上でfalse" time="0.001786125">
         </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization on server-side" time="0.001933334">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; ウィンドウ幅変更時に値が変わる" time="0.003326667">
         </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy API key" time="0.001209666">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; matchMedia未定義時でも例外を投げずfalse" time="0.001054208">
         </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with Dummy API key (capital D)" time="0.001526417">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; addEventListenerが例外を投げても例外伝播しない" time="0.001661167">
         </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy project ID" time="0.001558292">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with missing required fields" time="0.000825875">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should initialize Firebase successfully with valid configuration" time="0.00154925">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should use existing app when already initialized" time="0.001148333">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle initialization errors gracefully" time="0.001817792">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle non-Error exceptions gracefully" time="0.001268833">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should export all required Firebase objects" time="0.001073542">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should maintain consistency between auth exports" time="0.000842083">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should initialize Analytics when measurementId is provided" time="0.012588458">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should skip Analytics initialization when measurementId is not provided" time="0.001069041">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics initialization when not supported" time="0.002866583">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics support check errors" time="0.003242208">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should have initAnalytics function available" time="0.0010535">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when not supported" time="0.001109666">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when config is invalid" time="0.000974583">
-        </testcase>
-        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports with Analytics &gt; should export Analytics-related objects" time="0.000970208">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; 返り値はboolean型である" time="0.000783166">
         </testcase>
     </testsuite>
-    <testsuite name="src/lib/__tests__/sentry.test.ts" timestamp="2025-07-13T21:32:21.062Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.034145125">
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error with context" time="0.003403541">
+    <testsuite name="src/hooks/__tests__/use-pwa.test.ts" timestamp="2025-07-15T00:18:19.664Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.011638042">
+        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; 初期状態でisInstallable, isInstalledがbooleanで返る" time="0.007511875">
         </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error without context" time="0.002801208">
+        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; beforeinstallpromptイベントでisInstallableがtrueになる" time="0.001563834">
         </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should not capture error on server side" time="0.000222666">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action with data" time="0.001965833">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action without data" time="0.001866166">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should start performance transaction" time="0.000736917">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should return null on server side" time="0.000122167">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function with performance span" time="0.000708959">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function without span on server side" time="0.000330167">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryUser &gt; should set user information" time="0.000727583">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with default level" time="0.001905792">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with custom level" time="0.000943125">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryTag &gt; should set tag" time="0.00081625">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryContext &gt; should set context" time="0.002500167">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should run monitoring tests in development environment" time="0.004657625">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should not run monitoring tests in production environment" time="0.00011875">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture production error with default severity" time="0.001600417">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture critical error with fatal level" time="0.001945166">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture high severity error with error level" time="0.0009785">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with default unit" time="0.002409875">
-        </testcase>
-        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with custom unit and tags" time="0.001615375">
+        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; showInstallPromptがwindowに定義される（PWA環境のみ）" time="0.001801959">
         </testcase>
     </testsuite>
-    <testsuite name="src/lib/__tests__/structured-data.test.ts" timestamp="2025-07-13T21:32:21.065Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.005254583">
-        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateWebAppStructuredData: 正常系" time="0.001316041">
+    <testsuite name="src/hooks/__tests__/use-web-vitals.test.ts" timestamp="2025-07-15T00:18:19.665Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.027102333">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should register web-vitals metrics and call callback (development)" time="0.021111542">
         </testcase>
-        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 正常系" time="0.000527458">
-        </testcase>
-        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 境界値（空配列）" time="0.000415958">
-        </testcase>
-        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 正常系" time="0.000204625">
-        </testcase>
-        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 境界値（空配列）" time="0.000058292">
-        </testcase>
-        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; 型安全性: 型不正な引数でTypeScriptエラー（実行時はthrowしない）" time="0.000502875">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should call fetch in production" time="0.005000917">
         </testcase>
     </testsuite>
-    <testsuite name="src/lib/__tests__/utils.test.ts" timestamp="2025-07-13T21:32:21.066Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.009298584">
-        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; clsxとtailwind-mergeでクラス名を正規化する（正常系）" time="0.007561625">
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" timestamp="2025-07-15T00:18:19.666Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.053134875">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る" time="0.034121958">
         </testcase>
-        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 空やfalsy値は除外される" time="0.000274625">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendが呼ばれたときsendMessageが呼ばれる" time="0.005925958">
         </testcase>
-        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 型安全性: ClassValue以外はTypeScriptエラー（実行時はthrowしない）" time="0.000077875">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる" time="0.005600792">
         </testcase>
-        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 副作用なし: 入力配列を破壊しない" time="0.000323875">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-07-13T21:32:21.067Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.026296834">
-        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.025223958">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる" time="0.006661417">
         </testcase>
     </testsuite>
-    <testsuite name="src/components/ui/__tests__/input.test.tsx" timestamp="2025-07-13T21:32:21.067Z" hostname="MasakinoMacBook-Pro.local" tests="37" failures="0" errors="0" skipped="0" time="0.3532685">
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should render an input element" time="0.07807825">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should have default type as text" time="0.004131042">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should have data-slot attribute" time="0.011934375">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should apply default CSS classes" time="0.010256416">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply type prop" time="0.005722084">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply value prop" time="0.005133625">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply placeholder prop" time="0.002060333">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply disabled prop" time="0.0103555">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply name prop" time="0.006527959">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply id prop" time="0.011776083">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply aria-label prop" time="0.0136775">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply aria-invalid prop" time="0.0046165">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should merge custom className with default classes" time="0.002728125">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should handle className prop as undefined" time="0.001442">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should apply focus-visible styles" time="0.002511042">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should apply aria-invalid styles when aria-invalid is true" time="0.003062583">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onChange when input value changes" time="0.0114725">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onFocus when input is focused" time="0.003188375">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onBlur when input loses focus" time="0.00846975">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onKeyDown when key is pressed" time="0.014477792">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should not call onChange when disabled" time="0.001928875">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render email input correctly" time="0.025031375">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render number input correctly" time="0.0285245">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render password input correctly" time="0.002000333">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render search input correctly" time="0.004612792">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render file input correctly" time="0.0014995">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Controlled vs Uncontrolled &gt; should work as uncontrolled component" time="0.002141042">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Controlled vs Uncontrolled &gt; should work as controlled component" time="0.003595792">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should be focusable when not disabled" time="0.007848042">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should not be focusable when disabled" time="0.001934042">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support aria-describedby" time="0.0409585">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support aria-required" time="0.0015405">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support required attribute" time="0.011148416">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle empty string value" time="0.00203475">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle null className" time="0.002417375">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle very long values" time="0.000745833">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle special characters in value" time="0.001126166">
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" timestamp="2025-07-15T00:18:19.667Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.040301875">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" name="AssistantPage &gt; ChatMessagesにmessages/loadingが正しく渡る" time="0.038679625">
         </testcase>
     </testsuite>
-    <testsuite name="src/components/ui/__tests__/skeleton.test.tsx" timestamp="2025-07-13T21:32:21.077Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.028558458">
-        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; ローディング時にスケルトンが表示される（デフォルトクラス）" time="0.023071209">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; className propsで追加クラスが反映される" time="0.001773959">
-        </testcase>
-        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; propsの型安全性：div属性が渡せる" time="0.00292725">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" timestamp="2025-07-13T21:32:21.078Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.13076225">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る" time="0.111413">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendが呼ばれたときsendMessageが呼ばれる" time="0.007794292">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる" time="0.00632925">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる" time="0.004394041">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" timestamp="2025-07-13T21:32:21.078Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.066261125">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" name="AssistantPage &gt; ChatMessagesにmessages/loadingが正しく渡る" time="0.065192458">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-13T21:32:21.079Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.023930541">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.023098708">
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-15T00:18:19.667Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.028054708">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.026184583">
             <system-err>
 Error: useChat error!
     at useChat [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx:23:26[90m)[39m
-    at AssistantPage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/index.tsx:19:16[90m)[39m
+    at AssistantPage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/index.tsx:12:16[90m)[39m
     at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
     at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
     at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
@@ -975,111 +887,229 @@ React will try to recreate this component tree from scratch using the error boun
             </system-err>
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.test.tsx" timestamp="2025-07-13T21:32:21.079Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.123470417">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; ChatMessagesとChatInputが正しく表示される" time="0.115296458">
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.test.tsx" timestamp="2025-07-15T00:18:19.668Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.048402416">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; ChatMessagesとChatInputが正しく表示される" time="0.041660375">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; useChatの返り値が空オブジェクトでもエラーにならず描画される" time="0.007077167">
-        </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/ChatInput.branch.test.tsx" timestamp="2025-07-13T21:32:21.079Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.109504208">
-        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; loading時はinputもdisabled" time="0.082572167">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; inputが空白のみの場合は送信ボタンがdisabled" time="0.014682916">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; 送信モード切替UIが正しく動作する" time="0.01098775">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; useChatの返り値が空オブジェクトでもエラーにならず描画される" time="0.005951209">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/ChatInput.test.tsx" timestamp="2025-07-13T21:32:21.080Z" hostname="MasakinoMacBook-Pro.local" tests="11" failures="0" errors="0" skipped="0" time="0.288717834">
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 入力値が反映される" time="0.087981458">
+    <testsuite name="src/app/assistant/__tests__/ChatInput.branch.test.tsx" timestamp="2025-07-15T00:18:19.669Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.072095875">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; loading時はinputもdisabled" time="0.047519625">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンが押せる" time="0.035047167">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; inputが空白のみの場合は送信ボタンがdisabled" time="0.014502458">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading時はボタンがdisabled" time="0.011347583">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ユーザーがメッセージを入力し送信できる" time="0.011694666">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信モード（Enter/Mod+Enter）の切替挙動" time="0.026658667">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ラジオボタンによる送信モード切替" time="0.009129542">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 空メッセージ送信時は送信ボタンがdisabledかつonSendが呼ばれない" time="0.01721325">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Enterキーで送信（sendMode: enter）" time="0.010711625">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Cmd+Enterで送信（sendMode: mod+enter）" time="0.011496875">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンの活性/非活性" time="0.055063208">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading=true時にChatInputの送信ボタンがdisabledになる" time="0.010414167">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; 送信モード切替UIが正しく動作する" time="0.00903675">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-13T21:32:21.082Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.11613675">
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.026070917">
+    <testsuite name="src/app/assistant/__tests__/ChatInput.test.tsx" timestamp="2025-07-15T00:18:19.669Z" hostname="MasakinoMacBook-Pro.local" tests="11" failures="0" errors="0" skipped="0" time="0.15586625">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 入力値が反映される" time="0.0559905">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.083336625">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンが押せる" time="0.018824667">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.001374125">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading時はボタンがdisabled" time="0.009842709">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading=true時にChatMessagesのローディングUI（送信中...）が表示される" time="0.001062292">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ユーザーがメッセージを入力し送信できる" time="0.018487333">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; messagesが空配列のときChatMessagesが空状態を表示する" time="0.00326675">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信モード（Enter/Mod+Enter）の切替挙動" time="0.018946709">
         </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/useChat.error.test.ts" timestamp="2025-07-13T21:32:21.084Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.015905792">
-        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; APIエラー時にエラーメッセージがmessagesに追加される" time="0.01166525">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ラジオボタンによる送信モード切替" time="0.006332209">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; 認証エラー時は認証エラー文言が表示される" time="0.0025545">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 空メッセージ送信時は送信ボタンがdisabledかつonSendが呼ばれない" time="0.005191459">
         </testcase>
-    </testsuite>
-    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-13T21:32:21.084Z" hostname="MasakinoMacBook-Pro.local" tests="9" failures="0" errors="0" skipped="0" time="0.048411417">
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.0208445">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Enterキーで送信（sendMode: enter）" time="0.003448209">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.00419475">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Cmd+Enterで送信（sendMode: mod+enter）" time="0.00445275">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIエラー時はassistantロールのエラーメッセージが追加される" time="0.003905375">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンの活性/非活性" time="0.008577375">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 認証失敗時はassistantロールの認証エラーメッセージが追加される" time="0.003644542">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA失敗時はassistantロールのエラーメッセージが追加される" time="0.006007916">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIリクエストの内容とレスポンスを正しく処理する" time="0.002330584">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; API失敗時にリトライで成功した場合、エラーメッセージの後に正常応答が追加される" time="0.00186475">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA無効時はreCAPTCHAトークンが&quot;test&quot;でAPIリクエストされる" time="0.001671459">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される" time="0.002834833">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading=true時にChatInputの送信ボタンがdisabledになる" time="0.004618917">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/api/rag/query/__tests__/route.test.ts" timestamp="2025-07-13T21:32:21.085Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="1.526711">
-        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: テスト環境で正しいレスポンスが返る" time="0.505694958">
+    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-15T00:18:19.671Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.046859542">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.016699583">
         </testcase>
-        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: 本番環境で外部APIが200ならそのまま返す" time="0.003064459">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.025081209">
         </testcase>
-        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; バリデーション: queryが未指定の場合は400エラー" time="0.504182833">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.001422542">
         </testcase>
-        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 異常系: 外部APIがエラー時は500エラー" time="0.008396208">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading=true時にChatMessagesのローディングUI（送信中...）が表示される" time="0.001074666">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; messagesが空配列のときChatMessagesが空状態を表示する" time="0.001604042">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.error.test.ts" timestamp="2025-07-15T00:18:19.672Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.015419334">
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; APIエラー時にエラーメッセージがmessagesに追加される" time="0.012302583">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; 認証エラー時は認証エラー文言が表示される" time="0.002144125">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-15T00:18:19.673Z" hostname="MasakinoMacBook-Pro.local" tests="9" failures="4" errors="0" skipped="0" time="0.062286791">
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.017505458">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.003484792">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIエラー時はassistantロールのエラーメッセージが追加される" time="0.004550834">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 認証失敗時はassistantロールの認証エラーメッセージが追加される" time="0.003714541">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA失敗時はassistantロールのエラーメッセージが追加される" time="0.005619167">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIリクエストの内容とレスポンスを正しく処理する" time="0.015065625">
+            <failure message="expected 1 to be 2 // Object.is equality" type="AssertionError">
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/app/assistant/__tests__/useChat.test.ts:204:44
+            </failure>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; API失敗時にリトライで成功した場合、エラーメッセージの後に正常応答が追加される" time="0.002284167">
+            <failure message="expected 3 to be 4 // Object.is equality" type="AssertionError">
+AssertionError: expected 3 to be 4 // Object.is equality
+
+- Expected
++ Received
+
+- 4
++ 3
+
+ ❯ src/app/assistant/__tests__/useChat.test.ts:246:44
+            </failure>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA無効時はreCAPTCHAトークンが&quot;test&quot;でAPIリクエストされる" time="0.001006375">
+            <failure message="Cannot read properties of undefined (reading &apos;content&apos;)" type="TypeError">
+TypeError: Cannot read properties of undefined (reading &apos;content&apos;)
+ ❯ src/app/assistant/__tests__/useChat.test.ts:269:39
+            </failure>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される" time="0.0076525">
+            <failure message="Cannot read properties of undefined (reading &apos;content&apos;)" type="TypeError">
+TypeError: Cannot read properties of undefined (reading &apos;content&apos;)
+ ❯ src/app/assistant/__tests__/useChat.test.ts:294:39
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-07-15T00:18:19.676Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.016397292">
+        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.015322625">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/input.test.tsx" timestamp="2025-07-15T00:18:19.677Z" hostname="MasakinoMacBook-Pro.local" tests="37" failures="0" errors="0" skipped="0" time="0.236580042">
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should render an input element" time="0.0523725">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should have default type as text" time="0.007281667">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should have data-slot attribute" time="0.027303625">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should apply default CSS classes" time="0.047317083">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply type prop" time="0.006073875">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply value prop" time="0.014157292">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply placeholder prop" time="0.0044065">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply disabled prop" time="0.010087333">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply name prop" time="0.002992375">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply id prop" time="0.002001875">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply aria-label prop" time="0.001108375">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply aria-invalid prop" time="0.00201">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should merge custom className with default classes" time="0.002175666">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should handle className prop as undefined" time="0.0013655">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should apply focus-visible styles" time="0.001246791">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should apply aria-invalid styles when aria-invalid is true" time="0.0012655">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onChange when input value changes" time="0.005845084">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onFocus when input is focused" time="0.002283083">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onBlur when input loses focus" time="0.001995458">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onKeyDown when key is pressed" time="0.002131667">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should not call onChange when disabled" time="0.002336375">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render email input correctly" time="0.001814125">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render number input correctly" time="0.002341125">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render password input correctly" time="0.000527333">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render search input correctly" time="0.006736291">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render file input correctly" time="0.001893">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Controlled vs Uncontrolled &gt; should work as uncontrolled component" time="0.00080575">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Controlled vs Uncontrolled &gt; should work as controlled component" time="0.00155275">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should be focusable when not disabled" time="0.001971958">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should not be focusable when disabled" time="0.001513334">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support aria-describedby" time="0.006837708">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support aria-required" time="0.003757625">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support required attribute" time="0.003580834">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle empty string value" time="0.001323083">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle null className" time="0.001444042">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle very long values" time="0.000494125">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle special characters in value" time="0.000446167">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/skeleton.test.tsx" timestamp="2025-07-15T00:18:19.682Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.114083833">
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; ローディング時にスケルトンが表示される（デフォルトクラス）" time="0.103683166">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; className propsで追加クラスが反映される" time="0.002929708">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; propsの型安全性：div属性が渡せる" time="0.002963542">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/api/rag/query/__tests__/route.test.ts" timestamp="2025-07-15T00:18:19.683Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="1.528697291">
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: テスト環境で正しいレスポンスが返る" time="0.506207834">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: 本番環境で外部APIが200ならそのまま返す" time="0.001375333">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; バリデーション: queryが未指定の場合は400エラー" time="0.502498083">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 異常系: 外部APIがエラー時は500エラー" time="0.011319875">
             <system-err>
 API route error: Error: API request failed: 502
     at POST [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/route.ts:33:13[90m)[39m
-    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:65:17
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:64:17
     at [90mfile:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
 
             </system-err>
         </testcase>
-        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 外部API/DBアクセスのモック: fetch例外時も500エラー" time="0.001659292">
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 外部API/DBアクセスのモック: fetch例外時も500エラー" time="0.00168075">
             <system-err>
 API route error: Error: fetch失敗
-    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:73:40
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:72:40
     at mockCall [90m(file:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
     at spy [90m(file:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mtinyspy[24m/dist/index.js:47:103[90m)[39m
     at POST [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/route.ts:23:28[90m)[39m
-    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:75:17
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:74:17
     at [90mfile:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
 
             </system-err>
         </testcase>
-        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 戻り値の型安全性: answer/context/confidence型を検証" time="0.50261925">
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 戻り値の型安全性: answer/context/confidence型を検証" time="0.504533375">
         </testcase>
     </testsuite>
 </testsuites>
