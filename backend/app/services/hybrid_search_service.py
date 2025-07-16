@@ -161,8 +161,9 @@ class HybridSearchService:
         # ここで詳細jsonリストへ変換（title_to_dataに無い場合は提案メッセージ用のdictを生成）
         merged_details = []
         for title in merged_titles:
-            if title in self.database_service.title_to_data:
-                merged_details.append(self.database_service.title_to_data[title])
+            data = self.database_service.title_to_data.get(title)
+            if data is not None:
+                merged_details.append(data)
             else:
                 # 提案メッセージ用のdict
                 merged_details.append({
@@ -237,6 +238,7 @@ class HybridSearchService:
         
         if search_strategy.use_db_filter and classification.filter_keywords:
             print("--- 最適化データベースフィルター検索実行 ---")
+            print(f"[DBフィルタ条件] filter_keywords: {classification.filter_keywords}")
             db_limit = optimized_limits["db_limit"]
             db_titles = await self.database_service.filter_search(
                 classification.filter_keywords, db_limit

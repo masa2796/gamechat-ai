@@ -154,17 +154,58 @@ class ClassificationService:
                     reasoning="挨拶に関するキーワードが検出されました"
                 )
             
-            # フィルター判定
+            # フィルター判定（コスト・HP・タイプ等の多様な表現に対応）
             filter_keywords_found = []
-            if any(word in query_lower for word in ["hp", "ダメージ", "以上", "以下", "タイプ", "レア"]):
-                filter_keywords_found = ["hp", "ダメージ"] if "hp" in query_lower or "ダメージ" in query_lower else ["タイプ"]
+            import re
+            # コスト条件抽出: 「1コスト」「コスト1」「cost 1」「1 cost」などを1つのキーワードとして抽出
+            cost_patterns = [
+                r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost"
+            ]
+            matched_spans = []
+            for pat in cost_patterns:
+                for m in re.finditer(pat, request.query, re.IGNORECASE):
+                    filter_keywords_found.append(m.group(0).strip())
+                    matched_spans.append((m.start(), m.end()))
+            # HP条件
+            hp_patterns = [r"hp\s*\d+", r"ヒットポイント\s*\d+", r"体力\s*\d+"]
+            for pat in hp_patterns:
+                for m in re.finditer(pat, request.query, re.IGNORECASE):
+                    filter_keywords_found.append(m.group(0).strip())
+                    matched_spans.append((m.start(), m.end()))
+            # ダメージ条件
+            damage_patterns = [r"ダメージ\s*\d+", r"攻撃\s*\d+", r"attack\s*\d+"]
+            for pat in damage_patterns:
+                for m in re.finditer(pat, request.query, re.IGNORECASE):
+                    filter_keywords_found.append(m.group(0).strip())
+                    matched_spans.append((m.start(), m.end()))
+            # タイプ・クラス条件
+            type_words = ["タイプ", "type", "class", "クラス"]
+            for t in type_words:
+                if t in request.query:
+                    filter_keywords_found.append(t)
+            # その他単語（例: "エルフ"など）
+            # 既存のパターンに該当しない単語を抽出（空白区切り）
+            # ただし、既に抽出済みのspanには含まれない部分のみ追加
+            def is_in_matched_spans(idx):
+                for start, end in matched_spans:
+                    if start <= idx < end:
+                        return True
+                return False
+            for m in re.finditer(r'[^\s　,、]+', request.query):
+                if not is_in_matched_spans(m.start()):
+                    w = m.group(0).strip()
+                    if w and not any(w in k for k in filter_keywords_found):
+                        filter_keywords_found.append(w)
+            # 重複除去
+            filter_keywords_found = list(dict.fromkeys(filter_keywords_found))
+            if filter_keywords_found:
                 return ClassificationResult(
                     query_type=QueryType.FILTERABLE,
                     summary=f"フィルター検索: {request.query}",
                     confidence=0.8,
                     filter_keywords=filter_keywords_found,
                     search_keywords=[],
-                    reasoning="具体的な条件が検出されました"
+                    reasoning="具体的な条件が検出されました（コスト/HP/タイプ/数値条件正規化・複合条件抽出）"
                 )
             
             # デフォルトはセマンティック検索

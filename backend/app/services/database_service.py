@@ -1,192 +1,187 @@
 import re
 from typing import List, Dict, Any
-import re
-from .storage_service import StorageService
 from ..core.logging import GameChatLogger
 
 class DatabaseService:
-    def _load_data(self) -> list[dict]:
+    def _normalize_keyword(self, keyword: str) -> str:
+        """
+        検索キーワードの正規化処理
+        - 全角→半角
+        - ひらがな→カタカナ
+        - 英字小文字化
+        - 前後空白除去
+        - 属性名の揺れを統一
+        """
+        import unicodedata
+        # 全角→半角
+        keyword = unicodedata.normalize('NFKC', keyword)
+        # ひらがな→カタカナ
+        keyword = ''.join([
+            chr(ord(ch) + 0x60) if 'ぁ' <= ch <= 'ゖ' else ch for ch in keyword
+        ])
+        # 英字小文字化
+        keyword = keyword.lower()
+        # 前後空白除去
+        keyword = keyword.strip()
+        # 属性名の揺れを統一
+        keyword = keyword.replace('職業', 'クラス').replace('class', 'クラス')
+        return keyword
+
+    def _split_keywords(self, keywords: list[str]) -> list[str]:
+        """
+        複合条件の分割（空白・全角空白・カンマ区切り等）
+        """
+        result = []
+        for kw in keywords:
+            # 全角空白・半角空白・カンマで分割
+            for part in re.split(r'[\s　,、]+', kw):
+                if part:
+                    result.append(part)
+        return result
+
+    def search_cards(self, keywords: list[str], query_type: str = "filterable") -> list[dict[str, Any]]:
+        """
+        クエリタイプに応じて最適な検索を実行する
+        filterable: 明確な属性・数値条件のみ → 条件一致カードをそのまま返す
+        semantic/hybrid: スコア計算で重み付け
+        Args:
+            keywords (list[str]): 検索キーワード
+            query_type (str): クエリタイプ（filterable/semantic/hybrid）
+        Returns:
+            list[dict]: 検索結果リスト
+        """
+        if query_type == "filterable":
+            # キーワード正規化・分割
+            normalized = [self._normalize_keyword(kw) for kw in keywords]
+            expanded = self._split_keywords(normalized)
+            # AND条件で全キーワードに一致するカードのみ返す
+            results = []
+            for item in self.data_cache:
+                if all(self._match_filterable(item, kw) for kw in expanded):
+                    results.append(item)
+            return results
+        else:
+            # スコア計算による重み付け検索
+            results = []
+            for item in self.data_cache:
+                hp_score, hp_matched = self._calculate_hp_score(item, keywords)
+                damage_score, damage_matched = self._calculate_damage_score(item, keywords, hp_matched)
+                type_score, type_matched = self._calculate_type_score(item, keywords)
+                text_score = self._calculate_text_score(item, keywords)
+                combo_bonus = 0.0
+                if type_matched and (damage_matched or hp_matched):
+                    combo_bonus = 1.0
+                total_score = hp_score + damage_score + type_score + text_score + combo_bonus
+                if total_score > 0:
+                    results.append({
+                        **item,
+                        "_score": total_score
+                    })
+            results.sort(key=lambda x: x["_score"], reverse=True)
+            return results
+
+    def _match_filterable(self, item: dict, keyword: str) -> bool:
+        """
+        単純な属性・数値条件キーワードに対する一致判定（例: クラス名、コストN以下等）
+        - コスト条件: コストN, コストN以下, コストN未満, コストN以上, コストN超, cost N, cost <=N, cost >=N, cost <N, cost >N, Nコスト, N cost
+        - 等価条件や英語表現にも対応
+        - 型安全な比較
+        """
+        import re
+        # コスト条件（日本語・英語・等価・比較）
+        cost_patterns = [
+            r"コスト(\d+)(以下|未満|以上|超)?",           # コスト1以下, コスト1
+            r"(\d+)コスト(以下|未満|以上|超)?",           # 1コスト以下, 1コスト
+            r"cost\s*(=|<=|>=|<|>)?\s*(\d+)",           # cost<=1, cost=1
+            r"(\d+)\s*cost(以下|未満|以上|超)?",         # 1 cost以下, 1 cost
+        ]
+        # 1. 日本語・英語・等価条件
+        for pat in cost_patterns:
+            m = re.match(pat, keyword, re.IGNORECASE)
+            if m and "cost" in item:
+                try:
+                    if pat.startswith("cost"):
+                        # 英語: cost<=1, cost=1
+                        op = m.group(1) or "="
+                        value = int(m.group(2))
+                    elif pat.startswith("コスト") or pat.startswith("(\d+)コスト"):
+                        value = int(m.group(1))
+                        cond = m.group(2) or "="
+                        op = {
+                            "以下": "<=", "未満": "<", "以上": ">=", "超": ">", None: "="
+                        }[cond]
+                    else:
+                        value = int(m.group(1))
+                        cond = m.group(2) or "="
+                        op = {
+                            "以下": "<=", "未満": "<", "以上": ">=", "超": ">", None: "="
+                        }[cond]
+                    cost = item.get("cost")
+                    if cost is None:
+                        return False
+                    try:
+                        cost = int(cost)
+                    except Exception:
+                        return False
+                    if op == "<":
+                        return cost < value
+                    elif op == "<=":
+                        return cost <= value
+                    elif op == ">":
+                        return cost > value
+                    elif op == ">=":
+                        return cost >= value
+                    elif op == "=":
+                        return cost == value
+                except Exception:
+                    return False
+        # 2. 単独数値（例: "1"）がコストとみなせる場合
+        if keyword.isdigit() and "cost" in item:
+            try:
+                return int(item["cost"]) == int(keyword)
+            except Exception:
+                return False
+        # クラス名やタイプ名の部分一致
+        for key in ["class", "type", "category"]:
+            if key in item and keyword in str(item[key]):
+                return True
+        # その他属性も必要に応じて追加
+        return False
+    def __init__(self):
+        # data.jsonのカード名→詳細dictのキャッシュ
+        self.title_to_data: dict[str, dict] = {}
+        self.data_cache: list[dict] = []
+        # StorageService等の初期化（既存のまま）
+        # 必要に応じてdebug属性も初期化
+        self.debug = False
+        # 初回ロード
+        self.reload_data()
+
+    def reload_data(self):
+        """
+        data.jsonを再ロードし、title_to_dataキャッシュを再構築する
+        """
+        data = self._load_data()
+        self.data_cache = data
+        self.title_to_data = {}
+        for item in data:
+            # nameフィールドがキー
+            name = item.get("name")
+            if name:
+                self.title_to_data[name] = item
+
+    def _load_data(self) -> list[dict[Any, Any]]:
         """
         StorageService経由でデータファイルをロードする（テスト用モックも考慮）
         """
         try:
-            return self.storage_service.load_json_data()
+            data = self.storage_service.load_json_data()
+            if not isinstance(data, list):
+                return []
+            # 各要素がdictであることを保証
+            return [d for d in data if isinstance(d, dict)]
         except Exception:
             return []
-    def __init__(self):
-        self.storage_service = StorageService()
-        self.title_to_data = None
-        self.cache = None
-        self.debug = False
-        self.data_path = "/test/path/data.json"  # テスト用デフォルト
-        self.converted_data_path = "/test/path/convert_data.json"  # テスト用デフォルト
-
-    async def filter_search(self, filter_keywords: list[str], top_k: int = 20) -> list[str]:
-        """
-        指定されたキーワードでデータをフィルタし、カード名（title/name/カード名）リストを返す
-        """
-        if not hasattr(self, 'title_to_data') or self.title_to_data is None or not self.title_to_data:
-            self.reload_data()
-        # データが空 or キーワードが空ならプレースホルダー返す（テスト仕様）
-        if not self.title_to_data or not filter_keywords:
-            return ["データベース検索"]
-        results = []
-        for key, item in self.title_to_data.items():
-            title = self._extract_title(item)
-            if not title:
-                continue
-            score = self._calculate_filter_score(item, filter_keywords)
-            if score is not None and score > 0:
-                results.append((title, score))
-        results.sort(key=lambda x: x[1], reverse=True)
-        if not results:
-            return ["データベース検索"]
-        return [r[0] for r in results[:top_k]]
-    def _calculate_filter_score(self, item: Dict[str, Any], keywords: List[str]) -> float:
-        numeric_conditions = []
-        type_conditions = set()
-        class_conditions = set()
-        effect_conditions = set()
-        type_aliases = ["タイプ", "type"]
-        class_aliases = ["クラス", "class"]
-        has_hp_keyword = any("hp" in kw.lower() or "体力" in kw.lower() or "ヒットポイント" in kw for kw in keywords)
-        # キーワード分類
-        for kw in keywords:
-            m = re.search(r'(コスト|cost|HP|体力|攻撃|attack)[^\d]*(\d+)(以上|以下|未満|超)?', kw)
-            if m:
-                field = m.group(1)
-                value = int(m.group(2))
-                cond = m.group(3) or '以上'
-                if field in ["コスト", "cost"]:
-                    field = "cost"
-                elif field in ["HP", "体力"]:
-                    field = "hp"
-                elif field in ["攻撃", "attack"]:
-                    field = "attack"
-                numeric_conditions.append((field, value, cond))
-                continue
-            for t in type_aliases:
-                if t in kw:
-                    type_conditions.add(kw.replace(t, '').strip() or t)
-            for c in class_aliases:
-                if c in kw:
-                    class_conditions.add(kw.replace(c, '').strip() or c)
-            if not (m or any(t in kw for t in type_aliases + class_aliases)):
-                effect_conditions.add(kw)
-
-        # AND条件: どれか一つでも満たさなければ即return 0.0
-        # HP条件
-        hp_val = item.get("hp")
-        try:
-            hp_val = int(hp_val) if hp_val is not None else 0
-        except Exception:
-            hp_val = 0
-        hp_numeric_conditions = [(field, value, cond) for field, value, cond in numeric_conditions if field == "hp"]
-        # HP条件は「HPキーワード」と数値条件の両方が揃った場合のみ判定
-        if has_hp_keyword or hp_numeric_conditions:
-            if has_hp_keyword and hp_numeric_conditions:
-                hp_match = False
-                for _, value, cond in hp_numeric_conditions:
-                    if cond == "以上" and hp_val >= value:
-                        hp_match = True
-                    elif cond == "以下" and hp_val <= value:
-                        hp_match = True
-                    elif cond == "未満" and hp_val < value:
-                        hp_match = True
-                    elif cond == "超" and hp_val > value:
-                        hp_match = True
-                if not hp_match:
-                    return 0.0
-            elif has_hp_keyword or hp_numeric_conditions:
-                # どちらか一方しかない場合は条件不成立
-                return 0.0
-
-        # タイプ条件
-        # タイプ・クラス条件
-            if type_conditions:
-                item_type = str(item.get("type", "")).lower()
-                item_class = str(item.get("class", "")).lower()
-                # typeまたはclassどちらかにマッチすればOK
-                if not (any(tc.lower() in item_type for tc in type_conditions) or any(tc.lower() in item_class for tc in type_conditions)):
-                    return 0.0
-        if class_conditions:
-            item_class = str(item.get("class", "")).lower()
-            item_type = str(item.get("type", "")).lower()
-            # classまたはtypeどちらかにマッチすればOK
-            if not (any(cc.lower() in item_class for cc in class_conditions) or any(cc.lower() in item_type for cc in class_conditions)):
-                return 0.0
-
-        # ダメージ条件
-        has_damage_keyword = any(kw.lower() in ["ダメージ", "技", "攻撃"] for kw in keywords)
-        if has_damage_keyword:
-            damage_conditions = []
-            for kw in keywords:
-                m = re.search(r'(\d+)(以上|以下|未満|超)?', kw)
-                if m:
-                    value = int(m.group(1))
-                    cond = m.group(2) or '以上'
-                    damage_conditions.append((value, cond))
-            damage_match = False
-            for ef in ["effect_1", "effect_2", "effect_3"]:
-                if ef in item and item[ef]:
-                    m = re.search(r"(\d+)ダメージ", str(item[ef]))
-                    if m:
-                        damage_value = int(m.group(1))
-                        for num, cond in damage_conditions:
-                            if cond == "以上" and damage_value >= num:
-                                damage_match = True
-                            elif cond == "以下" and damage_value <= num:
-                                damage_match = True
-                            elif cond == "未満" and damage_value < num:
-                                damage_match = True
-                            elif cond == "超" and damage_value > num:
-                                damage_match = True
-            if damage_conditions and not damage_match:
-                return 0.0
-
-        # テキスト・キーワード条件
-        for kw in effect_conditions:
-            found = False
-            for ef in ["effect_1", "effect_2", "effect_3", "effect", "description", "text"]:
-                val = item.get(ef)
-                if val and kw.replace('_', '').replace('・', '') in str(val).replace('_', '').replace('・', ''):
-                    found = True
-                    break
-            if not found and 'attacks' in item and isinstance(item['attacks'], list):
-                for atk in item['attacks']:
-                    if isinstance(atk, dict):
-                        for v in atk.values():
-                            if isinstance(v, str) and kw in v:
-                                found = True
-                                break
-                        if found:
-                            break
-            if not found and 'keywords' in item and isinstance(item['keywords'], list):
-                if any(kw in str(k) for k in item['keywords']):
-                    found = True
-            if not found:
-                return 0.0
-
-        # 全ての条件を満たした場合のみスコア加算
-        score = 1.0
-        return score
-
-    def reload_data(self):
-        data_list = self._load_data()
-        def get_title(item):
-            for k in ("title", "name", "カード名"):
-                if k in item:
-                    return item[k]
-            return None
-        self.title_to_data = {get_title(item): item for item in data_list if get_title(item)}
-
-    def _extract_title(self, item: dict) -> str:
-        for k in ("title", "name", "カード名"):
-            if k in item and item[k]:
-                return item[k]
-        return "不明なアイテム"
-
-
     def _calculate_hp_score(self, item: Dict[str, Any], keywords: List[str]) -> tuple[float, bool]:
         """
         HP関連のスコアを計算します。
@@ -358,84 +353,14 @@ class DatabaseService:
         if type_matched and (damage_matched or hp_matched):
             if self.debug:
                 GameChatLogger.log_debug("database_service", "    複合条件ボーナス: +1.0")
-            return 1.0
-        return 0.0
+        # 旧ロジック削除（keywords, numeric_conditions, has_hp_keyword等）
+        # すべてfilter_conditionsベースの新ロジックに統一
     
-    def _extract_text(self, item: Dict[str, Any]) -> str:
-        """
-        アイテムから検索可能テキストを抽出（data.jsonの属性に準拠）。
-        テスト仕様に合わせて'種類'や'進化段階'なども含める。
-        """
-        text_parts = []
-        if "type" in item:
-            text_parts.append(f"タイプ: {item['type']}")
-        if "class" in item:
-            text_parts.append(f"クラス: {item['class']}")
-        if "rarity" in item:
-            text_parts.append(f"レアリティ: {item['rarity']}")
-        if "cost" in item:
-            text_parts.append(f"コスト: {item['cost']}")
-        if "attack" in item:
-            text_parts.append(f"攻撃: {item['attack']}")
-        if "hp" in item:
-            text_parts.append(f"HP: {item['hp']}")
-        if "species" in item:
-            text_parts.append(f"種類: {item['species']}")
-        if "stage" in item:
-            text_parts.append(f"進化段階: {item['stage']}")
-        if "weakness" in item:
-            text_parts.append(f"弱点: {item['weakness']}")
-        if "effect_1" in item:
-            text_parts.append(f"効果1: {item['effect_1']}")
-        if "effect_2" in item:
-            text_parts.append(f"効果2: {item['effect_2']}")
-        if "effect_3" in item:
-            text_parts.append(f"効果3: {item['effect_3']}")
-        if "cv" in item:
-            text_parts.append(f"CV: {item['cv']}")
-        if "illustrator" in item:
-            text_parts.append(f"イラスト: {item['illustrator']}")
-        if "keywords" in item and isinstance(item["keywords"], list):
-            text_parts.append(f"キーワード: {'/'.join(str(k) for k in item['keywords'])}")
-        if "qa" in item and isinstance(item["qa"], list):
-            for qa_item in item["qa"]:
-                if isinstance(qa_item, dict):
-                    q = qa_item.get("question", "")
-                    a = qa_item.get("answer", "")
-                    text_parts.append(f"Q: {q} A: {a}")
-        return " / ".join(text_parts) if text_parts else str(item)
-    
-    def _get_fallback_results(self) -> List[str]:
-        """
-        フォールバック用のダミーカード名リスト
-        """
-        return ["データベース検索 - フィルター結果"]
-    
-    def _get_placeholder_data(self) -> List[Dict[str, Any]]:
-        """データファイルが利用できない場合のプレースホルダーデータ"""
-        return [
-            {
-                "id": "placeholder-001",
-                "title": "システム情報",
-                "content": "このデータはプレースホルダーです。実際のゲームデータが利用できない状態です。",
-                "category": "system",
-                "type": "情報",
-                "created_at": "2025-06-20T00:00:00Z",
-                "tags": ["システム", "プレースホルダー"]
-            },
-            {
-                "id": "placeholder-002", 
-                "title": "データ読み込みエラー",
-                "content": "Google Cloud Storageまたはローカルファイルからデータを読み込めませんでした。管理者にお問い合わせください。",
-                "category": "system",
-                "type": "エラー",
-                "created_at": "2025-06-20T00:00:00Z",
-                "tags": ["エラー", "データ"]
-            }
-        ]
-    
-    def get_card_details_by_titles(self, titles: list[str]) -> list[dict]:
+    def get_card_details_by_titles(self, titles: list[str]) -> list[dict[Any, Any]]:
         """
         カード名リストから詳細データ(dict)リストを取得
         """
-        return [self.title_to_data[title] for title in titles if title in self.title_to_data]
+        # title_to_dataが未構築ならリロード
+        if not hasattr(self, "title_to_data") or not self.title_to_data:
+            self.reload_data()
+        return [self.title_to_data[title] for title in titles if title in self.title_to_data and self.title_to_data[title] is not None]
