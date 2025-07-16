@@ -1,6 +1,8 @@
+
 import re
 from typing import List, Dict, Any
 from ..core.logging import GameChatLogger
+from .storage_service import StorageService
 
 class DatabaseService:
     def _normalize_keyword(self, keyword: str) -> str:
@@ -95,16 +97,14 @@ class DatabaseService:
             r"cost\s*(=|<=|>=|<|>)?\s*(\d+)",           # cost<=1, cost=1
             r"(\d+)\s*cost(以下|未満|以上|超)?",         # 1 cost以下, 1 cost
         ]
-        # 1. 日本語・英語・等価条件
         for pat in cost_patterns:
             m = re.match(pat, keyword, re.IGNORECASE)
             if m and "cost" in item:
                 try:
                     if pat.startswith("cost"):
-                        # 英語: cost<=1, cost=1
                         op = m.group(1) or "="
                         value = int(m.group(2))
-                    elif pat.startswith("コスト") or pat.startswith("(\d+)コスト"):
+                    elif pat.startswith("コスト") or pat.startswith("("):
                         value = int(m.group(1))
                         cond = m.group(2) or "="
                         op = {
@@ -135,29 +135,27 @@ class DatabaseService:
                         return cost == value
                 except Exception:
                     return False
-        # 2. 単独数値（例: "1"）がコストとみなせる場合
         if keyword.isdigit() and "cost" in item:
             try:
                 return int(item["cost"]) == int(keyword)
             except Exception:
                 return False
-        # クラス名やタイプ名の部分一致
         for key in ["class", "type", "category"]:
             if key in item and keyword in str(item[key]):
                 return True
-        # その他属性も必要に応じて追加
         return False
-    def __init__(self):
+    def __init__(self) -> None:
         # data.jsonのカード名→詳細dictのキャッシュ
         self.title_to_data: dict[str, dict] = {}
         self.data_cache: list[dict] = []
-        # StorageService等の初期化（既存のまま）
-        # 必要に応じてdebug属性も初期化
+        self.storage_service = StorageService()
         self.debug = False
-        # 初回ロード
+        # data_path属性を追加
+        # StorageServiceの論理キー（'data'）を使う
+        self.data_path = "data"
         self.reload_data()
 
-    def reload_data(self):
+    def reload_data(self) -> None:
         """
         data.jsonを再ロードし、title_to_dataキャッシュを再構築する
         """
@@ -175,7 +173,7 @@ class DatabaseService:
         StorageService経由でデータファイルをロードする（テスト用モックも考慮）
         """
         try:
-            data = self.storage_service.load_json_data()
+            data = self.storage_service.load_json_data(self.data_path)
             if not isinstance(data, list):
                 return []
             # 各要素がdictであることを保証
@@ -353,8 +351,29 @@ class DatabaseService:
         if type_matched and (damage_matched or hp_matched):
             if self.debug:
                 GameChatLogger.log_debug("database_service", "    複合条件ボーナス: +1.0")
-        # 旧ロジック削除（keywords, numeric_conditions, has_hp_keyword等）
-        # すべてfilter_conditionsベースの新ロジックに統一
+            return 1.0
+        return 0.0
+
+    async def filter_search(self, keywords: list[str], top_k: int = 10) -> list[str]:
+        """
+        AND条件で全キーワードに一致するカード名リストを返す（非同期）
+        """
+        # 空キーワードまたはデータが空なら即空リスト返却
+        if not keywords or not self.data_cache:
+            return []
+        normalized = [self._normalize_keyword(kw) for kw in keywords]
+        expanded = self._split_keywords(normalized)
+        if not expanded:
+            return []
+        results = []
+        for item in self.data_cache:
+            if all(self._match_filterable(item, kw) for kw in expanded):
+                name = item.get("name")
+                if name:
+                    results.append(name)
+            if len(results) >= top_k:
+                break
+        return results
     
     def get_card_details_by_titles(self, titles: list[str]) -> list[dict[Any, Any]]:
         """

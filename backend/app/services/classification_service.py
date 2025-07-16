@@ -157,24 +157,14 @@ class ClassificationService:
             # フィルター判定（コスト・HP・タイプ等の多様な表現に対応）
             filter_keywords_found = []
             import re
-            # コスト条件抽出: 「1コスト」「コスト1」「cost 1」「1 cost」などを1つのキーワードとして抽出
-            cost_patterns = [
-                r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost"
-            ]
             matched_spans = []
-            for pat in cost_patterns:
-                for m in re.finditer(pat, request.query, re.IGNORECASE):
-                    filter_keywords_found.append(m.group(0).strip())
-                    matched_spans.append((m.start(), m.end()))
-            # HP条件
-            hp_patterns = [r"hp\s*\d+", r"ヒットポイント\s*\d+", r"体力\s*\d+"]
-            for pat in hp_patterns:
-                for m in re.finditer(pat, request.query, re.IGNORECASE):
-                    filter_keywords_found.append(m.group(0).strip())
-                    matched_spans.append((m.start(), m.end()))
-            # ダメージ条件
-            damage_patterns = [r"ダメージ\s*\d+", r"攻撃\s*\d+", r"attack\s*\d+"]
-            for pat in damage_patterns:
+            # コスト・HP・ダメージ等の複合条件を1キーワードとして抽出
+            patterns = [
+                r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost",
+                r"hp\s*\d+", r"ヒットポイント\s*\d+", r"体力\s*\d+",
+                r"ダメージ\s*\d+", r"攻撃\s*\d+", r"attack\s*\d+"
+            ]
+            for pat in patterns:
                 for m in re.finditer(pat, request.query, re.IGNORECASE):
                     filter_keywords_found.append(m.group(0).strip())
                     matched_spans.append((m.start(), m.end()))
@@ -186,7 +176,7 @@ class ClassificationService:
             # その他単語（例: "エルフ"など）
             # 既存のパターンに該当しない単語を抽出（空白区切り）
             # ただし、既に抽出済みのspanには含まれない部分のみ追加
-            def is_in_matched_spans(idx):
+            def is_in_matched_spans(idx: int) -> bool:
                 for start, end in matched_spans:
                     if start <= idx < end:
                         return True
