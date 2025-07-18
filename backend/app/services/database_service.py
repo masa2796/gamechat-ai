@@ -1,10 +1,102 @@
 
+
 import re
+import asyncio
 from typing import List, Dict, Any
 from ..core.logging import GameChatLogger
 from .storage_service import StorageService
 
 class DatabaseService:
+    @staticmethod
+    def merge_cost_keywords(keywords: list[str]) -> list[str]:
+        """
+        連続する["コスト", "1"]→["コスト1"]のように結合する。
+        """
+        merged = []
+        i = 0
+        while i < len(keywords):
+            if (
+                keywords[i] == "コスト"
+                and i + 1 < len(keywords)
+                and str(keywords[i + 1]).isdigit()
+            ):
+                merged.append(f"コスト{keywords[i + 1]}")
+                i += 2
+            else:
+                merged.append(keywords[i])
+                i += 1
+        return merged
+
+    def search(self, keywords: list[str], query_type: str = "filterable", top_k: int = 10, structured_query: dict = None) -> list[dict[str, Any]]:
+        """
+        クエリタイプに応じてカード詳細リストを返すpublicメソッド
+        filterable: AND条件で一致するカード詳細リスト
+        semantic/hybrid: スコア順で上位N件のカード詳細リスト
+        structured_query: LLMから出力された構造化json条件（dict）
+        Args:
+            keywords (list[str]): 検索キーワード
+            query_type (str): クエリタイプ（filterable/semantic/hybrid）
+            top_k (int): 最大件数
+            structured_query (dict): LLMからの構造化json条件
+        Returns:
+            list[dict]: カード詳細リスト
+        """
+        # structured_queryが与えられていればそれを優先してfilterable検索
+        if structured_query and isinstance(structured_query, dict):
+            # 例: {"table": "cards", "conditions": {"name": "", "rarity": "レジェンド", "cost": 5, "class": ""}}
+            conditions = structured_query.get("conditions", {})
+            filter_keywords = []
+            if conditions.get("name"):
+                filter_keywords.append(str(conditions["name"]))
+            if conditions.get("rarity"):
+                filter_keywords.append(str(conditions["rarity"]))
+            if conditions.get("cost") is not None and conditions.get("cost") != "":
+                # costは数値型で来ることもある
+                filter_keywords.append(f"コスト{conditions['cost']}")
+            if conditions.get("class"):
+                filter_keywords.append(str(conditions["class"]))
+            # 必要に応じて他の属性も追加
+            # コストなどの正規化
+            filter_keywords = self.merge_cost_keywords(filter_keywords)
+            # filterable検索を実行
+            return self._search_filterable(filter_keywords, top_k=top_k)
+
+        # 通常のfilterable/semantic/hybrid分岐
+        if query_type == "filterable":
+            filter_keywords = self.merge_cost_keywords(keywords)
+            return self._search_filterable(filter_keywords, top_k=top_k)
+        elif query_type == "semantic":
+            return self._search_semantic(keywords, top_k=top_k)
+        elif query_type == "hybrid":
+            return self._search_hybrid(keywords, top_k=top_k)
+        else:
+            # デフォルトはfilterable
+            filter_keywords = self.merge_cost_keywords(keywords)
+            return self._search_filterable(filter_keywords, top_k=top_k)
+            # 例: {"table": "cards", "conditions": {"name": "", "rarity": "レジェンド", "cost": 5, "class": ""}}
+            conditions = structured_query.get("conditions", {})
+            # 空文字やnullを除外し、値があるものだけでフィルタ条件リストを作成
+            filter_keywords = []
+            if conditions.get("name"):
+                filter_keywords.append(conditions["name"])
+            if conditions.get("rarity"):
+                filter_keywords.append(conditions["rarity"])
+            if conditions.get("cost") is not None and conditions.get("cost") != "":
+                filter_keywords.append(f"コスト{conditions['cost']}")
+            if conditions.get("class"):
+                filter_keywords.append(conditions["class"])
+            merged_keywords = self.merge_cost_keywords(filter_keywords)
+            card_titles = asyncio.run(self.filter_search(merged_keywords, top_k=top_k))
+            return self.get_card_details_by_titles(card_titles)
+        # 通常のキーワードベース
+        merged_keywords = self.merge_cost_keywords(keywords)
+        if query_type == "filterable":
+            card_titles = asyncio.run(self.filter_search(merged_keywords, top_k=top_k))
+            return self.get_card_details_by_titles(card_titles)
+        else:
+            results = self.search_cards(merged_keywords, query_type=query_type)
+            card_titles = [item.get("name") for item in results if item.get("name")] [:top_k]
+            return self.get_card_details_by_titles(card_titles)
     def _normalize_keyword(self, keyword: str) -> str:
         """
         検索キーワードの正規化処理
@@ -32,13 +124,25 @@ class DatabaseService:
     def _split_keywords(self, keywords: list[str]) -> list[str]:
         """
         複合条件の分割（空白・全角空白・カンマ区切り等）
+        さらに「コスト」と数字が連続した場合は「コスト1」など1語に結合する
         """
         result = []
         for kw in keywords:
             # 全角空白・半角空白・カンマで分割
-            for part in re.split(r'[\s　,、]+', kw):
-                if part:
-                    result.append(part)
+            parts = [part for part in re.split(r'[\s　,、]+', kw) if part]
+            i = 0
+            while i < len(parts):
+                # 「コスト」+数字 の連結
+                if (
+                    parts[i] == "コスト"
+                    and i + 1 < len(parts)
+                    and parts[i + 1].isdigit()
+                ):
+                    result.append(f"コスト{parts[i + 1]}")
+                    i += 2
+                else:
+                    result.append(parts[i])
+                    i += 1
         return result
 
     def search_cards(self, keywords: list[str], query_type: str = "filterable") -> list[dict[str, Any]]:
@@ -84,32 +188,64 @@ class DatabaseService:
 
     def _match_filterable(self, item: dict, keyword: str) -> bool:
         """
-        単純な属性・数値条件キーワードに対する一致判定（例: クラス名、コストN以下等）
+        filterable検索用の厳密一致判定
+        - コスト条件（例:「コスト1」）はitem["cost"]とintで厳密一致
+        - クラス/レアリティ/名前は完全一致（部分一致しない）
+        - その他は従来通り
+        """
+        # コスト条件: 「コスト1」など
+        import re
+        m = re.fullmatch(r"コスト(\d+)", keyword)
+        if m:
+            try:
+                cost_val = int(m.group(1))
+                # item["cost"]がint型でなければint変換
+                item_cost = item.get("cost")
+                if isinstance(item_cost, str) and item_cost.isdigit():
+                    item_cost = int(item_cost)
+                return item_cost == cost_val
+            except Exception:
+                return False
+        # クラス条件
+        if "class" in item and keyword == str(item["class"]):
+            return True
+        # レアリティ条件
+        if "rarity" in item and keyword == str(item["rarity"]):
+            return True
+        # 名前条件
+        if "name" in item and keyword == str(item["name"]):
+            return True
+        # その他: effect, keywords, type など部分一致（従来通り）
+        for field in ["effect_1", "effect_2", "effect_3", "keywords", "type"]:
+            val = item.get(field)
+            if isinstance(val, list):
+                if any(keyword == str(v) for v in val):
+                    return True
+            elif isinstance(val, str):
+                if keyword == val:
+                    return True
+        return False
+        """
+        厳密な属性・数値条件キーワードに対する一致判定（例: クラス名、コストN等）
         - コスト条件: コストN, コストN以下, コストN未満, コストN以上, コストN超, cost N, cost <=N, cost >=N, cost <N, cost >N, Nコスト, N cost
-        - 等価条件や英語表現にも対応
-        - 型安全な比較
+        - 完全一致・型安全な比較
         """
         import re
         # コスト条件（日本語・英語・等価・比較）
         cost_patterns = [
-            r"コスト(\d+)(以下|未満|以上|超)?",           # コスト1以下, コスト1
-            r"(\d+)コスト(以下|未満|以上|超)?",           # 1コスト以下, 1コスト
-            r"cost\s*(=|<=|>=|<|>)?\s*(\d+)",           # cost<=1, cost=1
-            r"(\d+)\s*cost(以下|未満|以上|超)?",         # 1 cost以下, 1 cost
+            r"^コスト(\d+)(以下|未満|以上|超)?$",           # コスト1以下, コスト1
+            r"^(\d+)コスト(以下|未満|以上|超)?$",           # 1コスト以下, 1コスト
+            r"^cost\s*(=|<=|>=|<|>)?\s*(\d+)$",           # cost<=1, cost=1
+            r"^(\d+)\s*cost(以下|未満|以上|超)?$",         # 1 cost以下, 1 cost
         ]
         for pat in cost_patterns:
             m = re.match(pat, keyword, re.IGNORECASE)
             if m and "cost" in item:
                 try:
-                    if pat.startswith("cost"):
+                    # 英語パターン
+                    if pat.startswith("^cost"):
                         op = m.group(1) or "="
                         value = int(m.group(2))
-                    elif pat.startswith("コスト") or pat.startswith("("):
-                        value = int(m.group(1))
-                        cond = m.group(2) or "="
-                        op = {
-                            "以下": "<=", "未満": "<", "以上": ">=", "超": ">", None: "="
-                        }[cond]
                     else:
                         value = int(m.group(1))
                         cond = m.group(2) or "="
@@ -119,6 +255,7 @@ class DatabaseService:
                     cost = item.get("cost")
                     if cost is None:
                         return False
+                    # 型安全な比較
                     try:
                         cost = int(cost)
                     except Exception:
@@ -135,13 +272,27 @@ class DatabaseService:
                         return cost == value
                 except Exception:
                     return False
-        if keyword.isdigit() and "cost" in item:
+        # 完全一致: "コストN" 形式
+        m = re.match(r"^コスト(\d+)$", keyword)
+        if m and "cost" in item:
             try:
-                return int(item["cost"]) == int(keyword)
+                return int(item["cost"]) == int(m.group(1))
             except Exception:
                 return False
+        # 完全一致: "Nコスト" 形式
+        m = re.match(r"^(\d+)コスト$", keyword)
+        if m and "cost" in item:
+            try:
+                return int(item["cost"]) == int(m.group(1))
+            except Exception:
+                return False
+        # クラス・タイプ・カテゴリは完全一致のみ
         for key in ["class", "type", "category"]:
-            if key in item and keyword in str(item[key]):
+            if key in item and str(item[key]) == keyword:
+                return True
+        # その他属性は部分一致・曖昧一致を禁止し、完全一致のみ
+        for k, v in item.items():
+            if isinstance(v, str) and v == keyword:
                 return True
         return False
     def __init__(self) -> None:

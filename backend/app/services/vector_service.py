@@ -209,33 +209,45 @@ class VectorService:
         return top_k, min_score, namespaces
     
     def _get_optimized_namespaces(self, classification: ClassificationResult) -> List[str]:
-        """分類結果に基づいてネームスペースを最適化"""
-        
-        # 分類タイプ別のネームスペース優先順位
-        if classification.query_type == QueryType.SEMANTIC:
-            # セマンティック検索では要約や説明を重視
-            return ["summary", "flavor", "attacks", "evolves", "type", "category", 
-                   "hp", "weakness", "height", "weight", "set-info", "releaseDate", "rarity"]
-        
-        elif classification.query_type == QueryType.FILTERABLE:
-            # フィルタ可能検索では具体的な属性を重視
-            return ["hp", "type", "weakness", "category", "rarity", "attacks", 
-                   "height", "weight", "set-info", "releaseDate", "summary", "flavor", "evolves"]
-        
-        else:  # HYBRID
-            # ハイブリッドではバランス良く
-            return ["summary", "hp", "type", "attacks", "flavor", "weakness", "category", 
-                   "evolves", "height", "weight", "set-info", "releaseDate", "rarity"]
+        """データファイルから存在するnamespace一覧を動的に取得"""
+        return self._get_all_namespaces()
     
     def _get_default_namespaces(self, classification: Optional[ClassificationResult]) -> List[str]:
-        """デフォルトのネームスペースリストを取得"""
-        if classification:
-            return self._get_optimized_namespaces(classification)
-        
-        return [
-            "summary", "flavor", "attacks", "height", "weight", "evolves",
-            "hp", "weakness", "type", "set-info", "releaseDate", "category", "rarity"
-        ]
+        """デフォルトのネームスペースリストを取得（データから動的に取得）"""
+        return self._get_all_namespaces()
+
+    def _get_all_namespaces(self) -> List[str]:
+        """convert_data.jsonからユニークなnamespace一覧を抽出"""
+        import os
+        import json
+        data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "convert_data.json")
+        namespaces = set()
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        # JSON Lines形式 or 配列形式両対応
+                        if line.strip().startswith("["):
+                            # 配列形式
+                            f.seek(0)
+                            items = json.load(f)
+                            for item in items:
+                                ns = item.get("namespace")
+                                if ns:
+                                    namespaces.add(ns)
+                            break
+                        else:
+                            # JSON Lines形式
+                            item = json.loads(line)
+                            ns = item.get("namespace")
+                            if ns:
+                                namespaces.add(ns)
+                    except Exception:
+                        continue
+        except Exception:
+            # ファイルが読めない場合は空リスト
+            return []
+        return sorted(list(namespaces))
     
     def _handle_no_results(self, classification: Optional[ClassificationResult]) -> List[str]:
         """
