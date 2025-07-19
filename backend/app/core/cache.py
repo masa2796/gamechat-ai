@@ -380,7 +380,7 @@ class FastQueryCache(QueryCache):
 fast_query_cache = FastQueryCache()
 
 # プリウォーミング用のよくある質問
-COMMON_QUESTIONS = [
+COMMON_QUESTIONS: list[str] = [
 ]
 
 class PrewarmedCache:

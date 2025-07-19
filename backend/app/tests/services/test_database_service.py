@@ -140,7 +140,7 @@ class TestDatabaseService:
         async def test_filter_search_with_valid_keywords_hp_condition(self, database_service, sample_data, monkeypatch):
             """HP条件でのフィルター検索テスト（data.json仕様）"""
             monkeypatch.setattr(database_service, "_load_data", lambda: sample_data)
-            results = await database_service.filter_search(["HP", "100以上"], top_k=5)
+            results = await database_service.filter_search_async(["HP", "100以上"], top_k=5)
             # HP100以上のカードを確認
             assert len(results) == 2  # HP120とHP150のカード
             names = results
@@ -152,7 +152,7 @@ class TestDatabaseService:
         async def test_filter_search_with_valid_keywords_type_condition(self, database_service, sample_data, monkeypatch):
             """タイプ/クラス/キーワード条件でのフィルター検索テスト（data.json仕様）"""
             monkeypatch.setattr(database_service, "_load_data", lambda: sample_data)
-            results = await database_service.filter_search(["エルフ"], top_k=5)
+            results = await database_service.filter_search_async(["エルフ"], top_k=5)
             # sample_dataの全てがエルフなので3件返る
             assert len(results) == 3
             assert "テストカード1" in results
@@ -163,7 +163,7 @@ class TestDatabaseService:
             """ダメージ条件とタイプ条件の複合検索テスト（effect_1等からダメージ抽出）"""
             monkeypatch.setattr(database_service, "_load_data", lambda: mock_data)
             keywords = ["ダメージ", "3以上", "エルフ"]
-            results = await database_service.filter_search(keywords, 5)
+            results = await database_service.filter_search_async(keywords, 5)
             assert len(results) >= 1  # effect_1に3ダメージ以上を含むカード
             assert isinstance(results, list)
             # エルフクラスで3ダメージ以上の効果を持つカードが上位に来ることを確認
@@ -189,7 +189,7 @@ class TestDatabaseService:
             """カスタムパスでの検索テスト"""
             service = DatabaseService()
             with patch.object(service, '_load_data', return_value=sample_data):
-                results = await service.filter_search(["炎"], top_k=5)
+                results = await service.filter_search_async(["炎"], top_k=5)
                 # sample_dataに"炎"を含むカードがなければ0件
                 assert len(results) == 0
 
@@ -235,14 +235,14 @@ class TestDatabaseService:
                 data = database_service._load_data()
             # sample_dataの代わりに空リストを返すようにしているため、filter_searchの結果もプレースホルダーが返る場合は1件
             monkeypatch.setattr(database_service, "_load_data", lambda: [])
-            results = await database_service.filter_search([], top_k=5)
+            results = await database_service.filter_search_async([], top_k=5)
             assert len(results) == 1  # プレースホルダーデータが返る場合は1件
 
     @pytest.mark.asyncio
     async def test_filter_search_with_empty_data(self, database_service, monkeypatch):
         """データなしでの検索テスト"""
         monkeypatch.setattr(database_service, "_load_data", lambda: [])
-        results = await database_service.filter_search(["HP", "100以上"], top_k=5)
+        results = await database_service.filter_search_async(["HP", "100以上"], top_k=5)
         # データが空なので0件が正
         assert len(results) == 0
 
@@ -273,7 +273,7 @@ class TestDatabaseService:
             """ダメージ条件のみでの検索パフォーマンステスト（effect_1等からダメージ抽出）"""
             monkeypatch.setattr(database_service, "_load_data", lambda: mock_data)
             keywords = ["ダメージ", "3以上"]
-            results = await database_service.filter_search(keywords, 5)
+            results = await database_service.filter_search_async(keywords, 5)
             assert isinstance(results, list)
             assert len(results) >= 1  # effect_1に3ダメージ以上を含むカード
 

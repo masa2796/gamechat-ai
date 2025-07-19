@@ -158,14 +158,13 @@ class HybridSearchService:
             db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
         )
 
-        # ここで詳細jsonリストへ変換（title_to_dataに無い場合は提案メッセージ用のdictを生成）
-        merged_details = []
+        # まず詳細データリストを取得
+        details = self.database_service.get_card_details_by_titles(merged_titles)
+        found_names = {item.get("name") for item in details}
+        merged_details = details.copy()
+        # 取得できなかったタイトルのみ提案メッセージ化
         for title in merged_titles:
-            data = self.database_service.title_to_data.get(title)
-            if data is not None:
-                merged_details.append(data)
-            else:
-                # 提案メッセージ用のdict
+            if title not in found_names:
                 merged_details.append({
                     "name": "ご提案",
                     "type": "info",
@@ -240,7 +239,7 @@ class HybridSearchService:
             print("--- 最適化データベースフィルター検索実行 ---")
             print(f"[DBフィルタ条件] filter_keywords: {classification.filter_keywords}")
             db_limit = optimized_limits["db_limit"]
-            db_titles = await self.database_service.filter_search(
+            db_titles = await self.database_service.filter_search_titles_async(
                 classification.filter_keywords, db_limit
             )
             print(f"DB検索結果: {len(db_titles)}件")

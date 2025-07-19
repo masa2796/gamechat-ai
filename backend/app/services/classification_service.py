@@ -432,9 +432,9 @@ cardsテーブル
 
             # --- ここから自動補完ロジック追加 ---
             # filter_keywords, search_keywordsが空の場合はクエリから自動抽出
-            def extract_keywords_fallback(query: str):
+            def extract_keywords_fallback(query: str) -> list[str]:
                 import re
-                keywords = []
+                keywords: list[str] = []
                 # コスト・クラス・タイプ等の抽出
                 patterns = [
                     r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost",

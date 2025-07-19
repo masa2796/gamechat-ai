@@ -206,6 +206,8 @@ class TestFullFlowIntegration:
         
         monkeypatch.setattr(hybrid_search_service.classification_service, "classify_query", mock_classify)
         monkeypatch.setattr(hybrid_search_service.database_service, "filter_search", mock_db_search)
+        # filter_search_titles_asyncもモック
+        monkeypatch.setattr(hybrid_search_service.database_service, "filter_search_titles_async", mock_db_search)
         monkeypatch.setattr(hybrid_search_service.embedding_service, "get_embedding_from_classification", mock_embedding)
         monkeypatch.setattr(hybrid_search_service.vector_service, "search", mock_vector_search)
         
