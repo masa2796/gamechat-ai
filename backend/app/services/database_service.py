@@ -14,13 +14,32 @@ class DatabaseService:
         class DummyStorageService:
             def load_data(self) -> list[dict[str, Any]]:
                 return []
+            def load_json_data(self) -> list[dict[str, Any]]:
+                return []
         self.storage_service = DummyStorageService()
         self.reload_data()
 
+    def _load_data(self) -> list[dict[str, Any]]:
+        # テスト用: StorageServiceのload_json_dataを呼ぶ
+        if hasattr(self.storage_service, "load_json_data"):
+            return self.storage_service.load_json_data()
+        elif hasattr(self.storage_service, "load_data"):
+            return self.storage_service.load_data()
+        return []
+    async def filter_search_async(self, keywords: list[str], top_k: int = 10) -> list[str]:
+        # テスト用: filter_search_titles_asyncのラッパー
+        return await self.filter_search_titles_async(keywords, top_k)
+
+    def filter_search(self, keywords: list[str], top_k: int = 10):
+        # テスト用: 非同期関数の同期ラッパー（テストモック用）
+        import asyncio
+        return asyncio.get_event_loop().run_until_complete(self.filter_search_async(keywords, top_k))
+
     def reload_data(self) -> None:
         """
+        データを再読み込みし、キャッシュとtitle_to_dataを構築
         """
-        data = self.storage_service.load_data()
+        data = self._load_data()
         self.data_cache = data
         print(f"[DEBUG] data_cache loaded: {len(self.data_cache)} 件")  # デバッグ出力追加
         self.title_to_data = {}
