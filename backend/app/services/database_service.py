@@ -1,22 +1,34 @@
-
-
 import re
 from typing import List, Dict, Any, Optional
 from ..core.logging import GameChatLogger
 
-
 class DatabaseService:
     def __init__(self, data_path: Optional[str] = None):
-        # --- ここから下の重複・未完成な関数本体を完全削除 ---
-        self.data_path = "data"
-        self.debug = False  # デバッグフラグ追加
-        # storage_serviceのダミー実装（本来はDIや外部から渡すべき）
-        class DummyStorageService:
+        import os
+        # data_pathが指定されていればそれを、なければプロジェクトルート基準の絶対パス
+        if data_path:
+            self.data_path = data_path
+        else:
+            # このファイル（database_service.py）から見てプロジェクトルートを計算
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+            self.data_path = os.path.join(base_dir, 'data/data.json')
+        self.debug = True  # デバッグフラグ追加
+        # 実データをロードするストレージサービス
+        class JsonFileStorageService:
+            def __init__(self, file_path):
+                self.file_path = file_path
             def load_data(self) -> list[dict[str, Any]]:
-                return []
+                import json
+                try:
+                    with open(self.file_path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception as e:
+                    print(f"[ERROR] データファイルの読み込みに失敗: {e}")
+                    return []
             def load_json_data(self) -> list[dict[str, Any]]:
-                return []
-        self.storage_service = DummyStorageService()
+                return self.load_data()
+
+        self.storage_service = JsonFileStorageService(self.data_path)
         self.reload_data()
 
     def _load_data(self) -> list[dict[str, Any]]:
@@ -27,13 +39,17 @@ class DatabaseService:
             return self.storage_service.load_data()
         return []
     async def filter_search_async(self, keywords: list[str], top_k: int = 10) -> list[str]:
-        # テスト用: filter_search_titles_asyncのラッパー
-        return await self.filter_search_titles_async(keywords, top_k)
+        print(f"[SEARCH] filter_search_async called: keywords={keywords}, top_k={top_k}")
+        result = await self.filter_search_titles_async(keywords, top_k)
+        print(f"[SEARCH] filter_search_async result: {result}")
+        return result
 
     def filter_search(self, keywords: list[str], top_k: int = 10):
-        # テスト用: 非同期関数の同期ラッパー（テストモック用）
+        print(f"[SEARCH] filter_search called: keywords={keywords}, top_k={top_k}")
         import asyncio
-        return asyncio.get_event_loop().run_until_complete(self.filter_search_async(keywords, top_k))
+        result = asyncio.get_event_loop().run_until_complete(self.filter_search_async(keywords, top_k))
+        print(f"[SEARCH] filter_search result: {result}")
+        return result
 
     def reload_data(self) -> None:
         """
@@ -51,21 +67,25 @@ class DatabaseService:
                 self.title_to_data[norm_name] = item
         print(f"[DEBUG] title_to_data keys: {list(self.title_to_data.keys())[:10]} ... (total {len(self.title_to_data)})")
     def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
-        print(f"[DEBUG] 検索キーワード: {keywords}")
-        print(f"[DEBUG] data_cache 件数: {len(self.data_cache)}")
+        print(f"[SEARCH] _search_filterable called: keywords={keywords}, top_k={top_k}")
+        print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
         results = []
         for item in self.data_cache:
-            if all(self._match_filterable(item, kw) for kw in keywords):
+            match_flags = [self._match_filterable(item, kw) for kw in keywords]
+            print(f"[SEARCH] Checking item: {item.get('name', '')}, match_flags={match_flags}")
+            if all(match_flags):
                 results.append(item)
+                print(f"[SEARCH] Matched: {item.get('name', '')}")
                 if len(results) >= top_k:
                     break
-        print(f"[DEBUG] DB検索結果 件数: {len(results)}")
+        print(f"[SEARCH] _search_filterable found {len(results)} results")
         for i, r in enumerate(results):
-            print(f"[DEBUG] DB検索結果[{i}]: {r}")
+            print(f"[SEARCH] _search_filterable result[{i}]: {r.get('name', '')}")
         return results
 
     def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
-        # ダミー実装: すべてTrueを返す（本来はitemの内容とkeywordで判定）
+        if self.debug:
+            print(f"[DEBUG] _match_filterable: item={item.get('name', '')}, keyword={keyword}")
         return True
 
     def _normalize_keyword(self, keyword: str) -> str:

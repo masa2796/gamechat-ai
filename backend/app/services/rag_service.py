@@ -25,11 +25,13 @@ class RagService:
         RAGクエリを処理してレスポンスを生成
         パフォーマンス監視とキャッシュ機能付き
         """
+        import sys
         start_time = time.perf_counter()
-        
+        print(f"[RAG] process_query called: question='{rag_req.question}', top_k={rag_req.top_k}", file=sys.stderr)
         try:
             # NGワードチェック
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
+                print("[RAG] NGワード検出: abort", file=sys.stderr)
                 return {
                     "answer": "申し訳ありませんが、そのような内容にはお答えできません。"
                 }
@@ -40,29 +42,26 @@ class RagService:
                 rag_req.question, rag_req.top_k or 50
             )
             cache_check_duration = time.perf_counter() - cache_check_start
-            
             if cached_response:
                 total_duration = time.perf_counter() - start_time
-                logger.info(f"🚀 Cache hit: {rag_req.question[:50]}... ({total_duration:.3f}s)")
-                
+                print(f"[RAG] Cache hit: {rag_req.question[:50]}... ({total_duration:.3f}s)", file=sys.stderr)
                 # キャッシュヒット時の最小パフォーマンス情報
                 cached_response["performance"]["total_duration"] = total_duration
                 cached_response["performance"]["cache_check_duration"] = cache_check_duration
                 return cached_response
 
+            print(f"[RAG] Hybrid search start: question='{rag_req.question}'", file=sys.stderr)
             # ハイブリッド検索の実行（最適化版）
             search_start = time.perf_counter()
-            
             # 動的なtop_k調整（パフォーマンス最適化）
             optimized_top_k = rag_req.top_k or 50
             if optimized_top_k > 30:
                 optimized_top_k = min(30, optimized_top_k)  # 最大30に制限
-            
             search_result = await self.hybrid_search_service.search(
                 rag_req.question, optimized_top_k
             )
             search_duration = time.perf_counter() - search_start
-            
+            print(f"[RAG] Hybrid search done: duration={search_duration:.3f}s", file=sys.stderr)
             # 5秒以上の場合は警告（Vector検索最適化のため）
             if search_duration > 4.0:
                 logger.warning(f"⚠️ Slow search detected: {search_duration:.3f}s for '{rag_req.question[:50]}...'")
@@ -71,17 +70,15 @@ class RagService:
                     search_duration,
                     {"question": rag_req.question[:100], "top_k": optimized_top_k}
                 )
-            
             context_items = search_result["merged_results"]  # ここは詳細json(dict)リスト
-            
             # LLM応答生成をスキップし、answerは空文字で返す
             llm_duration = 0.0
             total_duration = time.perf_counter() - start_time
+            print(f"[RAG] Response build: total={total_duration:.3f}s, search={search_duration:.3f}s", file=sys.stderr)
             logger.info(
                 f"⏱️ RAG処理完了: total={total_duration:.3f}s, "
                 f"search={search_duration:.3f}s, llm={llm_duration:.3f}s"
             )
-
             # レスポンス構築
             if rag_req.with_context:
                 response = {
@@ -111,7 +108,6 @@ class RagService:
                         "cache_hit": False
                     }
                 }
-            
             # レスポンスをキャッシュ（非同期で実行、レスポンス時間に影響しない）
             asyncio.create_task(
                 query_cache.cache_response(
@@ -121,11 +117,11 @@ class RagService:
                     ttl=1200 if total_duration < 3.0 else 600  # 高速レスポンスは長期キャッシュ
                 )
             )
-            
+            print("[RAG] process_query done", file=sys.stderr)
             return response
-                
         except Exception as e:
             # エラーログを出力（raiseしないのでlogger.errorのみでOK）
+            print(f"[RAG] ERROR: {str(e)}", file=sys.stderr)
             logger.error(f"RAGクエリ処理中にエラーが発生: {str(e)}", exc_info=True)
             return {
                 "answer": f"申し訳ありませんが、「{rag_req.question}」に関する回答の処理中にエラーが発生しました。"
