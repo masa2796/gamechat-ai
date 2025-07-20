@@ -86,7 +86,29 @@ class DatabaseService:
     def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
         if self.debug:
             print(f"[DEBUG] _match_filterable: item={item.get('name', '')}, keyword={keyword}")
-        return True
+        # コスト条件判定: "コストN" → item["cost"] == N
+        import re
+        m = re.match(r"コスト(\d+)", keyword)
+        if m:
+            try:
+                cost_val = int(m.group(1))
+                item_cost = int(item.get("cost", -1))
+                result = (item_cost == cost_val)
+                if self.debug:
+                    print(f"[DEBUG] コスト判定: item_cost={item_cost}, 条件={cost_val}, result={result}")
+                return result
+            except Exception as e:
+                if self.debug:
+                    print(f"[DEBUG] コスト判定エラー: {e}")
+                return False
+        # 他の属性条件もここに追加可能
+        # デフォルト: 部分一致
+        name = str(item.get("name", ""))
+        if keyword in name:
+            if self.debug:
+                print(f"[DEBUG] 名前部分一致: {keyword} in {name}")
+            return True
+        return False
 
     def _normalize_keyword(self, keyword: str) -> str:
         # ダミー実装: 前後空白除去

@@ -81,23 +81,61 @@ class RagService:
             )
             # レスポンス構築
             if rag_req.with_context:
-                response = {
-                    "answer": "",
-                    "context": context_items,  # そのまま返す
-                    "classification": search_result["classification"].model_dump(),
-                    "search_info": {
-                        "query_type": search_result["classification"].query_type,
-                        "confidence": search_result["classification"].confidence,
-                        "db_results_count": len(search_result["db_results"]),
-                        "vector_results_count": len(search_result["vector_results"])
-                    },
-                    "performance": {
-                        "total_duration": total_duration,
-                        "search_duration": search_duration,
-                        "llm_duration": llm_duration,
-                        "cache_hit": False
+                classification = search_result["classification"]
+                query_type = classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", None)
+                # FILTERABLE判定とdb_results件数をログ出力
+                print(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(search_result.get('db_results', []))}", file=sys.stderr)
+                logger.info(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(search_result.get('db_results', []))}")
+
+                # FILTERABLE の場合はdb_resultsを全件 context, db_results 両方に入れる
+                if str(query_type) == "QueryType.FILTERABLE" or str(query_type).lower() == "filterable":
+                    db_results = [item.model_dump() if hasattr(item, "model_dump") else item for item in search_result.get("db_results", [])]
+                    response = {
+                        "answer": "",
+                        "context": db_results,  # contextにも全件
+                        "db_results": db_results,
+                        "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                        "search_info": {
+                            "query_type": classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", "unknown"),
+                            "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
+                            "db_results_count": len(db_results),
+                            "vector_results_count": len(search_result.get("vector_results", []))
+                        },
+                        "performance": {
+                            "total_duration": total_duration,
+                            "search_duration": search_duration,
+                            "llm_duration": llm_duration,
+                            "cache_hit": False
+                        }
                     }
-                }
+                    # ログ: db_resultsの内容（itemがdict以外も考慮）
+                    def get_name_safe(item):
+                        if isinstance(item, dict):
+                            return item.get('name', str(item))
+                        return str(item)
+                    db_names = [get_name_safe(item) for item in db_results]
+                    print(f"[RAG][DEBUG] db_results(full): {db_names}", file=sys.stderr)
+                    logger.info(f"[RAG][DEBUG] db_results(full): {db_names}")
+                else:
+                    response = {
+                        "answer": "",
+                        "context": context_items,  # そのまま返す
+                        "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                        "search_info": {
+                            "query_type": classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", "unknown"),
+                            "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
+                            "db_results_count": len(search_result.get("db_results", [])),
+                            "vector_results_count": len(search_result.get("vector_results", []))
+                        },
+                        "performance": {
+                            "total_duration": total_duration,
+                            "search_duration": search_duration,
+                            "llm_duration": llm_duration,
+                            "cache_hit": False
+                        }
+                    }
+                    print("[RAG][DEBUG] Not FILTERABLE, db_results not included in response", file=sys.stderr)
+                    logger.info("[RAG][DEBUG] Not FILTERABLE, db_results not included in response")
             else:
                 response = {
                     "answer": "",
@@ -135,7 +173,6 @@ class RagService:
         - タイムアウト対策
         """
         start_time = time.perf_counter()
-        
         try:
             # NGワードチェック
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
@@ -154,7 +191,7 @@ class RagService:
             # 2. 並列検索実行（タイムアウト付き）
             search_result = await self._execute_parallel_search(rag_req)
             search_duration = search_result.get("_search_duration", 0)
-            
+
             # 3. ストリーミング対応LLM応答生成
             llm_start = time.perf_counter()
             answer = await asyncio.wait_for(
@@ -167,9 +204,8 @@ class RagService:
             response = await self._build_and_cache_response(
                 rag_req, answer, search_result, start_time, search_duration, llm_duration
             )
-            
             return response
-                
+
         except asyncio.TimeoutError:
             # タイムアウト時のフォールバック
             logger.warning(f"⏰ Query timeout: {rag_req.question[:50]}...")
@@ -290,13 +326,16 @@ class RagService:
         context_items = search_result.get("merged_results", [])  # 詳細jsonリスト
         
         if rag_req.with_context:
+            # QueryType.FILTERABLE の場合はdb_resultsを全件返す
+            classification = search_result.get("classification")
+            query_type = getattr(classification, "query_type", None) if classification else None
             response = {
-                "answer": "",
+                "answer": answer,
                 "context": context_items[:10],  # 上位10件
-                "classification": search_result.get("classification", {}).model_dump() if search_result.get("classification") else {},
+                "classification": classification.model_dump() if classification else {},
                 "search_info": {
-                    "query_type": search_result.get("classification", {}).query_type if search_result.get("classification") else "unknown",
-                    "confidence": search_result.get("classification", {}).confidence if search_result.get("classification") else 0.0,
+                    "query_type": classification.query_type if classification else "unknown",
+                    "confidence": classification.confidence if classification else 0.0,
                     "db_results_count": len(search_result.get("db_results", [])),
                     "vector_results_count": len(search_result.get("vector_results", []))
                 },
@@ -307,9 +346,17 @@ class RagService:
                     "cache_hit": False
                 }
             }
+            # FILTERABLE の場合はdb_resultsを全件追加
+            if (
+                str(query_type) == "QueryType.FILTERABLE" or
+                str(query_type).lower() == "filterable" or
+                (hasattr(query_type, 'value') and query_type.value == "filterable")
+            ):
+                # db_resultsが存在する場合は必ず全件返す
+                response["db_results"] = [item.model_dump() if hasattr(item, "model_dump") else item for item in search_result.get("db_results", [])]
         else:
             response = {
-                "answer": "",
+                "answer": answer,
                 "performance": {
                     "total_duration": total_duration,
                     "search_duration": search_duration,
