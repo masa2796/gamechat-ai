@@ -60,10 +60,10 @@ class DatabaseService:
         print(f"[DEBUG] data_cache loaded: {len(self.data_cache)} 件")  # デバッグ出力追加
         self.title_to_data = {}
         for item in data:
-            # nameフィールドがキー
+            # nameフィールドがキー（正規化処理を強化）
             name = item.get("name")
             if name:
-                norm_name = str(name).strip()
+                norm_name = self._normalize_title(str(name))
                 self.title_to_data[norm_name] = item
         print(f"[DEBUG] title_to_data keys: {list(self.title_to_data.keys())[:10]} ... (total {len(self.title_to_data)})")
     def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
@@ -304,6 +304,23 @@ class DatabaseService:
             self.reload_data()
         details = []
         for title in titles:
-            if title in self.title_to_data and self.title_to_data[title] is not None:
-                details.append(self.title_to_data[title])
+            norm_title = self._normalize_title(str(title))
+            item = self.title_to_data.get(norm_title)
+            if item:
+                details.append(item)
+            else:
+                print(f"[DEBUG] get_card_details_by_titles: not found for title '{title}' (normalized: '{norm_title}')")
+        print(f"[DEBUG] get_card_details_by_titles: found {len(details)} / {len(titles)}")
         return details
+
+    def _normalize_title(self, title: str) -> str:
+        """
+        カード名の正規化（空白・全角スペース・改行・記号除去など）
+        """
+        import re
+        normalized = title.strip()
+        normalized = re.sub(r"[\s\u3000]+", "", normalized)  # 空白・全角スペース除去
+        normalized = re.sub(r"[\r\n]+", "", normalized)      # 改行除去
+        normalized = re.sub(r"[（）()・・]+", "", normalized)   # 一部記号除去
+        normalized = normalized.replace("　", "")
+        return normalized

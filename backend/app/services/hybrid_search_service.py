@@ -159,13 +159,13 @@ class HybridSearchService:
         )
 
         # context生成ロジック
-        # FILTERABLEの場合はcontextにカード詳細jsonリストを返す
         if str(classification.query_type).lower() == "filterable":
+            # DB検索結果全件をcontextに返す
             card_details = self.database_service.get_card_details_by_titles(db_titles)
             context = card_details
             print(f"最終結果: {len(context)}件（FILTERABLE: DB検索結果全件）")
         else:
-            # それ以外はmerged_details（ベクトル/ハイブリッド）
+            # それ以外はmerged_titlesで詳細取得＋提案
             details = self.database_service.get_card_details_by_titles(merged_titles)
             found_names = {item.get("name") for item in details}
             context = []
