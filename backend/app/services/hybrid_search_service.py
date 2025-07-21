@@ -158,30 +158,46 @@ class HybridSearchService:
             db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
         )
 
-        # まず詳細データリストを取得
-        details = self.database_service.get_card_details_by_titles(merged_titles)
-        found_names = {item.get("name") for item in details}
-        merged_details = details.copy()
-        # 取得できなかったタイトルのみ提案メッセージ化
-        for title in merged_titles:
-            if title not in found_names:
-                merged_details.append({
-                    "name": "ご提案",
-                    "type": "info",
-                    "content": title,
-                    "is_suggestion": True
-                })
-        print(f"最終結果: {len(merged_details)}件")
+        # context生成ロジック
+        # FILTERABLEの場合はcontextにカード詳細jsonリストを返す
+        if str(classification.query_type).lower() == "filterable":
+            card_details = self.database_service.get_card_details_by_titles(db_titles)
+            context = card_details
+            print(f"最終結果: {len(context)}件（FILTERABLE: DB検索結果全件）")
+        else:
+            # それ以外はmerged_details（ベクトル/ハイブリッド）
+            details = self.database_service.get_card_details_by_titles(merged_titles)
+            found_names = {item.get("name") for item in details}
+            context = []
+            context.extend(details)
+            for title in merged_titles:
+                if title not in found_names:
+                    context.append({
+                        "name": "ご提案",
+                        "type": "info",
+                        "content": title,
+                        "is_suggestion": True
+                    })
+            print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
 
         return {
-            "classification": classification,
-            "search_strategy": search_strategy,
+            "answer": "",  # LLM回答は空文字
+            "context": context,  # contextにカード詳細jsonリスト
             "db_results": db_titles,
-            "vector_results": vector_titles,
-            "merged_results": merged_details,  # ここを詳細jsonリストに
-            "search_quality": search_quality,
-            "optimization_applied": True
+            "classification": classification,
+            "search_info": {
+                "query_type": classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", "unknown"),
+                "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
+                "db_results_count": len(db_titles),
+                "vector_results_count": len(vector_titles)
+            },
+            "performance": {
+                "total_duration": None,  # rag_serviceで計測
+                "search_duration": None,
+                "llm_duration": 0.0,
+                "cache_hit": False
+            }
         }
 
     async def _classify_query(self, query: str) -> ClassificationResult:

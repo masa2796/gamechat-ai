@@ -130,32 +130,16 @@ export const useChat = () => {
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
-      // context（カード詳細jsonリスト）をstateに格納
-      setCardContext(data.context);
-      // answerフィールドが存在する場合はassistantメッセージとして追加
-      if (data.answer) {
-        const assistantMessage: Message = { role: "assistant", content: data.answer };
-        setMessages(prev => [...prev, assistantMessage]);
+      // context（カード詳細jsonリスト）をstateに格納（answerはUIで利用しない）
+      if (Array.isArray(data.context) && typeof data.context[0] === "object") {
+        setCardContext(data.context);
+      } else {
+        setCardContext(undefined);
       }
-      // context配列の有無でUI側がCardList等を表示する（CardList表示はUI側で制御）
     } catch (error) {
-      let displayMessage = "エラーが発生しました。もう一度お試しください。";
-      if (error instanceof Error) {
-        if (
-          error.message.includes("認証") ||
-          error.message.includes("Invalid authentication credentials") ||
-          error.message.includes("401")
-        ) {
-          displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
-        } else {
-          displayMessage = error.message;
-        }
-      }
-      const errorMessage: Message = { 
-        role: "assistant", 
-        content: displayMessage
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // エラー時の処理（必要に応じてメッセージ表示など）
+      console.error(error);
+      setCardContext(undefined);
     } finally {
       setLoading(false);
     }

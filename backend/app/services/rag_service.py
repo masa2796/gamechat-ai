@@ -70,7 +70,7 @@ class RagService:
                     search_duration,
                     {"question": rag_req.question[:100], "top_k": optimized_top_k}
                 )
-            context_items = search_result["merged_results"]  # ここは詳細json(dict)リスト
+            context_items = search_result["context"]  # ここは詳細json(dict)リスト
             # LLM応答生成をスキップし、answerは空文字で返す
             llm_duration = 0.0
             total_duration = time.perf_counter() - start_time
@@ -290,7 +290,7 @@ class RagService:
     
     async def _generate_answer_with_timeout(self, rag_req: RagRequest, search_result: Dict[str, Any]) -> str:
         """タイムアウト対応LLM応答生成"""
-        context_items = search_result.get("merged_results", [])  # 詳細jsonリスト
+        context_items = search_result.get("context", [])  # 詳細jsonリスト
         
         if not context_items or search_result.get("_timeout"):
             # 検索結果が無い、またはタイムアウトした場合のフォールバック
@@ -323,7 +323,7 @@ class RagService:
         )
         
         # レスポンス構築
-        context_items = search_result.get("merged_results", [])  # 詳細jsonリスト
+        context_items = search_result.get("context", [])  # 詳細jsonリスト
         
         if rag_req.with_context:
             # QueryType.FILTERABLE の場合はdb_resultsを全件返す
