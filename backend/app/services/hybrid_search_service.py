@@ -65,12 +65,8 @@ class HybridSearchService:
         # 上位N件抽出
         result_titles = filtered_titles[:top_k]
 
-        # 不足時の補完・提案メッセージ生成
-        if len(result_titles) < top_k:
-            suggestion_title = self._generate_search_suggestion(classification)
-            # ダミーのdictを返す場合はここでtitleを渡すだけ、詳細json化は呼び出し側で対応
-            result_titles.append(suggestion_title)
-
+        # 不足時の補完・提案メッセージ生成（但し、提案は別途処理）
+        # result_titlesはカード名のみとし、提案メッセージは含めない
         return result_titles
     """分類に基づく統合検索サービス（最適化対応）"""
     
@@ -160,24 +156,37 @@ class HybridSearchService:
 
         # context生成ロジック
         if str(classification.query_type).lower() == "filterable":
-            # DB検索結果全件をcontextに返す
+            # DB検索結果全件をcontextに返す（カード詳細JSON）
             card_details = self.database_service.get_card_details_by_titles(db_titles)
             context = card_details
+            
+            # 結果が少ない場合は提案を追加
+            if len(card_details) < top_k:
+                suggestion_message = self._generate_search_suggestion(classification)
+                context.append({
+                    "name": "ご提案",
+                    "type": "info",
+                    "content": suggestion_message,
+                    "is_suggestion": True
+                })
+            
             print(f"最終結果: {len(context)}件（FILTERABLE: DB検索結果全件）")
         else:
             # それ以外はmerged_titlesで詳細取得＋提案
             details = self.database_service.get_card_details_by_titles(merged_titles)
-            found_names = {item.get("name") for item in details}
             context = []
             context.extend(details)
-            for title in merged_titles:
-                if title not in found_names:
-                    context.append({
-                        "name": "ご提案",
-                        "type": "info",
-                        "content": title,
-                        "is_suggestion": True
-                    })
+            
+            # 結果が少ない場合は提案を追加
+            if len(details) < top_k:
+                suggestion_message = self._generate_search_suggestion(classification)
+                context.append({
+                    "name": "ご提案",
+                    "type": "info",
+                    "content": suggestion_message,
+                    "is_suggestion": True
+                })
+            
             print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
 

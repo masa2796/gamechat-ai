@@ -5,7 +5,6 @@ from .vector_service import VectorService
 from .llm_service import LLMService
 from .hybrid_search_service import HybridSearchService
 from ..config.ng_words import NG_WORDS
-from ..core.performance import bottleneck_detector
 from ..core.cache import prewarmed_query_cache as query_cache
 import logging
 import time
@@ -28,6 +27,7 @@ class RagService:
         import sys
         start_time = time.perf_counter()
         print(f"[RAG] process_query called: question='{rag_req.question}', top_k={rag_req.top_k}", file=sys.stderr)
+        
         try:
             # NGワードチェック
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
@@ -42,63 +42,60 @@ class RagService:
                 rag_req.question, rag_req.top_k or 50
             )
             cache_check_duration = time.perf_counter() - cache_check_start
+            
             if cached_response:
-                total_duration = time.perf_counter() - start_time
-                print(f"[RAG] Cache hit: {rag_req.question[:50]}... ({total_duration:.3f}s)", file=sys.stderr)
-                # キャッシュヒット時の最小パフォーマンス情報
-                cached_response["performance"]["total_duration"] = total_duration
-                cached_response["performance"]["cache_check_duration"] = cache_check_duration
+                print(f"[RAG] キャッシュヒット: {cache_check_duration:.3f}s", file=sys.stderr)
                 return cached_response
 
-            print(f"[RAG] Hybrid search start: question='{rag_req.question}'", file=sys.stderr)
-            # ハイブリッド検索の実行（最適化版）
+            # 検索実行
             search_start = time.perf_counter()
-            # 動的なtop_k調整（パフォーマンス最適化）
             optimized_top_k = rag_req.top_k or 50
-            if optimized_top_k > 30:
-                optimized_top_k = min(30, optimized_top_k)  # 最大30に制限
-            search_result = await self.hybrid_search_service.search(
-                rag_req.question, optimized_top_k
-            )
+            search_result = await self.hybrid_search_service.search(rag_req.question, optimized_top_k)
             search_duration = time.perf_counter() - search_start
-            print(f"[RAG] Hybrid search done: duration={search_duration:.3f}s", file=sys.stderr)
-            # 5秒以上の場合は警告（Vector検索最適化のため）
-            if search_duration > 4.0:
-                logger.warning(f"⚠️ Slow search detected: {search_duration:.3f}s for '{rag_req.question[:50]}...'")
-                bottleneck_detector.check_operation(
-                    "hybrid_search",
-                    search_duration,
-                    {"question": rag_req.question[:100], "top_k": optimized_top_k}
-                )
-            context_items = search_result["context"]  # ここは詳細json(dict)リスト
-            # LLM応答生成をスキップし、answerは空文字で返す
-            llm_duration = 0.0
+            
+            # LLM処理（今回は空文字）
+            llm_start = time.perf_counter()
+            llm_duration = time.perf_counter() - llm_start  # 0秒
+            
             total_duration = time.perf_counter() - start_time
-            print(f"[RAG] Response build: total={total_duration:.3f}s, search={search_duration:.3f}s", file=sys.stderr)
-            logger.info(
-                f"⏱️ RAG処理完了: total={total_duration:.3f}s, "
-                f"search={search_duration:.3f}s, llm={llm_duration:.3f}s"
-            )
+            
+            logger.info(f"⏱️ RAG処理完了: total={total_duration:.3f}s, search={search_duration:.3f}s, llm={llm_duration:.3f}s")
+            
+            # デバッグ情報出力
+            classification = search_result.get("classification")
+            query_type = getattr(classification, "query_type", None) if classification else None
+            db_results = search_result.get("db_results", [])
+            
+            print(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(db_results)}", file=sys.stderr)
+            logger.info(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(db_results)}")
+            
+            # デバッグ: db_resultsの内容をログ出力
+            if db_results:
+                def get_name_safe(item):
+                    if isinstance(item, dict):
+                        return item.get('name', str(item))
+                    return str(item)
+                db_names = [get_name_safe(item) for item in db_results]
+                print(f"[RAG][DEBUG] db_results(full): {db_names}", file=sys.stderr)
+                logger.info(f"[RAG][DEBUG] db_results(full): {db_names}")
+
             # レスポンス構築
             if rag_req.with_context:
-                classification = search_result["classification"]
-                query_type = classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", None)
-                # FILTERABLE判定とdb_results件数をログ出力
-                print(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(search_result.get('db_results', []))}", file=sys.stderr)
-                logger.info(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(search_result.get('db_results', []))}")
-
-                # FILTERABLE の場合はdb_resultsを全件 context, db_results 両方に入れる
+                # contextを詳細JSONに変換
                 if str(query_type) == "QueryType.FILTERABLE" or str(query_type).lower() == "filterable":
-                    db_results = [item.model_dump() if hasattr(item, "model_dump") else item for item in search_result.get("db_results", [])]
+                    # FILTERABLEの場合：DB検索結果を詳細JSONで返す
+                    db_card_names = [item if isinstance(item, str) else str(item) for item in db_results]
+                    card_details = self.hybrid_search_service.database_service.get_card_details_by_titles(db_card_names)
+                    
                     response = {
                         "answer": "",
-                        "context": db_results,  # contextにも全件
-                        "db_results": db_results,
+                        "context": card_details,  # カード詳細JSONリスト
+                        "db_results": card_details,  # カード詳細JSONリスト
                         "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
                         "search_info": {
-                            "query_type": classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", "unknown"),
-                            "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
-                            "db_results_count": len(db_results),
+                            "query_type": str(query_type).lower() if query_type else "unknown",
+                            "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
+                            "db_results_count": len(card_details),
                             "vector_results_count": len(search_result.get("vector_results", []))
                         },
                         "performance": {
@@ -108,22 +105,37 @@ class RagService:
                             "cache_hit": False
                         }
                     }
-                    # ログ: db_resultsの内容（itemがdict以外も考慮）
-                    def get_name_safe(item):
-                        if isinstance(item, dict):
-                            return item.get('name', str(item))
-                        return str(item)
-                    db_names = [get_name_safe(item) for item in db_results]
-                    print(f"[RAG][DEBUG] db_results(full): {db_names}", file=sys.stderr)
-                    logger.info(f"[RAG][DEBUG] db_results(full): {db_names}")
+                    print("[RAG][DEBUG] FILTERABLE: returning card details JSON list", file=sys.stderr)
+                    logger.info("[RAG][DEBUG] FILTERABLE: returning card details JSON list")
                 else:
+                    # FILTERABLE以外：contextから詳細JSON取得
+                    context_items = search_result.get("context", [])
+                    card_details = []
+                    
+                    for item in context_items:
+                        if isinstance(item, dict):
+                            card_details.append(item)
+                        elif isinstance(item, str):
+                            # カード名の場合は詳細を取得
+                            details = self.hybrid_search_service.database_service.get_card_details_by_titles([item])
+                            if details:
+                                card_details.extend(details)
+                            else:
+                                # 詳細が見つからない場合は提案として追加
+                                card_details.append({
+                                    "name": "ご提案",
+                                    "type": "info", 
+                                    "content": item,
+                                    "is_suggestion": True
+                                })
+                    
                     response = {
                         "answer": "",
-                        "context": context_items,  # そのまま返す
+                        "context": card_details,  # カード詳細JSONリスト
                         "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
                         "search_info": {
-                            "query_type": classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", "unknown"),
-                            "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
+                            "query_type": str(query_type).lower() if query_type else "unknown",
+                            "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
                             "db_results_count": len(search_result.get("db_results", [])),
                             "vector_results_count": len(search_result.get("vector_results", []))
                         },
@@ -134,9 +146,10 @@ class RagService:
                             "cache_hit": False
                         }
                     }
-                    print("[RAG][DEBUG] Not FILTERABLE, db_results not included in response", file=sys.stderr)
-                    logger.info("[RAG][DEBUG] Not FILTERABLE, db_results not included in response")
+                    print("[RAG][DEBUG] Not FILTERABLE: returning context card details JSON list", file=sys.stderr)
+                    logger.info("[RAG][DEBUG] Not FILTERABLE: returning context card details JSON list")
             else:
+                # with_context=Falseの場合
                 response = {
                     "answer": "",
                     "performance": {
@@ -146,6 +159,7 @@ class RagService:
                         "cache_hit": False
                     }
                 }
+            
             # レスポンスをキャッシュ（非同期で実行、レスポンス時間に影響しない）
             asyncio.create_task(
                 query_cache.cache_response(
@@ -323,37 +337,74 @@ class RagService:
         )
         
         # レスポンス構築
-        context_items = search_result.get("context", [])  # 詳細jsonリスト
-        
         if rag_req.with_context:
-            # QueryType.FILTERABLE の場合はdb_resultsを全件返す
             classification = search_result.get("classification")
             query_type = getattr(classification, "query_type", None) if classification else None
-            response = {
-                "answer": answer,
-                "context": context_items[:10],  # 上位10件
-                "classification": classification.model_dump() if classification else {},
-                "search_info": {
-                    "query_type": classification.query_type if classification else "unknown",
-                    "confidence": classification.confidence if classification else 0.0,
-                    "db_results_count": len(search_result.get("db_results", [])),
-                    "vector_results_count": len(search_result.get("vector_results", []))
-                },
-                "performance": {
-                    "total_duration": total_duration,
-                    "search_duration": search_duration,
-                    "llm_duration": llm_duration,
-                    "cache_hit": False
+            
+            # contextを詳細JSONに変換
+            if str(query_type) == "QueryType.FILTERABLE" or str(query_type).lower() == "filterable":
+                # FILTERABLEの場合：DB検索結果を詳細JSONで返す
+                db_results = search_result.get("db_results", [])
+                db_card_names = [item if isinstance(item, str) else str(item) for item in db_results]
+                card_details = self.hybrid_search_service.database_service.get_card_details_by_titles(db_card_names)
+                
+                response = {
+                    "answer": answer,
+                    "context": card_details,  # カード詳細JSONリスト
+                    "db_results": card_details,  # カード詳細JSONリスト
+                    "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                    "search_info": {
+                        "query_type": str(query_type).lower() if query_type else "unknown",
+                        "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
+                        "db_results_count": len(card_details),
+                        "vector_results_count": len(search_result.get("vector_results", []))
+                    },
+                    "performance": {
+                        "total_duration": total_duration,
+                        "search_duration": search_duration,
+                        "llm_duration": llm_duration,
+                        "cache_hit": False
+                    }
                 }
-            }
-            # FILTERABLE の場合はdb_resultsを全件追加
-            if (
-                str(query_type) == "QueryType.FILTERABLE" or
-                str(query_type).lower() == "filterable" or
-                (hasattr(query_type, 'value') and query_type.value == "filterable")
-            ):
-                # db_resultsが存在する場合は必ず全件返す
-                response["db_results"] = [item.model_dump() if hasattr(item, "model_dump") else item for item in search_result.get("db_results", [])]
+            else:
+                # FILTERABLE以外：contextから詳細JSON取得
+                context_items = search_result.get("context", [])
+                card_details = []
+                
+                for item in context_items:
+                    if isinstance(item, dict):
+                        card_details.append(item)
+                    elif isinstance(item, str):
+                        # カード名の場合は詳細を取得
+                        details = self.hybrid_search_service.database_service.get_card_details_by_titles([item])
+                        if details:
+                            card_details.extend(details)
+                        else:
+                            # 詳細が見つからない場合は提案として追加
+                            card_details.append({
+                                "name": "ご提案",
+                                "type": "info", 
+                                "content": item,
+                                "is_suggestion": True
+                            })
+                
+                response = {
+                    "answer": answer,
+                    "context": card_details,  # カード詳細JSONリスト
+                    "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                    "search_info": {
+                        "query_type": str(query_type).lower() if query_type else "unknown",
+                        "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
+                        "db_results_count": len(search_result.get("db_results", [])),
+                        "vector_results_count": len(search_result.get("vector_results", []))
+                    },
+                    "performance": {
+                        "total_duration": total_duration,
+                        "search_duration": search_duration,
+                        "llm_duration": llm_duration,
+                        "cache_hit": False
+                    }
+                }
         else:
             response = {
                 "answer": answer,
@@ -377,5 +428,7 @@ class RagService:
                 ttl=cache_ttl
             )
         )
+        
+        return response
         
         return response
