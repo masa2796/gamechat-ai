@@ -1,27 +1,868 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="13" failures="0" errors="0" time="0.280279126">
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" timestamp="2025-07-15T01:51:42.065Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.077767459">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る" time="0.05769175">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendが呼ばれたときsendMessageが呼ばれる" time="0.004980333">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる" time="0.007409625">
-        </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる" time="0.006451875">
+<testsuites name="vitest tests" tests="201" failures="0" errors="0" time="2.848728163">
+    <testsuite name="src/__tests__/instrumentation-client.test.ts" timestamp="2025-07-22T00:11:41.779Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.001195916">
+        <testcase classname="src/__tests__/instrumentation-client.test.ts" name="instrumentation-client.ts &gt; onRouterTransitionStartがSentry.captureRouterTransitionStartを参照している" time="0.000638042">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.test.tsx" timestamp="2025-07-15T01:51:42.066Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.069079792">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; ChatMessagesとChatInputが正しく表示される" time="0.046375667">
+    <testsuite name="src/__tests__/instrumentation.test.ts" timestamp="2025-07-22T00:11:41.780Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.002161291">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register関数がエクスポートされている" time="0.000640792">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; useChatの返り値が空オブジェクトでもエラーにならず描画される" time="0.021701708">
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; onRequestErrorがSentry.captureRequestErrorを参照している" time="0.00021675">
+        </testcase>
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=nodejsでsentry.server.configをimportする" time="0.000175667">
+        </testcase>
+        <testcase classname="src/__tests__/instrumentation.test.ts" name="instrumentation.ts &gt; register: NEXT_RUNTIME=edgeでsentry.edge.configをimportする" time="0.000219584">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" timestamp="2025-07-15T01:51:42.066Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.058499625">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" name="AssistantPage &gt; ChatMessagesにmessages/loadingが正しく渡る" time="0.057345834">
+    <testsuite name="src/components/__tests__/app-sidebar.test.tsx" timestamp="2025-07-22T00:11:41.781Z" hostname="MasakinoMacBook-Pro.local" tests="19" failures="0" errors="0" skipped="0" time="0.110581917">
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; 基本的な構造が正しく表示される" time="0.031931334">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; アプリケーションタイトルが表示される" time="0.009073625">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レンダリング &gt; ナビゲーションメニューが表示される" time="0.004100542">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アイコン &gt; MessagesSquareアイコンが表示される" time="0.002455125">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アイコン &gt; アイコンに適切なクラスが設定される" time="0.0036135">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; リンク &gt; ヘッダーとチャットリンクが正しいhrefを持つ" time="0.030512292">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; メニューボタン &gt; 適切なサイズのメニューボタンが表示される" time="0.001809209">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; メニューボタン &gt; 通常サイズのメニューボタンが表示される" time="0.001527042">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; プロパティ &gt; Sidebarコンポーネントにpropsが渡される" time="0.002321167">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; プロパティ &gt; その他のpropsが正しく渡される" time="0.001614792">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; セマンティックな構造を持つ" time="0.002247792">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; リンクが適切にアクセシブル" time="0.005038875">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; アクセシビリティ &gt; 適切なテキストコンテンツを持つ" time="0.001962333">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; レスポンシブ &gt; モバイルでの表示に対応" time="0.001663708">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; エラーハンドリング &gt; 無効なpropsでもレンダリングされる" time="0.00154375">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; エラーハンドリング &gt; 空のpropsでもレンダリングされる" time="0.001161583">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; コンポーネント統合 &gt; すべてのサブコンポーネントが正しく統合される" time="0.001945333">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; スタイリング &gt; 適切なCSSクラスが適用される" time="0.001242416">
+        </testcase>
+        <testcase classname="src/components/__tests__/app-sidebar.test.tsx" name="AppSidebar &gt; パフォーマンス &gt; 複数回レンダリングしても問題ない" time="0.003043791">
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-15T01:51:42.067Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.022002958">
-        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.02116775">
+    <testsuite name="src/components/__tests__/error-boundary-simple.test.tsx" timestamp="2025-07-22T00:11:41.785Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.05403675">
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should render children when no error occurs" time="0.015708167">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should render error UI when child throws error" time="0.017392834">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should call console.error when error occurs" time="0.004293625">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should reset error state when reset button is clicked" time="0.011474333">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary-simple.test.tsx" name="ErrorBoundary &gt; should have reload button in error UI" time="0.004073208">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/__tests__/error-boundary.test.tsx" timestamp="2025-07-22T00:11:41.786Z" hostname="MasakinoMacBook-Pro.local" tests="24" failures="0" errors="0" skipped="0" time="0.198156875">
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should render children when no error occurs" time="0.023716">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should render error UI when child throws error" time="0.019331292">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should call console.error when error occurs" time="0.007846916">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should reset error state when reset button is clicked" time="0.015516209">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="ErrorBoundary &gt; should have reload button in error UI" time="0.00717775">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Custom Fallback Component &gt; should render custom fallback when provided" time="0.011583458">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Custom Fallback Component &gt; should call custom reset function" time="0.008418542">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Callback &gt; should call onError callback when provided" time="0.004481458">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Callback &gt; should not call onError when no error occurs" time="0.001249375">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle different error types" time="0.002639208">
+            <system-err>
+TypeError: Type error occurred
+    at ThrowTypeError [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:166:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Type error occurred&apos;[39m
+}
+
+The above error occurred in the &lt;ThrowTypeError&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: TypeError: Type error occurred
+    at ThrowTypeError [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:166:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ThrowTypeError (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:215:13)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle errors with empty messages" time="0.005524792">
+            <system-err>
+Error: 
+    at EmptyErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:180:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;&apos;[39m
+}
+
+The above error occurred in the &lt;EmptyErrorComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: 
+    at EmptyErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:180:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at EmptyErrorComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:232:13)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Error Types &gt; should handle null/undefined errors gracefully" time="0.002688792">
+            <system-err>
+[1mnull[22m
+
+The above error occurred in the &lt;NullErrorComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: [1mnull[22m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at NullErrorComponent (&lt;anonymous&gt;)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Environment-based Error Details &gt; should display error details in development mode" time="0.00469875">
+            <system-err>
+Error: Development error
+    at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:212:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Development error&apos;[39m
+}
+
+The above error occurred in the &lt;CustomErrorComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Development error
+    at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:212:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at CustomErrorComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:269:13)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Environment-based Error Details &gt; should not display error details in production mode" time="0.004384292">
+            <system-err>
+Error: Production error
+    at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:234:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Production error&apos;[39m
+}
+
+The above error occurred in the &lt;CustomErrorComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Production error
+    at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:234:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at CustomErrorComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:290:13)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should wrap component with error boundary" time="0.000873042">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should handle errors in wrapped component" time="0.002587708">
+            <system-err>
+Error: HOC Error
+    at ErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:259:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;HOC Error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: HOC Error
+    at ErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:259:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:323:13)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)\n&apos;[39m +
+    [32m&apos;    at withErrorBoundary(ErrorComponent) (&lt;anonymous&gt;)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should accept custom error boundary props" time="0.001485417">
+            <system-err>
+Error: Custom HOC Error
+    at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:270:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Custom HOC Error&apos;[39m
+}
+
+The above error occurred in the &lt;CustomErrorComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Custom HOC Error
+    at CustomErrorComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:270:13[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at CustomErrorComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:335:13)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)\n&apos;[39m +
+    [32m&apos;    at withErrorBoundary(CustomErrorComponent) (&lt;anonymous&gt;)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should pass props to wrapped component" time="0.00053725">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="withErrorBoundary HOC &gt; should set correct displayName" time="0.000109625">
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Accessibility &gt; should have proper ARIA attributes" time="0.042054166">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Accessibility &gt; should be keyboard accessible" time="0.006127416">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should handle errors in nested components" time="0.010905833">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at div (&lt;anonymous&gt;)\n&apos;[39m +
+    [32m&apos;    at div (&lt;anonymous&gt;)\n&apos;[39m +
+    [32m&apos;    at NestedErrorComponent (&lt;anonymous&gt;)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should handle errors in conditional rendering" time="0.008347375">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at div (&lt;anonymous&gt;)\n&apos;[39m +
+    [32m&apos;    at ConditionalErrorComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:443:42)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/components/__tests__/error-boundary.test.tsx" name="Edge Cases &gt; should maintain error state across re-renders" time="0.003745958">
+            <system-err>
+Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m {
+  [stack]: [36m[Getter/Setter][39m,
+  [message]: [32m&apos;Test error&apos;[39m
+}
+
+The above error occurred in the &lt;ErrorThrowingComponent&gt; component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+ErrorBoundary caught an error: Error: Test error
+    at ErrorThrowingComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/components/__tests__/error-boundary.test.tsx:9:11[90m)[39m
+    at Object.react-stack-bottom-frame [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:23863:20[90m)[39m
+    at renderWithHooks [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:5529:22[90m)[39m
+    at updateFunctionComponent [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:8897:19[90m)[39m
+    at beginWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:10522:18[90m)[39m
+    at runWithFiberInDEV [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:1522:13[90m)[39m
+    at performUnitOfWork [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:15140:22[90m)[39m
+    at workLoopSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14956:41[90m)[39m
+    at renderRootSync [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14936:11[90m)[39m
+    at performWorkOnRoot [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mreact-dom[24m/cjs/react-dom-client.development.js:14462:44[90m)[39m
+Error Info: {
+  componentStack: [32m&apos;\n&apos;[39m +
+    [32m&apos;    at ErrorThrowingComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:11:35)\n&apos;[39m +
+    [32m&apos;    at div (&lt;anonymous&gt;)\n&apos;[39m +
+    [32m&apos;    at ErrorBoundary (/Users/masaki/Documents/gamechat-ai/frontend/src/components/error-boundary.tsx:11:5)\n&apos;[39m +
+    [32m&apos;    at TestComponent (/Users/masaki/Documents/gamechat-ai/frontend/src/components/__tests__/error-boundary.test.tsx:486:67)&apos;[39m
+}
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/firebase.test.ts" timestamp="2025-07-22T00:11:41.794Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.073880958">
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in CI environment" time="0.026746083">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization in test environment" time="0.001682">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization on server-side" time="0.001392166">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy API key" time="0.001272625">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with Dummy API key (capital D)" time="0.003222542">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with dummy project ID" time="0.001122834">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; shouldInitializeFirebase logic &gt; should skip initialization with missing required fields" time="0.001146125">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should initialize Firebase successfully with valid configuration" time="0.001704916">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should use existing app when already initialized" time="0.001178167">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle initialization errors gracefully" time="0.002724291">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase initialization &gt; should handle non-Error exceptions gracefully" time="0.001360375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should export all required Firebase objects" time="0.002216042">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports &gt; should maintain consistency between auth exports" time="0.000766708">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should initialize Analytics when measurementId is provided" time="0.012760833">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should skip Analytics initialization when measurementId is not provided" time="0.001525292">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics initialization when not supported" time="0.002711375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should handle Analytics support check errors" time="0.002937584">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should have initAnalytics function available" time="0.001280958">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when not supported" time="0.002237917">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase Analytics &gt; should return null from initAnalytics when config is invalid" time="0.001397917">
+        </testcase>
+        <testcase classname="src/lib/__tests__/firebase.test.ts" name="Firebase Configuration &gt; Firebase exports with Analytics &gt; should export Analytics-related objects" time="0.000898167">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/sentry.test.ts" timestamp="2025-07-22T00:11:41.796Z" hostname="MasakinoMacBook-Pro.local" tests="21" failures="0" errors="0" skipped="0" time="0.035066375">
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error with context" time="0.003371083">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should capture API error without context" time="0.002681417">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureAPIError &gt; should not capture error on server side" time="0.001097375">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action with data" time="0.002547417">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureUserAction &gt; should record user action without data" time="0.00210925">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should start performance transaction" time="0.000487416">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; startPerformanceTransaction &gt; should return null on server side" time="0.000109541">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function with performance span" time="0.000363">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; withPerformanceSpan &gt; should execute function without span on server side" time="0.000270875">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryUser &gt; should set user information" time="0.002023916">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with default level" time="0.001780584">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureMessage &gt; should capture message with custom level" time="0.001752709">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryTag &gt; should set tag" time="0.002011875">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; setSentryContext &gt; should set context" time="0.001827666">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should run monitoring tests in development environment" time="0.001914292">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; testProductionMonitoring &gt; should not run monitoring tests in production environment" time="0.000104542">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture production error with default severity" time="0.001778208">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture critical error with fatal level" time="0.001824875">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; captureProductionError &gt; should capture high severity error with error level" time="0.002560291">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with default unit" time="0.001971625">
+        </testcase>
+        <testcase classname="src/lib/__tests__/sentry.test.ts" name="Sentry Utilities &gt; recordBusinessMetric &gt; should record business metric with custom unit and tags" time="0.000837167">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/structured-data.test.ts" timestamp="2025-07-22T00:11:41.798Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.002845792">
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateWebAppStructuredData: 正常系" time="0.0008495">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 正常系" time="0.000204458">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateBreadcrumbStructuredData: 境界値（空配列）" time="0.000286625">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 正常系" time="0.000170458">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; generateFAQStructuredData: 境界値（空配列）" time="0.00005275">
+        </testcase>
+        <testcase classname="src/lib/__tests__/structured-data.test.ts" name="structured-data utils &gt; 型安全性: 型不正な引数でTypeScriptエラー（実行時はthrowしない）" time="0.000468708">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/__tests__/utils.test.ts" timestamp="2025-07-22T00:11:41.799Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.005241791">
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; clsxとtailwind-mergeでクラス名を正規化する（正常系）" time="0.003751625">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 空やfalsy値は除外される" time="0.000252166">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 型安全性: ClassValue以外はTypeScriptエラー（実行時はthrowしない）" time="0.00007525">
+        </testcase>
+        <testcase classname="src/lib/__tests__/utils.test.ts" name="utils.ts: cn &gt; 副作用なし: 入力配列を破壊しない" time="0.000318292">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/hooks/__tests__/use-mobile.test.ts" timestamp="2025-07-22T00:11:41.801Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.022557041">
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; モバイル判定: 767px以下でtrue" time="0.012529458">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; PC判定: 768px以上でfalse" time="0.002198375">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; ウィンドウ幅変更時に値が変わる" time="0.002614292">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; matchMedia未定義時でも例外を投げずfalse" time="0.001023291">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; addEventListenerが例外を投げても例外伝播しない" time="0.001691583">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-mobile.test.ts" name="useIsMobile &gt; 返り値はboolean型である" time="0.001424625">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/hooks/__tests__/use-pwa.test.ts" timestamp="2025-07-22T00:11:41.804Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.012274208">
+        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; 初期状態でisInstallable, isInstalledがbooleanで返る" time="0.007805708">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; beforeinstallpromptイベントでisInstallableがtrueになる" time="0.001926042">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-pwa.test.ts" name="usePWA &gt; showInstallPromptがwindowに定義される（PWA環境のみ）" time="0.001820458">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/hooks/__tests__/use-web-vitals.test.ts" timestamp="2025-07-22T00:11:41.805Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.031718417">
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should register web-vitals metrics and call callback (development)" time="0.025087958">
+        </testcase>
+        <testcase classname="src/hooks/__tests__/use-web-vitals.test.ts" name="useWebVitals &gt; should call fetch in production" time="0.005679833">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" timestamp="2025-07-22T00:11:41.806Z" hostname="MasakinoMacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.058738792">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputにinput/onInputChange/onSend/loading/sendMode/onSendModeChangeが正しく渡る" time="0.039538">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendが呼ばれたときsendMessageが呼ばれる" time="0.005363625">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonInputChangeが呼ばれたときsetInputが呼ばれる" time="0.00845275">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatInputProps.test.tsx" name="AssistantPage &gt; ChatInputでonSendModeChangeが呼ばれたときsetSendModeが呼ばれる" time="0.004558083">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" timestamp="2025-07-22T00:11:41.807Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.039499834">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.ChatMessagesProps.test.tsx" name="AssistantPage &gt; ChatMessagesにmessages/loadingが正しく渡る" time="0.038771125">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" timestamp="2025-07-22T00:11:41.807Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.026902875">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx" name="AssistantPage ErrorBoundary integration &gt; useChatがthrowした場合にErrorBoundaryでキャッチされる" time="0.024544083">
             <system-err>
 Error: useChat error!
     at useChat [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/AssistantPage.errorBoundary.test.tsx:23:26[90m)[39m
@@ -46,16 +887,230 @@ React will try to recreate this component tree from scratch using the error boun
             </system-err>
         </testcase>
     </testsuite>
-    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-15T01:51:42.067Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.052929292">
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.0220625">
+    <testsuite name="src/app/assistant/__tests__/AssistantPage.test.tsx" timestamp="2025-07-22T00:11:41.807Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.055664625">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; ChatMessagesとChatInputが正しく表示される" time="0.043527">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.023891625">
+        <testcase classname="src/app/assistant/__tests__/AssistantPage.test.tsx" name="AssistantPage &gt; useChatの返り値が空オブジェクトでもエラーにならず描画される" time="0.011262834">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.001931584">
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/ChatInput.branch.test.tsx" timestamp="2025-07-22T00:11:41.808Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.088152541">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; loading時はinputもdisabled" time="0.063976542">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading=true時にChatMessagesのローディングUI（送信中...）が表示される" time="0.001180583">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; inputが空白のみの場合は送信ボタンがdisabled" time="0.014748833">
         </testcase>
-        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; messagesが空配列のときChatMessagesが空状態を表示する" time="0.00261575">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.branch.test.tsx" name="ChatInput 分岐テスト &gt; 送信モード切替UIが正しく動作する" time="0.008064292">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/ChatInput.test.tsx" timestamp="2025-07-22T00:11:41.808Z" hostname="MasakinoMacBook-Pro.local" tests="11" failures="0" errors="0" skipped="0" time="0.131362666">
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 入力値が反映される" time="0.054292292">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンが押せる" time="0.011661333">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading時はボタンがdisabled" time="0.005041959">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ユーザーがメッセージを入力し送信できる" time="0.006695834">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信モード（Enter/Mod+Enter）の切替挙動" time="0.011094417">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; ラジオボタンによる送信モード切替" time="0.0050155">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 空メッセージ送信時は送信ボタンがdisabledかつonSendが呼ばれない" time="0.010022583">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Enterキーで送信（sendMode: enter）" time="0.00328475">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; Cmd+Enterで送信（sendMode: mod+enter）" time="0.00288625">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; 送信ボタンの活性/非活性" time="0.015286833">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatInput.test.tsx" name="ChatInput &gt; loading=true時にChatInputの送信ボタンがdisabledになる" time="0.005013416">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/ChatMessages.test.tsx" timestamp="2025-07-22T00:11:41.809Z" hostname="MasakinoMacBook-Pro.local" tests="5" failures="0" errors="0" skipped="0" time="0.045887166">
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; メッセージがない場合は案内文を表示する" time="0.016445542">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; ユーザーメッセージとアシスタントメッセージを正しく表示する" time="0.023954542">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading時は送信中...を表示する" time="0.001488667">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; loading=true時にChatMessagesのローディングUI（送信中...）が表示される" time="0.001168291">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/ChatMessages.test.tsx" name="ChatMessages &gt; messagesが空配列のときChatMessagesが空状態を表示する" time="0.001770458">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.error.test.ts" timestamp="2025-07-22T00:11:41.810Z" hostname="MasakinoMacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="0.020587">
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; APIエラー時にエラーメッセージがmessagesに追加される" time="0.017102667">
+            <system-err>
+Error: APIエラー
+    at Object.sendMessage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/useChat.ts:143:15[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/useChat.error.test.ts:18:7
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.error.test.ts" name="useChat error handling &gt; 認証エラー時は認証エラー文言が表示される" time="0.002442834">
+            <system-err>
+Error: Invalid authentication credentials
+    at Object.sendMessage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/useChat.ts:143:15[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/useChat.error.test.ts:36:7
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/assistant/__tests__/useChat.test.ts" timestamp="2025-07-22T00:11:41.811Z" hostname="MasakinoMacBook-Pro.local" tests="9" failures="0" errors="0" skipped="0" time="0.046960166">
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 初期状態は空" time="0.017419334">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; メッセージ送信でmessagesが増える" time="0.003596125">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIエラー時はassistantロールのエラーメッセージが追加される" time="0.007183625">
+            <system-err>
+Error: APIエラー発生
+    at Object.sendMessage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/useChat.ts:143:15[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/useChat.test.ts:94:7
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; 認証失敗時はassistantロールの認証エラーメッセージが追加される" time="0.002252084">
+            <system-err>
+Error: 認証エラー発生
+    at Object.sendMessage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/useChat.ts:143:15[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/useChat.test.ts:126:7
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA失敗時はassistantロールのエラーメッセージが追加される" time="0.004371084">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; APIリクエストの内容とレスポンスを正しく処理する" time="0.002297">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; API失敗時にリトライで成功した場合、エラーメッセージの後に正常応答が追加される" time="0.0024145">
+            <system-err>
+Error: 一時的なAPIエラー
+    at Object.sendMessage [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/useChat.ts:143:15[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/assistant/__tests__/useChat.test.ts:235:7
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; reCAPTCHA無効時はreCAPTCHAトークンが&quot;test&quot;でAPIリクエストされる" time="0.001641666">
+        </testcase>
+        <testcase classname="src/app/assistant/__tests__/useChat.test.ts" name="useChat &gt; firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される" time="0.0047165">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/Sample.test.tsx" timestamp="2025-07-22T00:11:41.812Z" hostname="MasakinoMacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.0198565">
+        <testcase classname="src/components/ui/__tests__/Sample.test.tsx" name="Sample &gt; renders text" time="0.018907042">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/input.test.tsx" timestamp="2025-07-22T00:11:41.812Z" hostname="MasakinoMacBook-Pro.local" tests="37" failures="0" errors="0" skipped="0" time="0.160585">
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should render an input element" time="0.056712333">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should have default type as text" time="0.005709792">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should have data-slot attribute" time="0.00788325">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Basic Rendering &gt; should apply default CSS classes" time="0.002866542">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply type prop" time="0.003584542">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply value prop" time="0.001931083">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply placeholder prop" time="0.001027334">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply disabled prop" time="0.002122875">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply name prop" time="0.002777">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply id prop" time="0.00196825">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply aria-label prop" time="0.001218042">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Props Handling &gt; should accept and apply aria-invalid prop" time="0.002258833">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should merge custom className with default classes" time="0.004893167">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should handle className prop as undefined" time="0.010272375">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should apply focus-visible styles" time="0.002827833">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Styling and CSS Classes &gt; should apply aria-invalid styles when aria-invalid is true" time="0.001382084">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onChange when input value changes" time="0.006585875">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onFocus when input is focused" time="0.001947">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onBlur when input loses focus" time="0.002162292">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should call onKeyDown when key is pressed" time="0.00211225">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Event Handling &gt; should not call onChange when disabled" time="0.002826667">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render email input correctly" time="0.001681042">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render number input correctly" time="0.0023625">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render password input correctly" time="0.000540959">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render search input correctly" time="0.003447625">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Input Types &gt; should render file input correctly" time="0.000983333">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Controlled vs Uncontrolled &gt; should work as uncontrolled component" time="0.000724833">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Controlled vs Uncontrolled &gt; should work as controlled component" time="0.001513709">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should be focusable when not disabled" time="0.004235333">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should not be focusable when disabled" time="0.003764084">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support aria-describedby" time="0.005870667">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support aria-required" time="0.001558875">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Accessibility &gt; should support required attribute" time="0.00126275">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle empty string value" time="0.001570708">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle null className" time="0.001606084">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle very long values" time="0.000906417">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/input.test.tsx" name="Input Component &gt; Edge Cases &gt; should handle special characters in value" time="0.000568625">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ui/__tests__/skeleton.test.tsx" timestamp="2025-07-22T00:11:41.816Z" hostname="MasakinoMacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.022676917">
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; ローディング時にスケルトンが表示される（デフォルトクラス）" time="0.017275125">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; className propsで追加クラスが反映される" time="0.001821666">
+        </testcase>
+        <testcase classname="src/components/ui/__tests__/skeleton.test.tsx" name="Skeleton &gt; propsの型安全性：div属性が渡せる" time="0.002817417">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/app/api/rag/query/__tests__/route.test.ts" timestamp="2025-07-22T00:11:41.816Z" hostname="MasakinoMacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="1.58213675">
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: テスト環境で正しいレスポンスが返る" time="0.504084791">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 正常系: 本番環境で外部APIが200ならそのまま返す" time="0.001442459">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; バリデーション: queryが未指定の場合は400エラー" time="0.501605333">
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 異常系: 外部APIがエラー時は500エラー" time="0.005140084">
+            <system-err>
+API route error: Error: API request failed: 502
+    at POST [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/route.ts:33:13[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:64:17
+    at [90mfile:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 外部API/DBアクセスのモック: fetch例外時も500エラー" time="0.001534708">
+            <system-err>
+API route error: Error: fetch失敗
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:72:40
+    at mockCall [90m(file:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at spy [90m(file:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4mtinyspy[24m/dist/index.js:47:103[90m)[39m
+    at POST [90m(/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/route.ts:23:28[90m)[39m
+    at [90m/Users/masaki/Documents/gamechat-ai/frontend/[39msrc/app/api/rag/query/__tests__/route.test.ts:74:17
+    at [90mfile:///Users/masaki/Documents/gamechat-ai/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/app/api/rag/query/__tests__/route.test.ts" name="app/api/rag/query/route.ts API &gt; 戻り値の型安全性: answer/context/confidence型を検証" time="0.566909042">
         </testcase>
     </testsuite>
 </testsuites>

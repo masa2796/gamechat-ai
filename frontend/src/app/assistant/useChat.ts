@@ -98,15 +98,30 @@ export const useChat = () => {
           console.warn("Failed to get auth token:", error);
         }
       }
+      
       let recaptchaToken = "";
       if (isRecaptchaDisabled()) {
         recaptchaToken = "test";
       } else if (typeof window !== "undefined" && window.grecaptcha && recaptchaReady) {
-        recaptchaToken = await window.grecaptcha.execute(
-          process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
-          { action: "submit" }
-        );
+        try {
+          recaptchaToken = await window.grecaptcha.execute(
+            process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+            { action: "submit" }
+          );
+        } catch (recaptchaError) {
+          // reCAPTCHAエラー時の処理
+          const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : "reCAPTCHAの処理中にエラーが発生しました";
+          const assistantMessage: Message = { 
+            role: "assistant", 
+            content: `申し訳ありませんが、セキュリティ認証でエラーが発生しました: ${errorMessage}` 
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setCardContext(undefined);
+          setLoading(false);
+          return;
+        }
       }
+      
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -122,23 +137,51 @@ export const useChat = () => {
         }),
         credentials: "include"
       });
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: { message: `HTTP error! status: ${res.status}` } }));
         throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
       }
+      
       const data: RagResponse = await res.json();
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
-      // context（カード詳細jsonリスト）をstateに格納（answerはUIで利用しない）
+      
+      // 正常な応答の場合、answerを使ってassistantメッセージを追加
+      const assistantMessage: Message = { 
+        role: "assistant", 
+        content: data.answer || "応答を受け取りました。" 
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      // context（カード詳細jsonリスト）をstateに格納
       if (Array.isArray(data.context) && typeof data.context[0] === "object") {
         setCardContext(data.context);
       } else {
         setCardContext(undefined);
       }
     } catch (error) {
-      // エラー時の処理（必要に応じてメッセージ表示など）
+      // APIエラー時の処理
       console.error(error);
+      
+      let errorMessage = "申し訳ありませんが、エラーが発生しました。";
+      if (error instanceof Error) {
+        // 認証エラーの特別な処理
+        if (error.message.includes("Invalid authentication credentials") || 
+            error.message.includes("認証エラー") ||
+            error.message.includes("authentication")) {
+          errorMessage = "認証に失敗しました。再度ログインしてお試しください。";
+        } else {
+          errorMessage = `申し訳ありませんが、エラーが発生しました: ${error.message}`;
+        }
+      }
+      
+      const assistantMessage: Message = { 
+        role: "assistant", 
+        content: errorMessage 
+      };
+      setMessages(prev => [...prev, assistantMessage]);
       setCardContext(undefined);
     } finally {
       setLoading(false);

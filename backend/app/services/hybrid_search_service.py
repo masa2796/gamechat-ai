@@ -190,13 +190,21 @@ class HybridSearchService:
             print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
 
+                # 文字列リストをContextItemリストに変換
+        db_context_items = [ContextItem(title=title, text="", score=0.0) for title in db_titles]
+        vector_context_items = [ContextItem(title=title, text="", score=0.0) for title in vector_titles]
+        merged_context_items = [ContextItem(title=title, text="", score=0.0) for title in merged_titles]
+
         return {
             "answer": "",  # LLM回答は空文字
             "context": context,  # contextにカード詳細jsonリスト
-            "db_results": db_titles,
+            "db_results": db_context_items,
+            "vector_results": vector_context_items,
+            "merged_results": merged_context_items,
             "classification": classification,
+            "search_quality": search_quality,
             "search_info": {
-                "query_type": classification.query_type if hasattr(classification, "query_type") else getattr(classification, "query_type", "unknown"),
+                "query_type": classification.query_type.value if hasattr(classification, "query_type") and hasattr(classification.query_type, "value") else str(getattr(classification, "query_type", QueryType.SEMANTIC)),
                 "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
                 "db_results_count": len(db_titles),
                 "vector_results_count": len(vector_titles)

@@ -13,15 +13,16 @@ class DatabaseService:
             base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
             self.data_path = os.path.join(base_dir, 'data/data.json')
         self.debug = True  # デバッグフラグ追加
-        # 実データをロードするストレージサービス
+                # 実データをロードするストレージサービス
         class JsonFileStorageService:
-            def __init__(self, file_path):
+            def __init__(self, file_path: str) -> None:
                 self.file_path = file_path
             def load_data(self) -> list[dict[str, Any]]:
                 import json
                 try:
                     with open(self.file_path, "r", encoding="utf-8") as f:
-                        return json.load(f)
+                        data = json.load(f)
+                        return data if isinstance(data, list) else []
                 except Exception as e:
                     print(f"[ERROR] データファイルの読み込みに失敗: {e}")
                     return []
@@ -44,7 +45,7 @@ class DatabaseService:
         print(f"[SEARCH] filter_search_async result: {result}")
         return result
 
-    def filter_search(self, keywords: list[str], top_k: int = 10):
+    def filter_search(self, keywords: list[str], top_k: int = 10) -> list[str]:
         print(f"[SEARCH] filter_search called: keywords={keywords}, top_k={top_k}")
         import asyncio
         result = asyncio.get_event_loop().run_until_complete(self.filter_search_async(keywords, top_k))

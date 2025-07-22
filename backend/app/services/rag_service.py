@@ -71,13 +71,15 @@ class RagService:
             
             # デバッグ: db_resultsの内容をログ出力
             if db_results:
-                def get_name_safe(item):
+                def get_name_safe(item: Any) -> str:
                     if isinstance(item, dict):
-                        return item.get('name', str(item))
+                        return str(item.get('name', str(item)))
                     return str(item)
+
                 db_names = [get_name_safe(item) for item in db_results]
                 print(f"[RAG][DEBUG] db_results(full): {db_names}", file=sys.stderr)
                 logger.info(f"[RAG][DEBUG] db_results(full): {db_names}")
+
 
             # レスポンス構築
             if rag_req.with_context:
@@ -91,7 +93,7 @@ class RagService:
                         "answer": "",
                         "context": card_details,  # カード詳細JSONリスト
                         "db_results": card_details,  # カード詳細JSONリスト
-                        "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                        "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
                         "search_info": {
                             "query_type": str(query_type).lower() if query_type else "unknown",
                             "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
@@ -132,7 +134,7 @@ class RagService:
                     response = {
                         "answer": "",
                         "context": card_details,  # カード詳細JSONリスト
-                        "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                        "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
                         "search_info": {
                             "query_type": str(query_type).lower() if query_type else "unknown",
                             "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
@@ -352,7 +354,7 @@ class RagService:
                     "answer": answer,
                     "context": card_details,  # カード詳細JSONリスト
                     "db_results": card_details,  # カード詳細JSONリスト
-                    "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                    "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
                     "search_info": {
                         "query_type": str(query_type).lower() if query_type else "unknown",
                         "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
@@ -391,7 +393,7 @@ class RagService:
                 response = {
                     "answer": answer,
                     "context": card_details,  # カード詳細JSONリスト
-                    "classification": classification.model_dump() if hasattr(classification, "model_dump") else dict(classification),
+                    "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
                     "search_info": {
                         "query_type": str(query_type).lower() if query_type else "unknown",
                         "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
@@ -428,7 +430,5 @@ class RagService:
                 ttl=cache_ttl
             )
         )
-        
-        return response
         
         return response

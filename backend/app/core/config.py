@@ -158,8 +158,7 @@ class Settings:
         サービス層やテストから参照される共通APIキーエイリアス
         """
         return self.BACKEND_OPENAI_API_KEY
-        _project_root = Path(__file__).resolve().parent.parent.parent
-def _get_data_dir():
+def _get_data_dir() -> str:
     # Docker環境では必ず /data を使う（.envや環境変数で上書き不可）
     if os.getenv("RUNNING_IN_DOCKER") == "1" or os.path.exists("/.dockerenv") or os.getenv("ENVIRONMENT") in ["production", "development"]:
         return "/data"
@@ -167,8 +166,10 @@ def _get_data_dir():
     try:
         from pathlib import Path
         _project_root = Path(__file__).resolve().parent.parent.parent
+        return os.getenv("BACKEND_DATA_DIR") or str(_project_root / "data")
     except Exception:
-        _project_root = "."
-    return os.getenv("BACKEND_DATA_DIR") or str(_project_root / "data")
+        from pathlib import Path
+        _project_root = Path(".")
+        return os.getenv("BACKEND_DATA_DIR") or str(_project_root / "data")
 
 settings = Settings()
