@@ -92,7 +92,7 @@ class RagService:
                     response = {
                         "answer": "",
                         "context": card_details,  # カード詳細JSONリスト
-                        "db_results": card_details,  # カード詳細JSONリスト
+                        "db_results": card_details,  # db_resultsにも詳細jsonリストを格納
                         "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
                         "search_info": {
                             "query_type": str(query_type).lower() if query_type else "unknown",
