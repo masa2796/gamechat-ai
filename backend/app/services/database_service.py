@@ -303,9 +303,19 @@ class DatabaseService:
         # title_to_dataが未構築ならリロード
         if not hasattr(self, "title_to_data") or not self.title_to_data:
             self.reload_data()
+        
+        # デバッグ: 渡された引数の詳細情報
+        print(f"[DEBUG] get_card_details_by_titles called with {len(titles)} titles")
+        print(f"[DEBUG] titles type: {type(titles)}")
+        if titles:
+            print(f"[DEBUG] first title type: {type(titles[0])}")
+            print(f"[DEBUG] first title value: {repr(titles[0])}")
+        
         details = []
         for title in titles:
-            norm_title = self._normalize_title(str(title))
+            # 明示的な型確認
+            actual_title_str = str(title)
+            norm_title = self._normalize_title(actual_title_str)
             item = self.title_to_data.get(norm_title)
             if item:
                 details.append(item)

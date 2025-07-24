@@ -139,6 +139,10 @@ class HybridSearchService:
             classification, search_strategy, optimized_limits, query
         )
         
+        print(f"[DEBUG] After _execute_searches: db_titles type={type(db_titles)}, first_item_type={type(db_titles[0]) if db_titles else 'empty'}")
+        if db_titles:
+            print(f"[DEBUG] db_titles sample: {db_titles[:3]}")
+        
         # Step 4: 結果の品質評価
         search_quality = self._evaluate_search_quality(
             db_titles, vector_titles, classification
@@ -155,9 +159,22 @@ class HybridSearchService:
         )
 
         # context生成ロジック
-        if str(classification.query_type).lower() == "filterable":
+        query_type_str = str(classification.query_type).lower()
+        if query_type_str == "filterable" or query_type_str == "querytype.filterable" or classification.query_type == QueryType.FILTERABLE:
             # DB検索結果全件をcontextに返す（カード詳細JSON）
-            card_details = self.database_service.get_card_details_by_titles(db_titles)
+            # デバッグ: db_titlesの型と内容を確認
+            print(f"[DEBUG] FILTERABLE branch entered: db_titles type: {type(db_titles)}, content: {db_titles}")
+            # db_titlesが文字列リストであることを確認し、必要に応じて修正
+            if db_titles and isinstance(db_titles[0], str):
+                print(f"[DEBUG] Using db_titles as strings directly")
+                title_strings = db_titles
+            else:
+                print(f"[DEBUG] Converting from objects to strings")
+                # ContextItemオブジェクトの場合はtitle属性を抽出
+                title_strings = [item.title if hasattr(item, 'title') else str(item) for item in db_titles]
+            print(f"[DEBUG] title_strings: {title_strings}")
+            
+            card_details = self.database_service.get_card_details_by_titles(title_strings)
             context = card_details
             
             # 結果が少ない場合は提案を追加

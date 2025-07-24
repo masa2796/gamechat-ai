@@ -84,10 +84,15 @@ class RagService:
             # レスポンス構築
             if rag_req.with_context:
                 # contextを詳細JSONに変換
-                if str(query_type) == "QueryType.FILTERABLE" or str(query_type).lower() == "filterable":
-                    # FILTERABLEの場合：DB検索結果を詳細JSONで返す
-                    db_card_names = [item if isinstance(item, str) else str(item) for item in db_results]
-                    card_details = self.hybrid_search_service.database_service.get_card_details_by_titles(db_card_names)
+                query_type_str = str(query_type).lower()
+                if query_type_str == "querytype.filterable" or query_type_str == "filterable" or query_type == "QueryType.FILTERABLE":
+                    # FILTERABLEの場合：HybridSearchServiceのcontextから直接詳細データを取得
+                    context_data = search_result.get("context", [])
+                    card_details = []
+                    
+                    for item in context_data:
+                        if isinstance(item, dict):
+                            card_details.append(item)
                     
                     response = {
                         "answer": "",
@@ -344,7 +349,8 @@ class RagService:
             query_type = getattr(classification, "query_type", None) if classification else None
             
             # contextを詳細JSONに変換
-            if str(query_type) == "QueryType.FILTERABLE" or str(query_type).lower() == "filterable":
+            query_type_str = str(query_type).lower()
+            if query_type_str == "querytype.filterable" or query_type_str == "filterable" or str(query_type) == "QueryType.FILTERABLE":
                 # FILTERABLEの場合：DB検索結果を詳細JSONで返す
                 db_results = search_result.get("db_results", [])
                 db_card_names = [item if isinstance(item, str) else str(item) for item in db_results]
