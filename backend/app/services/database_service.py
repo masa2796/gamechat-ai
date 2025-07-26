@@ -87,8 +87,10 @@ class DatabaseService:
     def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
         if self.debug:
             print(f"[DEBUG] _match_filterable: item={item.get('name', '')}, keyword={keyword}")
-        # コスト条件判定: "コストN" → item["cost"] == N
+        
         import re
+        
+        # コスト条件判定: "コストN" → item["cost"] == N
         m = re.match(r"コスト(\d+)", keyword)
         if m:
             try:
@@ -102,13 +104,66 @@ class DatabaseService:
                 if self.debug:
                     print(f"[DEBUG] コスト判定エラー: {e}")
                 return False
-        # 他の属性条件もここに追加可能
-        # デフォルト: 部分一致
+        
+        # クラス条件判定: classフィールドとの完全一致
+        class_names = [
+            "エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー",
+            "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル", "ナイトメア"
+        ]
+        if keyword in class_names:
+            item_class = str(item.get("class", ""))
+            result = (item_class == keyword)
+            if self.debug:
+                print(f"[DEBUG] クラス判定: item_class='{item_class}', 条件='{keyword}', result={result}")
+            return result
+        
+        # レアリティ条件判定
+        rarity_names = [
+            "レジェンド", "ゴールドレア", "シルバーレア", "ブロンズ", "レア"
+        ]
+        if keyword in rarity_names:
+            item_rarity = str(item.get("rarity", ""))
+            result = (item_rarity == keyword)
+            if self.debug:
+                print(f"[DEBUG] レアリティ判定: item_rarity='{item_rarity}', 条件='{keyword}', result={result}")
+            return result
+        
+        # HP条件判定: "HP数値以上/以下/未満/超"
+        hp_match = re.match(r"HP(\d+)(以上|以下|未満|超)?", keyword)
+        if hp_match:
+            try:
+                hp_val = int(hp_match.group(1))
+                condition = hp_match.group(2) or "以上"
+                item_hp = int(item.get("hp", 0))
+                
+                if condition == "以上":
+                    result = (item_hp >= hp_val)
+                elif condition == "以下":
+                    result = (item_hp <= hp_val)
+                elif condition == "未満":
+                    result = (item_hp < hp_val)
+                elif condition == "超":
+                    result = (item_hp > hp_val)
+                else:
+                    result = False
+                    
+                if self.debug:
+                    print(f"[DEBUG] HP判定: item_hp={item_hp}, 条件={keyword}, result={result}")
+                return result
+            except Exception as e:
+                if self.debug:
+                    print(f"[DEBUG] HP判定エラー: {e}")
+                return False
+        
+        # デフォルト: 名前部分一致
         name = str(item.get("name", ""))
         if keyword in name:
             if self.debug:
                 print(f"[DEBUG] 名前部分一致: {keyword} in {name}")
             return True
+        
+        if self.debug:
+            print(f"[DEBUG] マッチしなかった: {keyword}")
         return False
 
     def _normalize_keyword(self, keyword: str) -> str:
