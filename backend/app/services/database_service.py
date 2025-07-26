@@ -90,15 +90,17 @@ class DatabaseService:
         
         import re
         
-        # コスト条件判定: "コストN" → item["cost"] == N
-        m = re.match(r"コスト(\d+)", keyword)
-        if m:
+        # コスト条件判定: "コストN" または "Nコスト" → item["cost"] == N
+        m1 = re.match(r"コスト(\d+)", keyword)  # "コストN" 形式
+        m2 = re.match(r"(\d+)コスト", keyword)  # "Nコスト" 形式
+        if m1 or m2:
             try:
-                cost_val = int(m.group(1))
+                cost_val = int(m1.group(1)) if m1 else int(m2.group(1))
                 item_cost = int(item.get("cost", -1))
                 result = (item_cost == cost_val)
                 if self.debug:
-                    print(f"[DEBUG] コスト判定: item_cost={item_cost}, 条件={cost_val}, result={result}")
+                    pattern = "コストN" if m1 else "Nコスト"
+                    print(f"[DEBUG] コスト判定({pattern}): item_cost={item_cost}, 条件={cost_val}, result={result}")
                 return result
             except Exception as e:
                 if self.debug:
