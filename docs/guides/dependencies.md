@@ -114,5 +114,52 @@ mypy backend/app
 ## 参考リンク
 
 - [環境設定ガイド](environment-setup.md)
-- [本番デプロイメントガイド](../deployment/README.md)
-- [API仕様書](../api/README.md)
+- [本番デプロイメントガイド](../deployment/deployment-guide.md)
+- [API仕様書](../api/rag_api_spec.md)
+
+---
+
+## 運用ルール・開発フロー
+
+> 以下は現状の運用ルールのドラフトです。
+
+### ブランチ戦略
+- `main`: 本番環境用。リリース済み安定版のみマージ可
+- `develop`: 開発統合ブランチ。日常的な開発はここにマージ
+- `feature/*`: 新機能・改修ごとに作成（例: `feature/llm-response-enhance`）
+- `hotfix/*`: 緊急修正用。バグ修正や障害対応時のみ
+
+### レビュー手順
+- **Pull Request作成時**: タイトル・説明・関連Issueを明記
+- **レビュー観点**: コード品質、テストカバレッジ、セキュリティ、UI/UX
+- **マージ条件**: 原則2名以上のApprove、CIテスト通過必須
+
+### テスト観点
+- **ユニットテスト**: Jest（FE）/pytest（BE）で主要ロジックを網羅
+- **統合テスト**: Playwright（E2E）/FastAPI TestClient
+- **カバレッジ目標**: 80%以上（未達時は理由をPRに記載）
+
+---
+
+## UI設計・アーキテクチャ判断
+
+### Assistant UI 廃止について
+
+**2025年6月24日決定**: @assistant-ui/reactコンポーネントを完全削除し、React標準のuseStateベースの自作チャットUIに移行
+
+#### 理由
+- **複雑性の削減**: シンプルで理解しやすい実装
+- **デバッグ性向上**: 問題の追跡・修正が容易
+- **互換性問題回避**: ストリーム処理の互換性問題を完全回避
+- **カスタマイズ自由度**: 機能追加・UI変更の柔軟性向上
+
+#### 削除した依存関係
+- @assistant-ui/react: ^0.10.9
+- @assistant-ui/react-ai-sdk: ^0.10.9  
+- @assistant-ui/react-markdown: ^0.10.3
+- @ai-sdk/openai, ai, remark-gfm
+
+#### 新アーキテクチャ
+- React標準のuseStateベースの自作チャットUI実装
+- FastAPIを通常のJSONレスポンス形式に変更
+- shadcn/uiベースのサイドバーレイアウトは維持
