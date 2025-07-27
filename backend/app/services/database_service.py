@@ -1,6 +1,10 @@
 import re
+import os
+import json
 from typing import List, Dict, Any, Optional
 from ..core.logging import GameChatLogger
+from ..core.config import settings
+from ..core.exceptions import DatabaseServiceException
 
 class DatabaseService:
     def __init__(self, data_path: Optional[str] = None):
@@ -13,7 +17,11 @@ class DatabaseService:
             base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
             self.data_path = os.path.join(base_dir, 'data/data.json')
         self.debug = True  # デバッグフラグ追加
-                # 実データをロードするストレージサービス
+        
+        # LLM初期化
+        self._init_llm()
+        
+        # 実データをロードするストレージサービス
         class JsonFileStorageService:
             def __init__(self, file_path: str) -> None:
                 self.file_path = file_path
@@ -32,6 +40,135 @@ class DatabaseService:
         self.storage_service = JsonFileStorageService(self.data_path)
         self.reload_data()
 
+    def _init_llm(self) -> None:
+        """LLMクライアントを初期化"""
+        # モック環境のチェック
+        mock_external = os.getenv("BACKEND_MOCK_EXTERNAL_SERVICES", "false").lower() == "true"
+        is_testing = os.getenv("BACKEND_TESTING", "false").lower() == "true"
+        
+        if mock_external or is_testing:
+            # モック環境では実際のOpenAIクライアントは初期化しない
+            self.llm_client = None
+            self.is_mocked = True
+        else:
+            # OpenAI クライアントを初期化
+            import openai
+            api_key = getattr(settings, 'BACKEND_OPENAI_API_KEY', None) or os.getenv("BACKEND_OPENAI_API_KEY")
+            
+            # APIキーの検証
+            if not api_key or api_key in ["your_openai_api_key", "your_actual_openai_api_key_here", "sk-test_openai_key"]:
+                print("[WARNING] OpenAI APIキーが設定されていません。LLMクエリ解析は無効になります。")
+                self.llm_client = None
+                self.is_mocked = True
+            else:
+                self.llm_client = openai.OpenAI(api_key=api_key)
+                self.is_mocked = False
+        
+        # LLMクエリ解析用システムプロンプト
+        self.query_analysis_prompt = """
+あなたはカードゲームのデータベース検索クエリ解析アシスタントです。
+ユーザーのクエリを解析し、構造化検索に必要な条件を抽出してください。
+
+【データベーススキーマ】
+cardsテーブル
+- name: string（カード名）
+- rarity: string（レアリティ）
+- cost: integer（コスト）
+- class: string（クラス）
+- hp: integer（HP・体力）
+- attack: integer（攻撃力）
+- effect: string（効果の説明）
+- type: string（タイプ・属性）
+
+【指示】
+ユーザーのクエリから、以下のJSON形式で検索条件を抽出してください。
+{
+  "conditions": {
+    "name": "<カード名または空文字>",
+    "rarity": "<レアリティまたは空文字>", 
+    "cost": {
+      "value": <数値またはnull>,
+      "operator": "<以上|以下|等しい|null>"
+    },
+    "class": "<クラスまたは空文字>",
+    "hp": {
+      "value": <数値またはnull>,
+      "operator": "<以上|以下|等しい|null>"
+    },
+    "attack": {
+      "value": <数値またはnull>,
+      "operator": "<以上|以下|等しい|null>"
+    },
+    "type": "<タイプまたは空文字>",
+    "effect": "<効果キーワードまたは空文字>"
+  },
+  "reasoning": "抽出理由"
+}
+
+【抽出ルール】
+1. コスト・HP・攻撃力：「5コスト」「HP100以上」「体力50以下」「攻撃40以上」「ダメージ30以上」などから数値と条件を抽出
+2. クラス：「エルフ」「ドラゴン」「ロイヤル」「ウィッチ」「ネクロマンサー」「ビショップ」「ネメシス」「ヴァンパイア」「ニュートラル」
+3. レアリティ：「レジェンド」「ゴールドレア」「シルバーレア」「ブロンズ」「レア」
+4. タイプ・属性：「炎」「水」「草」「電気」「超」「闘」「悪」「鋼」「フェアリー」「タイプ」など
+5. 効果：「進化」「必殺」「守護」「疾走」「突進」「回復」「ドロー」「サーチ」などの効果キーワード
+6. 「ダメージ」「攻撃」は attack フィールドとして扱う
+7. 抽出できない場合は空文字またはnullを設定
+
+【例1】
+ユーザー: 「5コストのレジェンドカードを探して」
+出力:
+{
+  "conditions": {
+    "name": "",
+    "rarity": "レジェンド",
+    "cost": {
+      "value": 5,
+      "operator": "等しい"
+    },
+    "class": "",
+    "hp": {
+      "value": null,
+      "operator": null
+    },
+    "attack": {
+      "value": null,
+      "operator": null
+    },
+    "type": "",
+    "effect": ""
+  },
+  "reasoning": "5コストの条件とレジェンドレアリティを抽出"
+}
+
+【例2】
+ユーザー: 「ダメージが40以上の技を持つ、水タイプカード」
+出力:
+{
+  "conditions": {
+    "name": "",
+    "rarity": "",
+    "cost": {
+      "value": null,
+      "operator": null
+    },
+    "class": "",
+    "hp": {
+      "value": null,
+      "operator": null
+    },
+    "attack": {
+      "value": 40,
+      "operator": "以上"
+    },
+    "type": "水",
+    "effect": ""
+  },
+  "reasoning": "ダメージ40以上の条件と水タイプを抽出"
+}
+
+必ずJSONのみで回答してください。他の文章は含めないでください。
+"""
+
     def _load_data(self) -> list[dict[str, Any]]:
         # テスト用: StorageServiceのload_json_dataを呼ぶ
         if hasattr(self.storage_service, "load_json_data"):
@@ -39,11 +176,124 @@ class DatabaseService:
         elif hasattr(self.storage_service, "load_data"):
             return self.storage_service.load_data()
         return []
+
+    async def _analyze_query_with_llm(self, query: str) -> Dict[str, Any]:
+        """LLMを使用してクエリを解析し、構造化された検索条件を抽出"""
+        if self.is_mocked or self.llm_client is None:
+            # モック環境の場合はダミーデータを返す
+            return self._get_mock_query_analysis(query)
+        
+        try:
+            response = self.llm_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": self.query_analysis_prompt},
+                    {"role": "user", "content": query}
+                ],
+                temperature=0.1,
+                max_tokens=500
+            )
+            
+            content = response.choices[0].message.content.strip()
+            if self.debug:
+                print(f"[DEBUG] LLM Response: {content}")
+            
+            # JSONをパース
+            analysis_result = json.loads(content)
+            return analysis_result
+            
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] LLMクエリ解析エラー: {e}")
+            # エラー時はフォールバックとしてダミーデータを返す
+            return self._get_mock_query_analysis(query)
+    
+    def _get_mock_query_analysis(self, query: str) -> Dict[str, Any]:
+        """テスト・モック環境用のクエリ解析（拡張版）"""
+        # 簡単なパターンマッチングでモック解析
+        conditions = {
+            "name": "",
+            "rarity": "",
+            "cost": {"value": None, "operator": None},
+            "class": "",
+            "hp": {"value": None, "operator": None},
+            "attack": {"value": None, "operator": None},
+            "type": "",
+            "effect": ""
+        }
+        
+        import re
+        
+        # コスト検出
+        cost_match = re.search(r'(\d+)コスト|コスト(\d+)', query)
+        if cost_match:
+            cost_val = int(cost_match.group(1) or cost_match.group(2))
+            conditions["cost"] = {"value": cost_val, "operator": "等しい"}
+        
+        # HP検出
+        hp_match = re.search(r'HP(\d+)(以上|以下)|体力(\d+)(以上|以下)', query)
+        if hp_match:
+            hp_val = int(hp_match.group(1) or hp_match.group(3))
+            operator = hp_match.group(2) or hp_match.group(4)
+            conditions["hp"] = {"value": hp_val, "operator": operator}
+        
+        # 攻撃力・ダメージ検出
+        attack_match = re.search(r'攻撃(\d+)(以上|以下)|ダメージ(\d+)(以上|以上)', query)
+        if attack_match:
+            attack_val = int(attack_match.group(1) or attack_match.group(3))
+            operator = attack_match.group(2) or attack_match.group(4) or "以上"
+            conditions["attack"] = {"value": attack_val, "operator": operator}
+        
+        # クラス検出
+        classes = ["エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー", "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル"]
+        for cls in classes:
+            if cls in query:
+                conditions["class"] = cls
+                break
+        
+        # レアリティ検出
+        rarities = ["レジェンド", "ゴールドレア", "シルバーレア", "ブロンズ", "レア"]
+        for rarity in rarities:
+            if rarity in query:
+                conditions["rarity"] = rarity
+                break
+        
+        # タイプ検出
+        types = ["炎", "水", "草", "電気", "超", "闘", "悪", "鋼", "フェアリー"]
+        for card_type in types:
+            if card_type in query:
+                conditions["type"] = card_type
+                break
+        
+        # 効果キーワード検出
+        effects = ["進化", "必殺", "守護", "疾走", "突進", "回復", "ドロー", "サーチ", "召喚", "破壊"]
+        for effect in effects:
+            if effect in query:
+                conditions["effect"] = effect
+                break
+        
+        return {
+            "conditions": conditions,
+            "reasoning": f"モック環境でのクエリ解析: {query}"
+        }
     async def filter_search_async(self, keywords: list[str], top_k: int = 10) -> list[str]:
         print(f"[SEARCH] filter_search_async called: keywords={keywords}, top_k={top_k}")
         result = await self.filter_search_titles_async(keywords, top_k)
         print(f"[SEARCH] filter_search_async result: {result}")
         return result
+
+    async def filter_search_llm_async(self, query: str, top_k: int = 10) -> list[str]:
+        """LLMベースのフィルタ検索（カード名リストを返す）"""
+        print(f"[SEARCH] filter_search_llm_async called: query={query}, top_k={top_k}")
+        
+        # LLMベースの検索を実行
+        results = await self._search_filterable_llm(query, top_k)
+        
+        # カード名リストに変換
+        card_names = [item.get("name", "") for item in results if item.get("name")]
+        
+        print(f"[SEARCH] filter_search_llm_async result: {card_names}")
+        return card_names
 
     def filter_search(self, keywords: list[str], top_k: int = 10) -> list[str]:
         print(f"[SEARCH] filter_search called: keywords={keywords}, top_k={top_k}")
@@ -51,6 +301,58 @@ class DatabaseService:
         result = asyncio.get_event_loop().run_until_complete(self.filter_search_async(keywords, top_k))
         print(f"[SEARCH] filter_search result: {result}")
         return result
+
+    def filter_search_llm(self, query: str, top_k: int = 10) -> list[str]:
+        """LLMベースのフィルタ検索（同期版）"""
+        print(f"[SEARCH] filter_search_llm called: query={query}, top_k={top_k}")
+        import asyncio
+        result = asyncio.get_event_loop().run_until_complete(self.filter_search_llm_async(query, top_k))
+        print(f"[SEARCH] filter_search_llm result: {result}")
+        return result
+
+    async def smart_search_llm(self, query: str, top_k: int = 10) -> list[str]:
+        """LLMベースの統合スマート検索（自然言語クエリから直接カード名リストを返す）"""
+        print(f"[SEARCH] smart_search_llm called: query='{query}', top_k={top_k}")
+        print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
+        
+        # LLMでクエリ全体を解析
+        query_analysis = await self._analyze_query_with_llm(query)
+        if self.debug:
+            print(f"[DEBUG] スマート検索クエリ解析結果: {query_analysis}")
+        
+        results = []
+        for item in self.data_cache:
+            if await self._match_filterable_llm(item, query_analysis):
+                name = item.get("name")
+                if name:
+                    results.append(name)
+                    print(f"[SEARCH] スマート検索でマッチ: {name}")
+                if len(results) >= top_k:
+                    break
+        
+        print(f"[SEARCH] smart_search_llm found {len(results)} results")
+        return results
+
+    async def smart_filter_search_async(self, query_input: str, top_k: int = 10, use_llm: bool = True) -> list[str]:
+        """スマートフィルタ検索：LLMまたはキーワード検索を自動選択"""
+        print(f"[SEARCH] smart_filter_search_async called: query={query_input}, use_llm={use_llm}")
+        
+        if use_llm and not self.is_mocked:
+            # LLMベースの検索を使用
+            return await self.filter_search_llm_async(query_input, top_k)
+        else:
+            # 従来のキーワード検索を使用（クエリを簡単にキーワードに分割）
+            keywords = self._split_query_to_keywords(query_input)
+            return await self.filter_search_async(keywords, top_k)
+    
+    def _split_query_to_keywords(self, query: str) -> list[str]:
+        """クエリを簡単にキーワードに分割"""
+        # スペースや句読点で分割
+        import re
+        keywords = re.split(r'[\s、。，．・]+', query)
+        # 空文字を除去
+        keywords = [kw.strip() for kw in keywords if kw.strip()]
+        return keywords
 
     def reload_data(self) -> None:
         """
@@ -67,26 +369,189 @@ class DatabaseService:
                 norm_name = self._normalize_title(str(name))
                 self.title_to_data[norm_name] = item
         print(f"[DEBUG] title_to_data keys: {list(self.title_to_data.keys())[:10]} ... (total {len(self.title_to_data)})")
-    def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
+    async def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
+        """LLMベースのフィルタ検索（複数キーワード対応）"""
         print(f"[SEARCH] _search_filterable called: keywords={keywords}, top_k={top_k}")
         print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
+        
         results = []
         for item in self.data_cache:
-            match_flags = [self._match_filterable(item, kw) for kw in keywords]
+            # 全てのキーワードに対してマッチング判定（AND条件）
+            match_flags = []
+            for kw in keywords:
+                match_result = await self._match_filterable(item, kw)
+                match_flags.append(match_result)
+            
             print(f"[SEARCH] Checking item: {item.get('name', '')}, match_flags={match_flags}")
             if all(match_flags):
                 results.append(item)
                 print(f"[SEARCH] Matched: {item.get('name', '')}")
                 if len(results) >= top_k:
                     break
+        
         print(f"[SEARCH] _search_filterable found {len(results)} results")
         for i, r in enumerate(results):
             print(f"[SEARCH] _search_filterable result[{i}]: {r.get('name', '')}")
         return results
 
-    def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
+    async def _search_filterable_llm(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
+        """LLMを使用したフィルタ検索（新実装）"""
+        print(f"[SEARCH] _search_filterable_llm called: query={query}, top_k={top_k}")
+        print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
+        
+        # LLMでクエリを解析
+        query_analysis = await self._analyze_query_with_llm(query)
         if self.debug:
-            print(f"[DEBUG] _match_filterable: item={item.get('name', '')}, keyword={keyword}")
+            print(f"[DEBUG] クエリ解析結果: {query_analysis}")
+        
+        results = []
+        for item in self.data_cache:
+            if await self._match_filterable_llm(item, query_analysis):
+                results.append(item)
+                print(f"[SEARCH] Matched: {item.get('name', '')}")
+                if len(results) >= top_k:
+                    break
+        
+        print(f"[SEARCH] _search_filterable_llm found {len(results)} results")
+        for i, r in enumerate(results):
+            print(f"[SEARCH] _search_filterable_llm result[{i}]: {r.get('name', '')}")
+        return results
+
+    async def _match_filterable_llm(self, item: Dict[str, Any], query_analysis: Dict[str, Any]) -> bool:
+        """LLM解析結果を使用してアイテムがフィルター条件に一致するかを判定（拡張版）"""
+        if self.debug:
+            print(f"[DEBUG] _match_filterable_llm: item={item.get('name', '')}")
+        
+        try:
+            conditions = query_analysis.get("conditions", {})
+            
+            # 名前条件チェック
+            name_condition = conditions.get("name", "")
+            if name_condition and name_condition not in str(item.get("name", "")):
+                if self.debug:
+                    print(f"[DEBUG] 名前条件不一致: {name_condition} not in {item.get('name', '')}")
+                return False
+            
+            # レアリティ条件チェック
+            rarity_condition = conditions.get("rarity", "")
+            if rarity_condition and str(item.get("rarity", "")) != rarity_condition:
+                if self.debug:
+                    print(f"[DEBUG] レアリティ条件不一致: {item.get('rarity', '')} != {rarity_condition}")
+                return False
+            
+            # クラス条件チェック
+            class_condition = conditions.get("class", "")
+            if class_condition and str(item.get("class", "")) != class_condition:
+                if self.debug:
+                    print(f"[DEBUG] クラス条件不一致: {item.get('class', '')} != {class_condition}")
+                return False
+            
+            # タイプ条件チェック
+            type_condition = conditions.get("type", "")
+            if type_condition:
+                item_type = str(item.get("type", ""))
+                if type_condition not in item_type:
+                    if self.debug:
+                        print(f"[DEBUG] タイプ条件不一致: {type_condition} not in {item_type}")
+                    return False
+            
+            # 効果条件チェック
+            effect_condition = conditions.get("effect", "")
+            if effect_condition:
+                item_effect = str(item.get("effect", ""))
+                if effect_condition not in item_effect:
+                    if self.debug:
+                        print(f"[DEBUG] 効果条件不一致: {effect_condition} not in {item_effect}")
+                    return False
+            
+            # コスト条件チェック
+            cost_condition = conditions.get("cost", {})
+            if cost_condition.get("value") is not None:
+                item_cost = int(item.get("cost", 0))
+                cost_value = cost_condition["value"]
+                cost_operator = cost_condition.get("operator", "等しい")
+                
+                if cost_operator == "等しい" and item_cost != cost_value:
+                    if self.debug:
+                        print(f"[DEBUG] コスト条件不一致: {item_cost} != {cost_value}")
+                    return False
+                elif cost_operator == "以上" and item_cost < cost_value:
+                    if self.debug:
+                        print(f"[DEBUG] コスト条件不一致: {item_cost} < {cost_value}")
+                    return False
+                elif cost_operator == "以下" and item_cost > cost_value:
+                    if self.debug:
+                        print(f"[DEBUG] コスト条件不一致: {item_cost} > {cost_value}")
+                    return False
+            
+            # HP条件チェック
+            hp_condition = conditions.get("hp", {})
+            if hp_condition.get("value") is not None:
+                item_hp = int(item.get("hp", 0))
+                hp_value = hp_condition["value"]
+                hp_operator = hp_condition.get("operator", "以上")
+                
+                if hp_operator == "等しい" and item_hp != hp_value:
+                    if self.debug:
+                        print(f"[DEBUG] HP条件不一致: {item_hp} != {hp_value}")
+                    return False
+                elif hp_operator == "以上" and item_hp < hp_value:
+                    if self.debug:
+                        print(f"[DEBUG] HP条件不一致: {item_hp} < {hp_value}")
+                    return False
+                elif hp_operator == "以下" and item_hp > hp_value:
+                    if self.debug:
+                        print(f"[DEBUG] HP条件不一致: {item_hp} > {hp_value}")
+                    return False
+            
+            # 攻撃力条件チェック
+            attack_condition = conditions.get("attack", {})
+            if attack_condition.get("value") is not None:
+                item_attack = int(item.get("attack", 0))
+                attack_value = attack_condition["value"]
+                attack_operator = attack_condition.get("operator", "以上")
+                
+                if attack_operator == "等しい" and item_attack != attack_value:
+                    if self.debug:
+                        print(f"[DEBUG] 攻撃力条件不一致: {item_attack} != {attack_value}")
+                    return False
+                elif attack_operator == "以上" and item_attack < attack_value:
+                    if self.debug:
+                        print(f"[DEBUG] 攻撃力条件不一致: {item_attack} < {attack_value}")
+                    return False
+                elif attack_operator == "以下" and item_attack > attack_value:
+                    if self.debug:
+                        print(f"[DEBUG] 攻撃力条件不一致: {item_attack} > {attack_value}")
+                    return False
+            
+            if self.debug:
+                print(f"[DEBUG] 全条件一致: {item.get('name', '')}")
+            return True
+            
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] _match_filterable_llm エラー: {e}")
+            return False
+
+    async def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
+        """LLMベースの高度なフィルタリング判定メソッド"""
+        if self.debug:
+            print(f"[DEBUG] _match_filterable (LLM): item={item.get('name', '')}, keyword={keyword}")
+        
+        # LLMを使用してキーワードを構造化された検索条件に変換
+        try:
+            query_analysis = await self._analyze_query_with_llm(keyword)
+            return await self._match_filterable_llm(item, query_analysis)
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] LLM解析エラー、フォールバックを使用: {e}")
+            # LLMでエラーが発生した場合は従来の正規表現ベースの解析にフォールバック
+            return self._match_filterable_fallback(item, keyword)
+    
+    def _match_filterable_fallback(self, item: dict[str, Any], keyword: str) -> bool:
+        """従来の正規表現ベースのフィルタリング（フォールバック用・拡張版）"""
+        if self.debug:
+            print(f"[DEBUG] _match_filterable_fallback: item={item.get('name', '')}, keyword={keyword}")
         
         import re
         
@@ -136,6 +601,18 @@ class DatabaseService:
                 print(f"[DEBUG] レアリティ判定: item_rarity='{item_rarity}', 条件='{keyword}', result={result}")
             return result
         
+        # タイプ条件判定
+        type_names = [
+            "炎", "水", "草", "電気", "超", "闘", "悪", "鋼", "フェアリー"
+        ]
+        for type_name in type_names:
+            if type_name in keyword:
+                item_type = str(item.get("type", ""))
+                result = (type_name in item_type)
+                if self.debug:
+                    print(f"[DEBUG] タイプ判定: '{type_name}' in '{item_type}', result={result}")
+                return result
+        
         # HP条件判定: "HP数値以上/以下/未満/超"
         hp_match = re.match(r"HP(\d+)(以上|以下|未満|超)?", keyword)
         if hp_match:
@@ -162,6 +639,46 @@ class DatabaseService:
                 if self.debug:
                     print(f"[DEBUG] HP判定エラー: {e}")
                 return False
+        
+        # 攻撃力・ダメージ条件判定: "攻撃数値以上/以下" "ダメージ数値以上/以下"
+        attack_match = re.match(r"(攻撃|ダメージ)(\d+)(以上|以下|未満|超)?", keyword)
+        if attack_match:
+            try:
+                attack_val = int(attack_match.group(2))
+                condition = attack_match.group(3) or "以上"
+                item_attack = int(item.get("attack", 0))
+                
+                if condition == "以上":
+                    result = (item_attack >= attack_val)
+                elif condition == "以下":
+                    result = (item_attack <= attack_val)
+                elif condition == "未満":
+                    result = (item_attack < attack_val)
+                elif condition == "超":
+                    result = (item_attack > attack_val)
+                else:
+                    result = False
+                    
+                if self.debug:
+                    print(f"[DEBUG] 攻撃力判定: item_attack={item_attack}, 条件={keyword}, result={result}")
+                return result
+            except Exception as e:
+                if self.debug:
+                    print(f"[DEBUG] 攻撃力判定エラー: {e}")
+                return False
+        
+        # 効果キーワード判定
+        effect_keywords = [
+            "進化", "必殺", "守護", "疾走", "突進", "回復", "ドロー", "サーチ", 
+            "召喚", "破壊", "バフ", "デバフ", "スペル", "アミュレット"
+        ]
+        for effect_keyword in effect_keywords:
+            if effect_keyword in keyword:
+                item_effect = str(item.get("effect", ""))
+                result = (effect_keyword in item_effect)
+                if self.debug:
+                    print(f"[DEBUG] 効果判定: '{effect_keyword}' in '{item_effect}', result={result}")
+                return result
         
         # デフォルト: 名前部分一致
         name = str(item.get("name", ""))
@@ -341,16 +858,25 @@ class DatabaseService:
         return 0.0
 
     async def _filter_search_titles(self, keywords: list[str], top_k: int = 10) -> list[str]:
+        """LLMベースのフィルタ検索（カード名のリストを返す）"""
         # 空キーワードまたはデータが空なら即空リスト返却
         if not keywords or not self.data_cache:
             return []
+        
         normalized = [self._normalize_keyword(kw) for kw in keywords]
         expanded = self._split_keywords(normalized)
         if not expanded:
             return []
+        
         results = []
         for item in self.data_cache:
-            if all(self._match_filterable(item, kw) for kw in expanded):
+            # 全てのキーワードに対してLLMベースのマッチング判定
+            match_flags = []
+            for kw in expanded:
+                match_result = await self._match_filterable(item, kw)
+                match_flags.append(match_result)
+            
+            if all(match_flags):
                 name = item.get("name")
                 if name:
                     results.append(name)
