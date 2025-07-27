@@ -33,7 +33,7 @@ class RagService:
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
                 print("[RAG] NGワード検出: abort", file=sys.stderr)
                 return {
-                    "answer": "申し訳ありませんが、そのような内容にはお答えできません。"
+                    "message": "申し訳ありませんが、そのような内容にはお答えできません。"
                 }
 
             # キャッシュから応答をチェック（高速化）
@@ -64,107 +64,28 @@ class RagService:
             # デバッグ情報出力
             classification = search_result.get("classification")
             query_type = getattr(classification, "query_type", None) if classification else None
-            db_results = search_result.get("db_results", [])
             
-            print(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(db_results)}", file=sys.stderr)
-            logger.info(f"[RAG][DEBUG] query_type={query_type}, db_results_count={len(db_results)}")
-            
-            # デバッグ: db_resultsの内容をログ出力
-            if db_results:
-                def get_name_safe(item: Any) -> str:
-                    if isinstance(item, dict):
-                        return str(item.get('name', str(item)))
-                    return str(item)
-
-                db_names = [get_name_safe(item) for item in db_results]
-                print(f"[RAG][DEBUG] db_results(full): {db_names}", file=sys.stderr)
-                logger.info(f"[RAG][DEBUG] db_results(full): {db_names}")
+            print(f"[RAG][DEBUG] query_type={query_type}", file=sys.stderr)
+            logger.info(f"[RAG][DEBUG] query_type={query_type}")
 
 
             # レスポンス構築
             if rag_req.with_context:
-                # contextを詳細JSONに変換
-                query_type_str = str(query_type).lower()
-                if query_type_str == "querytype.filterable" or query_type_str == "filterable" or query_type == "QueryType.FILTERABLE":
-                    # FILTERABLEの場合：HybridSearchServiceのcontextから直接詳細データを取得
-                    context_data = search_result.get("context", [])
-                    card_details = []
-                    
-                    for item in context_data:
-                        if isinstance(item, dict):
-                            card_details.append(item)
-                    
-                    response = {
-                        "answer": "",
-                        "context": card_details,  # カード詳細JSONリスト
-                        "db_results": card_details,  # db_resultsにも詳細jsonリストを格納
-                        "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
-                        "search_info": {
-                            "query_type": str(query_type).lower() if query_type else "unknown",
-                            "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
-                            "db_results_count": len(card_details),
-                            "vector_results_count": len(search_result.get("vector_results", []))
-                        },
-                        "performance": {
-                            "total_duration": total_duration,
-                            "search_duration": search_duration,
-                            "llm_duration": llm_duration,
-                            "cache_hit": False
-                        }
-                    }
-                    print("[RAG][DEBUG] FILTERABLE: returning card details JSON list", file=sys.stderr)
-                    logger.info("[RAG][DEBUG] FILTERABLE: returning card details JSON list")
-                else:
-                    # FILTERABLE以外：contextから詳細JSON取得
-                    context_items = search_result.get("context", [])
-                    card_details = []
-                    
-                    for item in context_items:
-                        if isinstance(item, dict):
-                            card_details.append(item)
-                        elif isinstance(item, str):
-                            # カード名の場合は詳細を取得
-                            details = self.hybrid_search_service.database_service.get_card_details_by_titles([item])
-                            if details:
-                                card_details.extend(details)
-                            else:
-                                # 詳細が見つからない場合は提案として追加
-                                card_details.append({
-                                    "name": "ご提案",
-                                    "type": "info", 
-                                    "content": item,
-                                    "is_suggestion": True
-                                })
-                    
-                    response = {
-                        "answer": "",
-                        "context": card_details,  # カード詳細JSONリスト
-                        "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
-                        "search_info": {
-                            "query_type": str(query_type).lower() if query_type else "unknown",
-                            "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
-                            "db_results_count": len(search_result.get("db_results", [])),
-                            "vector_results_count": len(search_result.get("vector_results", []))
-                        },
-                        "performance": {
-                            "total_duration": total_duration,
-                            "search_duration": search_duration,
-                            "llm_duration": llm_duration,
-                            "cache_hit": False
-                        }
-                    }
-                    print("[RAG][DEBUG] Not FILTERABLE: returning context card details JSON list", file=sys.stderr)
-                    logger.info("[RAG][DEBUG] Not FILTERABLE: returning context card details JSON list")
-            else:
-                # with_context=Falseの場合
+                # HybridSearchServiceから受け取ったcontextをそのまま使用（重複回避）
+                context_data = search_result.get("context", [])
+                classification = search_result.get("classification")
+                
                 response = {
-                    "answer": "",
-                    "performance": {
-                        "total_duration": total_duration,
-                        "search_duration": search_duration,
-                        "llm_duration": llm_duration,
-                        "cache_hit": False
-                    }
+                    "context": context_data,  # HybridSearchServiceで処理済みのカード詳細JSONリスト
+                    "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
+                    "search_info": search_result.get("search_info", {})
+                }
+                print("[RAG][DEBUG] Using context from HybridSearchService directly to avoid duplication", file=sys.stderr)
+                logger.info("[RAG][DEBUG] Using context from HybridSearchService directly to avoid duplication")
+            else:
+                # with_context=Falseの場合（最小限のレスポンス）
+                response = {
+                    "message": "検索完了"
                 }
             
             # レスポンスをキャッシュ（非同期で実行、レスポンス時間に影響しない）
@@ -183,7 +104,7 @@ class RagService:
             print(f"[RAG] ERROR: {str(e)}", file=sys.stderr)
             logger.error(f"RAGクエリ処理中にエラーが発生: {str(e)}", exc_info=True)
             return {
-                "answer": f"申し訳ありませんが、「{rag_req.question}」に関する回答の処理中にエラーが発生しました。"
+                "error": f"申し訳ありませんが、「{rag_req.question}」に関する回答の処理中にエラーが発生しました。"
             }
     
     async def process_query_optimized(self, rag_req: RagRequest) -> Dict[str, Any]:
@@ -198,7 +119,7 @@ class RagService:
             # NGワードチェック
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
                 return {
-                    "answer": "申し訳ありませんが、そのような内容にはお答えできません。"
+                    "message": "申し訳ありませんが、そのような内容にはお答えできません。"
                 }
 
             # 1. マルチレベルキャッシュチェック
@@ -206,7 +127,6 @@ class RagService:
             if cached_response:
                 cache_duration = time.perf_counter() - start_time
                 logger.info(f"🚀 Multi-level cache hit: {rag_req.question[:50]}... ({cache_duration:.3f}s)")
-                cached_response["performance"]["cache_hit"] = True
                 return cached_response
 
             # 2. 並列検索実行（タイムアウト付き）
@@ -231,21 +151,12 @@ class RagService:
             # タイムアウト時のフォールバック
             logger.warning(f"⏰ Query timeout: {rag_req.question[:50]}...")
             return {
-                "answer": "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。",
-                "performance": {
-                    "total_duration": time.perf_counter() - start_time,
-                    "timeout": True
-                }
+                "error": "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。"
             }
         except Exception as e:
             logger.error(f"RAG処理エラー: {e}")
             return {
-                "answer": "申し訳ありませんが、エラーが発生しました。しばらく後に再試行してください。",
-                "error": str(e),
-                "performance": {
-                    "total_duration": time.perf_counter() - start_time,
-                    "error": True
-                }
+                "error": "申し訳ありませんが、エラーが発生しました。しばらく後に再試行してください。"
             }
     
     async def _check_multilevel_cache(self, rag_req: RagRequest) -> Optional[Dict[str, Any]]:
@@ -303,7 +214,7 @@ class RagService:
             logger.warning(f"⏰ Search timeout: {rag_req.question[:50]}...")
             # フォールバック: 軽量な検索結果を返す
             return {
-                "merged_results": [],
+                "context": [],
                 "classification": None,
                 "_search_duration": time.perf_counter() - search_start,
                 "_timeout": True
@@ -345,83 +256,18 @@ class RagService:
         
         # レスポンス構築
         if rag_req.with_context:
+            # HybridSearchServiceから受け取ったcontextをそのまま使用（重複回避）
+            context_data = search_result.get("context", [])
             classification = search_result.get("classification")
-            query_type = getattr(classification, "query_type", None) if classification else None
             
-            # contextを詳細JSONに変換
-            query_type_str = str(query_type).lower()
-            if query_type_str == "querytype.filterable" or query_type_str == "filterable" or str(query_type) == "QueryType.FILTERABLE":
-                # FILTERABLEの場合：DB検索結果を詳細JSONで返す
-                db_results = search_result.get("db_results", [])
-                db_card_names = [item if isinstance(item, str) else str(item) for item in db_results]
-                card_details = self.hybrid_search_service.database_service.get_card_details_by_titles(db_card_names)
-                
-                response = {
-                    "answer": answer,
-                    "context": card_details,  # カード詳細JSONリスト
-                    "db_results": card_details,  # カード詳細JSONリスト
-                    "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
-                    "search_info": {
-                        "query_type": str(query_type).lower() if query_type else "unknown",
-                        "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
-                        "db_results_count": len(card_details),
-                        "vector_results_count": len(search_result.get("vector_results", []))
-                    },
-                    "performance": {
-                        "total_duration": total_duration,
-                        "search_duration": search_duration,
-                        "llm_duration": llm_duration,
-                        "cache_hit": False
-                    }
-                }
-            else:
-                # FILTERABLE以外：contextから詳細JSON取得
-                context_items = search_result.get("context", [])
-                card_details = []
-                
-                for item in context_items:
-                    if isinstance(item, dict):
-                        card_details.append(item)
-                    elif isinstance(item, str):
-                        # カード名の場合は詳細を取得
-                        details = self.hybrid_search_service.database_service.get_card_details_by_titles([item])
-                        if details:
-                            card_details.extend(details)
-                        else:
-                            # 詳細が見つからない場合は提案として追加
-                            card_details.append({
-                                "name": "ご提案",
-                                "type": "info", 
-                                "content": item,
-                                "is_suggestion": True
-                            })
-                
-                response = {
-                    "answer": answer,
-                    "context": card_details,  # カード詳細JSONリスト
-                    "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
-                    "search_info": {
-                        "query_type": str(query_type).lower() if query_type else "unknown",
-                        "confidence": getattr(classification, "confidence", 0.0) if classification else 0.0,
-                        "db_results_count": len(search_result.get("db_results", [])),
-                        "vector_results_count": len(search_result.get("vector_results", []))
-                    },
-                    "performance": {
-                        "total_duration": total_duration,
-                        "search_duration": search_duration,
-                        "llm_duration": llm_duration,
-                        "cache_hit": False
-                    }
-                }
+            response = {
+                "context": context_data,  # メインデータ：カード詳細JSONリスト
+                "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
+                "search_info": search_result.get("search_info", {})
+            }
         else:
             response = {
-                "answer": answer,
-                "performance": {
-                    "total_duration": total_duration,
-                    "search_duration": search_duration,
-                    "llm_duration": llm_duration,
-                    "cache_hit": False
-                }
+                "message": "検索完了"
             }
         
         # 高速レスポンスは長期キャッシュ、遅いレスポンスは短期キャッシュ

@@ -173,8 +173,8 @@ class HybridSearchService:
             card_details = self.database_service.get_card_details_by_titles(title_strings)
             context = card_details
             
-            # 結果が少ない場合は提案を追加
-            if len(card_details) < top_k:
+            # 結果が全くない場合のみ提案を追加
+            if len(card_details) == 0:
                 suggestion_message = self._generate_search_suggestion(classification)
                 context.append({"name": "検索のご提案", "suggestion": suggestion_message})
             
@@ -185,25 +185,16 @@ class HybridSearchService:
             context = []
             context.extend(details)
             
-            # 結果が少ない場合は提案を追加
-            if len(details) < top_k:
+            # 結果が全くない場合のみ提案を追加
+            if len(details) == 0:
                 suggestion_message = self._generate_search_suggestion(classification)
                 context.append({"name": "検索のご提案", "suggestion": suggestion_message})
             
             print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
 
-                # 文字列リストをContextItemリストに変換
-        db_context_items = [ContextItem(title=title, text="", score=0.0) for title in db_titles]
-        vector_context_items = [ContextItem(title=title, text="", score=0.0) for title in vector_titles]
-        merged_context_items = [ContextItem(title=title, text="", score=0.0) for title in merged_titles]
-
         return {
-            "answer": "",  # LLM回答は空文字
-            "context": context,  # contextにカード詳細jsonリスト
-            "db_results": db_context_items,
-            "vector_results": vector_context_items,
-            "merged_results": merged_context_items,
+            "context": context,  # contextにカード詳細jsonリスト（これがメインのデータ）
             "classification": classification,
             "search_quality": search_quality,
             "search_info": {
@@ -211,12 +202,6 @@ class HybridSearchService:
                 "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
                 "db_results_count": len(db_titles),
                 "vector_results_count": len(vector_titles)
-            },
-            "performance": {
-                "total_duration": None,  # rag_serviceで計測
-                "search_duration": None,
-                "llm_duration": 0.0,
-                "cache_hit": False
             }
         }
 
@@ -243,20 +228,18 @@ class HybridSearchService:
         """挨拶用のレスポンスを作成"""
         print("=== 挨拶検出: 検索をスキップ ===")
         return {
+            "context": [],  # 空のcontext
             "classification": classification,
-            "search_strategy": {
-                "use_database": False,
-                "use_vector": False,
-                "skip_search": True,
-                "reason": "greeting_detected"
-            },
-            "db_results": [],
-            "vector_results": [],
-            "merged_results": [],
             "search_quality": {
                 "overall_score": 1.0,
                 "greeting_detected": True,
                 "search_needed": False
+            },
+            "search_info": {
+                "query_type": classification.query_type.value if hasattr(classification.query_type, "value") else str(classification.query_type),
+                "confidence": classification.confidence,
+                "db_results_count": 0,
+                "vector_results_count": 0
             }
         }
 
@@ -409,8 +392,8 @@ class HybridSearchService:
     
     def _handle_no_results_optimized(self, classification: ClassificationResult) -> list[str]:
         """最適化された結果なし時の処理（カード名リスト）"""
-        
-        return ["検索のご提案"]
+        # 空のリストを返す（提案は後で別途処理）
+        return []
     
     def _generate_search_suggestion(self, classification: ClassificationResult) -> str:
         """検索提案を生成"""

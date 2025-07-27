@@ -70,29 +70,3 @@
 
 ### [`sphinx/`](./sphinx/) - 自動生成ドキュメント
 - API仕様の自動生成システム（`make html` で生成）
-
-## ⚠️ 削除・統合されたファイル
-
-### 2025年7月27日の整理で削除したファイル
-- **各サブディレクトリのREADME.md** → メインREADME.mdに統合
-- **docs/security/security-assessment-report.md** → comprehensive-security-report.md と重複
-- **docs/deployment/ci-build-fixes.md** → 古い問題、解決済み
-- **docs/deployment/cloud-storage-migration-guide.md** → 移行完了済み
-- **docs/deployment/firebase-api-key-regeneration-report.md** → 作業完了済み
-- **docs/sphinx/_build/** → 自動生成ファイル（必要時に再生成）
-
-### 理由
-- **重複削除**: 同じ情報が複数ファイルに散らばっていた
-- **古い情報**: 完了済みの作業や解決済みの問題
-- **メンテナンス性向上**: ドキュメント管理の簡素化
-
----
-
-## 💡 ドキュメントを見つけるコツ
-
-1. **緊急度・作業別**: このファイルの「すぐに見つけたい情報」を使用
-2. **目的不明**: [`README.md`](./README.md) の「用途別ガイド」を参照
-3. **詳細情報**: 各ディレクトリの詳細説明を確認
-4. **関連情報**: 各ドキュメント末尾の「関連ドキュメント」リンクを活用
-
-このナビゲーションで見つからない場合は、[`README.md`](./README.md) をご確認ください。
