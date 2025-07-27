@@ -158,7 +158,6 @@ class HybridSearchService:
             db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
         )
 
-        # context生成ロジック
         query_type_str = str(classification.query_type).lower()
         if query_type_str == "filterable" or query_type_str == "querytype.filterable" or classification.query_type == QueryType.FILTERABLE:
             # DB検索結果全件をcontextに返す（カード詳細JSON）
@@ -166,12 +165,9 @@ class HybridSearchService:
             print(f"[DEBUG] FILTERABLE branch entered: db_titles type: {type(db_titles)}, content: {db_titles}")
             # db_titlesが文字列リストであることを確認し、必要に応じて修正
             if db_titles and isinstance(db_titles[0], str):
-                print(f"[DEBUG] Using db_titles as strings directly")
-                title_strings = db_titles
+                title_strings = db_titles  # 既に文字列リスト
             else:
-                print(f"[DEBUG] Converting from objects to strings")
-                # ContextItemオブジェクトの場合はtitle属性を抽出
-                title_strings = [item.title if hasattr(item, 'title') else str(item) for item in db_titles]
+                title_strings = [str(item) for item in db_titles]  # 文字列に変換
             print(f"[DEBUG] title_strings: {title_strings}")
             
             card_details = self.database_service.get_card_details_by_titles(title_strings)
@@ -180,12 +176,7 @@ class HybridSearchService:
             # 結果が少ない場合は提案を追加
             if len(card_details) < top_k:
                 suggestion_message = self._generate_search_suggestion(classification)
-                context.append({
-                    "name": "ご提案",
-                    "type": "info",
-                    "content": suggestion_message,
-                    "is_suggestion": True
-                })
+                context.append({"name": "検索のご提案", "suggestion": suggestion_message})
             
             print(f"最終結果: {len(context)}件（FILTERABLE: DB検索結果全件）")
         else:
@@ -197,12 +188,7 @@ class HybridSearchService:
             # 結果が少ない場合は提案を追加
             if len(details) < top_k:
                 suggestion_message = self._generate_search_suggestion(classification)
-                context.append({
-                    "name": "ご提案",
-                    "type": "info",
-                    "content": suggestion_message,
-                    "is_suggestion": True
-                })
+                context.append({"name": "検索のご提案", "suggestion": suggestion_message})
             
             print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")

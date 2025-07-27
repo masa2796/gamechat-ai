@@ -440,6 +440,7 @@ cardsテーブル
             def extract_keywords_fallback(query: str) -> list[str]:
                 import re
                 keywords: list[str] = []
+                
                 # クラス名リスト
                 class_names = [
                     "エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー",
@@ -448,7 +449,8 @@ cardsテーブル
                 for cname in class_names:
                     if cname in query:
                         keywords.append(cname)
-                # 既存のパターンも併用（コスト等）
+                
+                # コスト・タイプ等のパターン抽出
                 patterns = [
                     r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost",
                     r"[炎|水|草|電気|超|闘|悪|鋼|フェアリー]タイプ"
@@ -458,53 +460,13 @@ cardsテーブル
                         kw = m.group(0).strip()
                         if kw and kw not in keywords:
                             keywords.append(kw)
+                
                 # 空白区切り単語も追加
                 for w in re.split(r"[\s　,、]+", query):
                     w = w.strip()
                     if w and w not in keywords:
                         keywords.append(w)
-                return keywords
-                class_names = [
-                    "エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー",
-                    "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル"
-                ]
-                # クラス名抽出
-                for cname in class_names:
-                    if cname in query:
-                        keywords.append(cname)
-                # コスト・HP・ダメージ等の数値条件抽出
-                patterns = [
-                    r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost",
-                    r"hp\s*\d+", r"ヒットポイント\s*\d+", r"体力\s*\d+",
-                    r"ダメージ\s*\d+", r"攻撃\s*\d+", r"attack\s*\d+"
-                ]
-                for pat in patterns:
-                    for m in re.finditer(pat, query, re.IGNORECASE):
-                        kw = m.group(0).strip()
-                        if kw and kw not in keywords:
-                            keywords.append(kw)
-                # その他単語も追加（重複除去）
-                for w in re.split(r"[\s　,、]+", query):
-                    w = w.strip()
-                    if w and w not in keywords:
-                        keywords.append(w)
-                return keywords
-                # コスト・クラス・タイプ等の抽出
-                patterns = [
-                    r"(\d+)\s*コスト", r"コスト\s*(\d+)", r"cost\s*(\d+)", r"(\d+)\s*cost",
-                    r"[エルフ|ドラゴン|ロイヤル|ウィッチ|ネクロマンサー|ビショップ|ネメシス]",
-                    r"[炎|水|草|電気|超|闘|悪|鋼|フェアリー]タイプ"
-                ]
-                for pat in patterns:
-                    for m in re.finditer(pat, query, re.IGNORECASE):
-                        kw = m.group(0).strip()
-                        if kw and kw not in keywords:
-                            keywords.append(kw)
-                # 空白区切り単語も追加
-                for w in re.split(r"[\s　,、]+", query):
-                    w = w.strip()
-                    if w and w not in keywords:
-                        keywords.append(w)
+                
                 return keywords
 
             if (not result_data["filter_keywords"] or not result_data["search_keywords"]) and result_data["query_type"] != QueryType.GREETING:
