@@ -1,6 +1,8 @@
 import re
 import os
 import json
+import asyncio
+import openai
 from typing import List, Dict, Any, Optional
 from ..core.logging import GameChatLogger
 from ..core.config import settings
@@ -16,7 +18,7 @@ class DatabaseService:
             # このファイル（database_service.py）から見てプロジェクトルートを計算
             base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
             self.data_path = os.path.join(base_dir, 'data/data.json')
-        self.debug = True  # デバッグフラグ追加
+        self.debug = False  # デバッグフラグ（パフォーマンス向上のため無効化）
         
         # LLM初期化
         self._init_llm()
@@ -277,14 +279,11 @@ cardsテーブル
             "reasoning": f"モック環境でのクエリ解析: {query}"
         }
     async def filter_search_async(self, keywords: list[str], top_k: int = 10) -> list[str]:
-        print(f"[SEARCH] filter_search_async called: keywords={keywords}, top_k={top_k}")
         result = await self.filter_search_titles_async(keywords, top_k)
-        print(f"[SEARCH] filter_search_async result: {result}")
         return result
 
     async def filter_search_llm_async(self, query: str, top_k: int = 10) -> list[str]:
         """LLMベースのフィルタ検索（カード名リストを返す）"""
-        print(f"[SEARCH] filter_search_llm_async called: query={query}, top_k={top_k}")
         
         # LLMベースの検索を実行
         results = await self._search_filterable_llm(query, top_k)
@@ -292,28 +291,57 @@ cardsテーブル
         # カード名リストに変換
         card_names = [item.get("name", "") for item in results if item.get("name")]
         
-        print(f"[SEARCH] filter_search_llm_async result: {card_names}")
         return card_names
 
     def filter_search(self, keywords: list[str], top_k: int = 10) -> list[str]:
-        print(f"[SEARCH] filter_search called: keywords={keywords}, top_k={top_k}")
-        import asyncio
         result = asyncio.get_event_loop().run_until_complete(self.filter_search_async(keywords, top_k))
-        print(f"[SEARCH] filter_search result: {result}")
         return result
+
+    def _filter_search_sync(self, keywords: list[str], top_k: int = 10) -> list[str]:
+        """同期版フィルタ検索（高速フォールバックのみ）"""
+        if not keywords or not self.data_cache:
+            return []
+        
+        # 複雑なクエリがある場合は事前に分割
+        processed_keywords = []
+        for kw in keywords:
+            if len(kw) > 15 and any(word in kw for word in ["クラス", "コスト", "攻撃", "HP", "かつ", "で"]):
+                # 自然言語クエリと判断して分割
+                split_kws = self._split_query_to_keywords(kw)
+                processed_keywords.extend(split_kws)
+            else:
+                # 通常のキーワードとして処理
+                processed_keywords.append(kw)
+        
+        normalized = [self._normalize_keyword(kw) for kw in processed_keywords]
+        expanded = self._split_keywords(normalized)
+        if not expanded:
+            return []
+        
+        results = []
+        for item in self.data_cache:
+            # 全てのキーワードに対してフォールバック処理でマッチング判定
+            match_flags = []
+            for kw in expanded:
+                # 高速なフォールバック処理を使用（LLM解析をスキップ）
+                match_result = self._match_filterable_fallback(item, kw)
+                match_flags.append(match_result)
+            
+            if all(match_flags):
+                name = item.get("name")
+                if name:
+                    results.append(name)
+            if len(results) >= top_k:
+                break
+        return results
 
     def filter_search_llm(self, query: str, top_k: int = 10) -> list[str]:
         """LLMベースのフィルタ検索（同期版）"""
-        print(f"[SEARCH] filter_search_llm called: query={query}, top_k={top_k}")
-        import asyncio
         result = asyncio.get_event_loop().run_until_complete(self.filter_search_llm_async(query, top_k))
-        print(f"[SEARCH] filter_search_llm result: {result}")
         return result
 
     async def smart_search_llm(self, query: str, top_k: int = 10) -> list[str]:
         """LLMベースの統合スマート検索（自然言語クエリから直接カード名リストを返す）"""
-        print(f"[SEARCH] smart_search_llm called: query='{query}', top_k={top_k}")
-        print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
         
         # LLMでクエリ全体を解析
         query_analysis = await self._analyze_query_with_llm(query)
@@ -326,19 +354,16 @@ cardsテーブル
                 name = item.get("name")
                 if name:
                     results.append(name)
-                    print(f"[SEARCH] スマート検索でマッチ: {name}")
                 if len(results) >= top_k:
                     break
         
-        print(f"[SEARCH] smart_search_llm found {len(results)} results")
         return results
 
     async def smart_filter_search_async(self, query_input: str, top_k: int = 10, use_llm: bool = True) -> list[str]:
-        """スマートフィルタ検索：LLMまたはキーワード検索を自動選択"""
-        print(f"[SEARCH] smart_filter_search_async called: query={query_input}, use_llm={use_llm}")
+        """統合検索メソッド（LLMの有効/無効を切り替え可能）"""
         
-        if use_llm and not self.is_mocked:
-            # LLMベースの検索を使用
+        if use_llm:
+            # LLM解析ベース検索を使用
             return await self.filter_search_llm_async(query_input, top_k)
         else:
             # 従来のキーワード検索を使用（クエリを簡単にキーワードに分割）
@@ -346,13 +371,65 @@ cardsテーブル
             return await self.filter_search_async(keywords, top_k)
     
     def _split_query_to_keywords(self, query: str) -> list[str]:
-        """クエリを簡単にキーワードに分割"""
-        # スペースや句読点で分割
+        """クエリを検索可能なキーワードに分割（改善版）"""
         import re
-        keywords = re.split(r'[\s、。，．・]+', query)
-        # 空文字を除去
-        keywords = [kw.strip() for kw in keywords if kw.strip()]
-        return keywords
+        keywords = []
+        
+        # 1. クラス名を抽出
+        classes = ["エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー", "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル"]
+        for cls in classes:
+            if cls in query:
+                keywords.append(cls)
+        
+        # 2. コスト条件を抽出
+        cost_patterns = [
+            r'コスト(\d+)',
+            r'(\d+)コスト',
+            r'コストが(\d+)'
+        ]
+        for pattern in cost_patterns:
+            match = re.search(pattern, query)
+            if match:
+                cost_val = match.group(1)
+                keywords.append(f'コスト{cost_val}')
+                break
+        
+        # 3. 攻撃力条件を抽出
+        attack_patterns = [
+            r'攻撃力が(\d+)',
+            r'攻撃力(\d+)',
+            r'攻撃(\d+)',
+            r'ダメージ(\d+)'
+        ]
+        for pattern in attack_patterns:
+            match = re.search(pattern, query)
+            if match:
+                attack_val = match.group(1)
+                keywords.append(f'攻撃{attack_val}')
+                break
+        
+        # 4. HP条件を抽出
+        hp_patterns = [
+            r'HPが(\d+)',
+            r'HP(\d+)',
+            r'体力が(\d+)',
+            r'体力(\d+)'
+        ]
+        for pattern in hp_patterns:
+            match = re.search(pattern, query)
+            if match:
+                hp_val = match.group(1)
+                keywords.append(f'HP{hp_val}')
+                break
+        
+        # 5. レアリティを抽出
+        rarities = ["レジェンド", "ゴールドレア", "シルバーレア", "ブロンズ", "レア"]
+        for rarity in rarities:
+            if rarity in query:
+                keywords.append(rarity)
+        
+        # 空文字列や重複を除去
+        return list(set(kw for kw in keywords if kw.strip()))
 
     def reload_data(self) -> None:
         """
@@ -360,7 +437,6 @@ cardsテーブル
         """
         data = self._load_data()
         self.data_cache = data
-        print(f"[DEBUG] data_cache loaded: {len(self.data_cache)} 件")  # デバッグ出力追加
         self.title_to_data = {}
         for item in data:
             # nameフィールドがキー（正規化処理を強化）
@@ -368,36 +444,43 @@ cardsテーブル
             if name:
                 norm_name = self._normalize_title(str(name))
                 self.title_to_data[norm_name] = item
-        print(f"[DEBUG] title_to_data keys: {list(self.title_to_data.keys())[:10]} ... (total {len(self.title_to_data)})")
     async def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
-        """LLMベースのフィルタ検索（複数キーワード対応）"""
-        print(f"[SEARCH] _search_filterable called: keywords={keywords}, top_k={top_k}")
-        print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
+        """最適化されたフィルタ検索（LLM解析を最小化）"""
+        
+        # 各キーワードに対してLLM解析を1回だけ実行
+        keyword_analyses = {}
+        for kw in keywords:
+            try:
+                keyword_analyses[kw] = await self._analyze_query_with_llm(kw)
+                if self.debug:
+                    print(f"[DEBUG] キーワード解析完了: {kw}")
+            except Exception as e:
+                if self.debug:
+                    print(f"[DEBUG] キーワード解析エラー: {kw}, {e}")
+                keyword_analyses[kw] = None
         
         results = []
         for item in self.data_cache:
             # 全てのキーワードに対してマッチング判定（AND条件）
             match_flags = []
             for kw in keywords:
-                match_result = await self._match_filterable(item, kw)
+                if keyword_analyses[kw] is not None:
+                    # LLM解析結果を使用
+                    match_result = await self._match_filterable_llm(item, keyword_analyses[kw])
+                else:
+                    # フォールバック処理を使用
+                    match_result = self._match_filterable_fallback(item, kw)
                 match_flags.append(match_result)
             
-            print(f"[SEARCH] Checking item: {item.get('name', '')}, match_flags={match_flags}")
             if all(match_flags):
                 results.append(item)
-                print(f"[SEARCH] Matched: {item.get('name', '')}")
                 if len(results) >= top_k:
                     break
         
-        print(f"[SEARCH] _search_filterable found {len(results)} results")
-        for i, r in enumerate(results):
-            print(f"[SEARCH] _search_filterable result[{i}]: {r.get('name', '')}")
         return results
 
     async def _search_filterable_llm(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
         """LLMを使用したフィルタ検索（新実装）"""
-        print(f"[SEARCH] _search_filterable_llm called: query={query}, top_k={top_k}")
-        print(f"[SEARCH] data_cache count: {len(self.data_cache)}")
         
         # LLMでクエリを解析
         query_analysis = await self._analyze_query_with_llm(query)
@@ -408,13 +491,9 @@ cardsテーブル
         for item in self.data_cache:
             if await self._match_filterable_llm(item, query_analysis):
                 results.append(item)
-                print(f"[SEARCH] Matched: {item.get('name', '')}")
                 if len(results) >= top_k:
                     break
         
-        print(f"[SEARCH] _search_filterable_llm found {len(results)} results")
-        for i, r in enumerate(results):
-            print(f"[SEARCH] _search_filterable_llm result[{i}]: {r.get('name', '')}")
         return results
 
     async def _match_filterable_llm(self, item: Dict[str, Any], query_analysis: Dict[str, Any]) -> bool:
@@ -534,26 +613,18 @@ cardsテーブル
             return False
 
     async def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
-        """LLMベースの高度なフィルタリング判定メソッド"""
+        """効率化されたフィルタリング判定メソッド（LLM解析は外部で1回のみ実行）"""
         if self.debug:
-            print(f"[DEBUG] _match_filterable (LLM): item={item.get('name', '')}, keyword={keyword}")
+            print(f"[DEBUG] _match_filterable (FALLBACK): item={item.get('name', '')}, keyword={keyword}")
         
-        # LLMを使用してキーワードを構造化された検索条件に変換
-        try:
-            query_analysis = await self._analyze_query_with_llm(keyword)
-            return await self._match_filterable_llm(item, query_analysis)
-        except Exception as e:
-            if self.debug:
-                print(f"[DEBUG] LLM解析エラー、フォールバックを使用: {e}")
-            # LLMでエラーが発生した場合は従来の正規表現ベースの解析にフォールバック
-            return self._match_filterable_fallback(item, keyword)
+        # LLM解析は外部で1回のみ実行されるように変更
+        # ここでは従来の正規表現ベースの高速フォールバック処理のみ実行
+        return self._match_filterable_fallback(item, keyword)
     
     def _match_filterable_fallback(self, item: dict[str, Any], keyword: str) -> bool:
         """従来の正規表現ベースのフィルタリング（フォールバック用・拡張版）"""
         if self.debug:
             print(f"[DEBUG] _match_filterable_fallback: item={item.get('name', '')}, keyword={keyword}")
-        
-        import re
         
         # コスト条件判定: "コストN" または "Nコスト" → item["cost"] == N
         m1 = re.match(r"コスト(\d+)", keyword)  # "コストN" 形式
@@ -613,15 +684,17 @@ cardsテーブル
                     print(f"[DEBUG] タイプ判定: '{type_name}' in '{item_type}', result={result}")
                 return result
         
-        # HP条件判定: "HP数値以上/以下/未満/超"
-        hp_match = re.match(r"HP(\d+)(以上|以下|未満|超)?", keyword)
+        # HP条件判定: "HP数値", "HP数値以上/以下/未満/超", "体力数値", "HPが数値"
+        hp_match = re.match(r"(HP|体力)(が)?(\d+)(以上|以下|未満|超|等しい)?", keyword)
         if hp_match:
             try:
-                hp_val = int(hp_match.group(1))
-                condition = hp_match.group(2) or "以上"
+                hp_val = int(hp_match.group(3))
+                condition = hp_match.group(4) or "等しい"  # デフォルトを等しいに変更
                 item_hp = int(item.get("hp", 0))
                 
-                if condition == "以上":
+                if condition == "等しい":
+                    result = (item_hp == hp_val)
+                elif condition == "以上":
                     result = (item_hp >= hp_val)
                 elif condition == "以下":
                     result = (item_hp <= hp_val)
@@ -692,12 +765,36 @@ cardsテーブル
         return False
 
     def _normalize_keyword(self, keyword: str) -> str:
-        # ダミー実装: 前後空白除去
+        """キーワードの正規化（前後空白除去など）"""
         return keyword.strip()
 
     def _split_keywords(self, keywords: list[str]) -> list[str]:
-        # ダミー実装: そのまま返す
-        return keywords
+        """キーワードを詳細な検索条件に分割"""
+        expanded = []
+        for keyword in keywords:
+            # "HPが1のエルフのカード" → ["HPが1", "エルフ", "カード"]のように分割
+            parts = []
+            
+            # HP条件の抽出
+            hp_pattern = r'(HP|体力)(が)?(\d+)(のエルフ|のドラゴン|の\w+)?'
+            hp_match = re.search(hp_pattern, keyword)
+            if hp_match:
+                hp_part = hp_match.group(1) + (hp_match.group(2) or "") + hp_match.group(3)
+                parts.append(hp_part)
+                # 残りの部分（クラス名など）を抽出
+                remaining = keyword.replace(hp_match.group(0), "")
+                remaining = remaining.replace("の", "").replace("カード", "").strip()
+                if remaining:
+                    parts.append(remaining)
+            else:
+                # その他のパターン（そのまま使用）
+                parts.append(keyword)
+            
+            expanded.extend(parts)
+        
+        # 空文字列や重複を除去
+        result = list(set(p for p in expanded if p.strip()))
+        return result
 
     def _search_semantic(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
         # 型チェック用のダミー実装（mypyエラー回避）
@@ -858,22 +955,50 @@ cardsテーブル
         return 0.0
 
     async def _filter_search_titles(self, keywords: list[str], top_k: int = 10) -> list[str]:
-        """LLMベースのフィルタ検索（カード名のリストを返す）"""
+        """最適化されたフィルタ検索（カード名のリストを返す）"""
         # 空キーワードまたはデータが空なら即空リスト返却
         if not keywords or not self.data_cache:
             return []
         
-        normalized = [self._normalize_keyword(kw) for kw in keywords]
+        # 複雑なクエリがある場合は事前に分割
+        processed_keywords = []
+        for kw in keywords:
+            if len(kw) > 15 and any(word in kw for word in ["クラス", "コスト", "攻撃", "HP", "かつ", "で"]):
+                # 自然言語クエリと判断して分割
+                split_kws = self._split_query_to_keywords(kw)
+                processed_keywords.extend(split_kws)
+            else:
+                # 通常のキーワードとして処理
+                processed_keywords.append(kw)
+        
+        # 攻撃力キーワードの正規化
+        final_keywords = []
+        for kw in processed_keywords:
+            if '攻撃力' in kw:
+                # 「攻撃力1」を「攻撃1」に変換
+                normalized_kw = kw.replace('攻撃力', '攻撃')
+                final_keywords.append(normalized_kw)
+                if self.debug:
+                    print(f"[DEBUG] 攻撃力キーワード正規化: {kw} -> {normalized_kw}")
+            else:
+                final_keywords.append(kw)
+        
+        normalized = [self._normalize_keyword(kw) for kw in final_keywords]
         expanded = self._split_keywords(normalized)
         if not expanded:
             return []
+
+        if self.debug:
+            print(f"[DEBUG] _filter_search_titles 最終キーワード: {expanded}")
         
+        # パフォーマンス最適化：LLM解析を使わずに高速なフォールバック処理のみ使用
         results = []
         for item in self.data_cache:
-            # 全てのキーワードに対してLLMベースのマッチング判定
+            # 全てのキーワードに対してフォールバック処理でマッチング判定
             match_flags = []
             for kw in expanded:
-                match_result = await self._match_filterable(item, kw)
+                # 高速なフォールバック処理を使用（LLM解析をスキップ）
+                match_result = self._match_filterable_fallback(item, kw)
                 match_flags.append(match_result)
             
             if all(match_flags):
@@ -893,13 +1018,6 @@ cardsテーブル
         if not hasattr(self, "title_to_data") or not self.title_to_data:
             self.reload_data()
         
-        # デバッグ: 渡された引数の詳細情報
-        print(f"[DEBUG] get_card_details_by_titles called with {len(titles)} titles")
-        print(f"[DEBUG] titles type: {type(titles)}")
-        if titles:
-            print(f"[DEBUG] first title type: {type(titles[0])}")
-            print(f"[DEBUG] first title value: {repr(titles[0])}")
-        
         details = []
         for title in titles:
             # 明示的な型確認
@@ -908,9 +1026,6 @@ cardsテーブル
             item = self.title_to_data.get(norm_title)
             if item:
                 details.append(item)
-            else:
-                print(f"[DEBUG] get_card_details_by_titles: not found for title '{title}' (normalized: '{norm_title}')")
-        print(f"[DEBUG] get_card_details_by_titles: found {len(details)} / {len(titles)}")
         return details
 
     def _normalize_title(self, title: str) -> str:
