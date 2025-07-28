@@ -279,6 +279,19 @@ cardsテーブル
             "reasoning": f"モック環境でのクエリ解析: {query}"
         }
     async def filter_search_async(self, keywords: list[str], top_k: int = 10) -> list[str]:
+        # キーワードを自然言語クエリとして結合してLLMベース検索を優先
+        query = " ".join(keywords)
+        
+        # LLMベース検索を実行
+        try:
+            result = await self.filter_search_llm_async(query, top_k)
+            if result:  # LLMで結果が得られた場合
+                return result
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] LLM検索エラー、フォールバックに切り替え: {e}")
+        
+        # フォールバック: 従来の正規表現ベース検索
         result = await self.filter_search_titles_async(keywords, top_k)
         return result
 
@@ -298,7 +311,7 @@ cardsテーブル
         return result
 
     def _filter_search_sync(self, keywords: list[str], top_k: int = 10) -> list[str]:
-        """同期版フィルタ検索（高速フォールバックのみ）"""
+        """同期版フィルタ検索（LLMベースを優先、フォールバックのみ同期）"""
         if not keywords or not self.data_cache:
             return []
         
@@ -318,6 +331,7 @@ cardsテーブル
         if not expanded:
             return []
         
+        # 同期版では正規表現ベースのフォールバック処理のみ使用
         results = []
         for item in self.data_cache:
             # 全てのキーワードに対してフォールバック処理でマッチング判定
@@ -364,11 +378,17 @@ cardsテーブル
         
         if use_llm:
             # LLM解析ベース検索を使用
-            return await self.filter_search_llm_async(query_input, top_k)
-        else:
-            # 従来のキーワード検索を使用（クエリを簡単にキーワードに分割）
-            keywords = self._split_query_to_keywords(query_input)
-            return await self.filter_search_async(keywords, top_k)
+            try:
+                result = await self.filter_search_llm_async(query_input, top_k)
+                if result:  # LLMで結果が得られた場合
+                    return result
+            except Exception as e:
+                if self.debug:
+                    print(f"[DEBUG] LLM検索エラー、正規表現ベースにフォールバック: {e}")
+        
+        # フォールバック: 従来のキーワード検索を使用（クエリを簡単にキーワードに分割）
+        keywords = self._split_query_to_keywords(query_input)
+        return await self.filter_search_titles_async(keywords, top_k)
     
     def _split_query_to_keywords(self, query: str) -> list[str]:
         """クエリを検索可能なキーワードに分割（改善版）"""
@@ -445,9 +465,21 @@ cardsテーブル
                 norm_name = self._normalize_title(str(name))
                 self.title_to_data[norm_name] = item
     async def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
-        """最適化されたフィルタ検索（LLM解析を最小化）"""
+        """最適化されたフィルタ検索（LLMベースを優先）"""
         
-        # 各キーワードに対してLLM解析を1回だけ実行
+        # キーワードを自然言語クエリとして結合
+        query = " ".join(keywords)
+        
+        # まずLLMベース検索を試行
+        try:
+            llm_results = await self._search_filterable_llm(query, top_k)
+            if llm_results:  # LLMで結果が得られた場合
+                return llm_results
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] LLMベース検索エラー、キーワード別解析にフォールバック: {e}")
+        
+        # フォールバック: 各キーワードに対してLLM解析を1回だけ実行
         keyword_analyses = {}
         for kw in keywords:
             try:
@@ -613,12 +645,20 @@ cardsテーブル
             return False
 
     async def _match_filterable(self, item: dict[str, Any], keyword: str) -> bool:
-        """効率化されたフィルタリング判定メソッド（LLM解析は外部で1回のみ実行）"""
+        """効率化されたフィルタリング判定メソッド（LLMベースを優先）"""
         if self.debug:
-            print(f"[DEBUG] _match_filterable (FALLBACK): item={item.get('name', '')}, keyword={keyword}")
+            print(f"[DEBUG] _match_filterable: item={item.get('name', '')}, keyword={keyword}")
         
-        # LLM解析は外部で1回のみ実行されるように変更
-        # ここでは従来の正規表現ベースの高速フォールバック処理のみ実行
+        # まずLLM解析を試行
+        try:
+            query_analysis = await self._analyze_query_with_llm(keyword)
+            if query_analysis:
+                return await self._match_filterable_llm(item, query_analysis)
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] LLM解析エラー、フォールバックに切り替え: {e}")
+        
+        # フォールバック: 従来の正規表現ベースの高速処理
         return self._match_filterable_fallback(item, keyword)
     
     def _match_filterable_fallback(self, item: dict[str, Any], keyword: str) -> bool:
@@ -955,11 +995,27 @@ cardsテーブル
         return 0.0
 
     async def _filter_search_titles(self, keywords: list[str], top_k: int = 10) -> list[str]:
-        """最適化されたフィルタ検索（カード名のリストを返す）"""
+        """最適化されたフィルタ検索（カード名のリストを返す）- LLMベースを優先"""
         # 空キーワードまたはデータが空なら即空リスト返却
         if not keywords or not self.data_cache:
             return []
         
+        # キーワードを自然言語クエリとして結合してLLMベース検索を優先
+        query = " ".join(keywords)
+        
+        # LLMベース検索を試行
+        try:
+            llm_results = await self._search_filterable_llm(query, top_k)
+            if llm_results:
+                # カード名リストに変換
+                card_names = [item.get("name", "") for item in llm_results if item.get("name")]
+                if card_names:
+                    return card_names
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] LLMベース検索エラー、正規表現ベースにフォールバック: {e}")
+        
+        # フォールバック: 従来の正規表現ベース検索
         # 複雑なクエリがある場合は事前に分割
         processed_keywords = []
         for kw in keywords:
@@ -991,7 +1047,7 @@ cardsテーブル
         if self.debug:
             print(f"[DEBUG] _filter_search_titles 最終キーワード: {expanded}")
         
-        # パフォーマンス最適化：LLM解析を使わずに高速なフォールバック処理のみ使用
+        # 正規表現ベースのフォールバック処理
         results = []
         for item in self.data_cache:
             # 全てのキーワードに対してフォールバック処理でマッチング判定
