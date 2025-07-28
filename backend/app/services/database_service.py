@@ -79,8 +79,9 @@ cardsテーブル
 - class: string（クラス）
 - hp: integer（HP・体力）
 - attack: integer（攻撃力）
-- effect: string（効果の説明）
+- effect_1: string（効果の説明）
 - type: string（タイプ・属性）
+- keywords: array（効果キーワードのリスト：ファンファーレ、ラストワード、コンボ等）
 
 【指示】
 ユーザーのクエリから、以下のJSON形式で検索条件を抽出してください。
@@ -102,7 +103,8 @@ cardsテーブル
       "operator": "<以上|以下|等しい|null>"
     },
     "type": "<タイプまたは空文字>",
-    "effect": "<効果キーワードまたは空文字>"
+    "effect": "<効果キーワードまたは空文字>",
+    "keywords": ["<keywordsフィールドで検索するキーワードのリスト>"]
   },
   "reasoning": "抽出理由"
 }
@@ -113,8 +115,9 @@ cardsテーブル
 3. レアリティ：「レジェンド」「ゴールドレア」「シルバーレア」「ブロンズ」「レア」
 4. タイプ・属性：「炎」「水」「草」「電気」「超」「闘」「悪」「鋼」「フェアリー」「タイプ」など
 5. 効果：「進化」「必殺」「守護」「疾走」「突進」「回復」「ドロー」「サーチ」などの効果キーワード
-6. 「ダメージ」「攻撃」は attack フィールドとして扱う
-7. 抽出できない場合は空文字またはnullを設定
+6. keywords：「ファンファーレ」「ラストワード」「コンボ」「覚醒」「土の印」「スペルブースト」「ネクロマンス」「エンハンス」「アクセラレート」「チョイス」「融合」など
+7. 「ダメージ」「攻撃」は attack フィールドとして扱う
+8. 抽出できない場合は空文字またはnullまたは空配列を設定
 
 【例1】
 ユーザー: 「5コストのレジェンドカードを探して」
@@ -137,7 +140,8 @@ cardsテーブル
       "operator": null
     },
     "type": "",
-    "effect": ""
+    "effect": "",
+    "keywords": []
   },
   "reasoning": "5コストの条件とレジェンドレアリティを抽出"
 }
@@ -163,9 +167,37 @@ cardsテーブル
       "operator": "以上"
     },
     "type": "水",
-    "effect": ""
+    "effect": "",
+    "keywords": []
   },
   "reasoning": "ダメージ40以上の条件と水タイプを抽出"
+}
+
+【例3】
+ユーザー: 「ファンファーレ効果を持つエルフカード」
+出力:
+{
+  "conditions": {
+    "name": "",
+    "rarity": "",
+    "cost": {
+      "value": null,
+      "operator": null
+    },
+    "class": "エルフ",
+    "hp": {
+      "value": null,
+      "operator": null
+    },
+    "attack": {
+      "value": null,
+      "operator": null
+    },
+    "type": "",
+    "effect": "",
+    "keywords": ["ファンファーレ"]
+  },
+  "reasoning": "エルフクラスとファンファーレキーワードを抽出"
 }
 
 必ずJSONのみで回答してください。他の文章は含めないでください。
@@ -221,7 +253,8 @@ cardsテーブル
             "hp": {"value": None, "operator": None},
             "attack": {"value": None, "operator": None},
             "type": "",
-            "effect": ""
+            "effect": "",
+            "keywords": []
         }
         
         import re
@@ -267,10 +300,25 @@ cardsテーブル
                 conditions["type"] = card_type
                 break
         
-        # 効果キーワード検出
-        effects = ["進化", "必殺", "守護", "疾走", "突進", "回復", "ドロー", "サーチ", "召喚", "破壊"]
+        # keywordsフィールド用のキーワード検出（疾走・守護などを含む）
+        keyword_effects = [
+            "ファンファーレ", "ラストワード", "コンボ", "覚醒", "土の印", "スペルブースト", 
+            "ネクロマンス", "エンハンス", "アクセラレート", "チョイス", "融合",
+            "疾走", "守護", "突進", "必殺", "潜伏", "進化時", "超進化時", "アクト",
+            "カウントダウン", "バリア", "モード", "土の秘術", "リアニメイト", "攻撃時",
+            "威圧", "オーラ", "ドレイン", "交戦時", "アポカリプスデッキ"
+        ]
+        detected_keywords = []
+        for keyword in keyword_effects:
+            if keyword in query:
+                detected_keywords.append(keyword)
+        if detected_keywords:
+            conditions["keywords"] = detected_keywords
+        
+        # 効果キーワード検出（keywordsフィールドにないもの）
+        effects = ["進化", "回復", "ドロー", "サーチ", "召喚", "破壊"]
         for effect in effects:
-            if effect in query:
+            if effect in query and effect not in detected_keywords:
                 conditions["effect"] = effect
                 break
         
@@ -569,10 +617,34 @@ cardsテーブル
             # 効果条件チェック
             effect_condition = conditions.get("effect", "")
             if effect_condition:
-                item_effect = str(item.get("effect", ""))
+                item_effect = str(item.get("effect_1", ""))  # effect -> effect_1に修正
                 if effect_condition not in item_effect:
                     if self.debug:
                         print(f"[DEBUG] 効果条件不一致: {effect_condition} not in {item_effect}")
+                    return False
+            
+            # keywords条件チェック（新機能）
+            keywords_conditions = conditions.get("keywords", [])
+            if keywords_conditions and isinstance(keywords_conditions, list):
+                item_keywords = item.get("keywords", [])
+                if isinstance(item_keywords, list):
+                    # すべてのkeyword条件がマッチするかチェック
+                    for keyword_condition in keywords_conditions:
+                        keyword_found = False
+                        for item_keyword in item_keywords:
+                            if keyword_condition.lower() in item_keyword.lower() or item_keyword.lower() in keyword_condition.lower():
+                                keyword_found = True
+                                break
+                        if not keyword_found:
+                            if self.debug:
+                                print(f"[DEBUG] keywords条件不一致: '{keyword_condition}' not found in {item_keywords}")
+                            return False
+                    if self.debug:
+                        print(f"[DEBUG] keywords条件一致: {keywords_conditions} found in {item_keywords}")
+                else:
+                    # keywordsフィールドがない場合は条件不一致
+                    if self.debug:
+                        print("[DEBUG] keywords条件不一致: keywordsフィールドがない")
                     return False
             
             # コスト条件チェック
@@ -780,18 +852,44 @@ cardsテーブル
                     print(f"[DEBUG] 攻撃力判定エラー: {e}")
                 return False
         
-        # 効果キーワード判定
+        # keywordsフィールドでの検索（カードの効果キーワード）
+        item_keywords = item.get("keywords", [])
+        if isinstance(item_keywords, list):
+            # keywordsフィールドに直接一致するキーワードがある場合
+            for item_keyword in item_keywords:
+                if keyword.lower() in item_keyword.lower() or item_keyword.lower() in keyword.lower():
+                    if self.debug:
+                        print(f"[DEBUG] keywordsフィールド一致: '{keyword}' <-> '{item_keyword}'")
+                    return True
+            
+            # 部分一致も検索（例：「ファンファーレ」で検索して「ファンファーレ」キーワードを持つカードを見つける）
+            keyword_lower = keyword.lower()
+            for item_keyword in item_keywords:
+                if keyword_lower == item_keyword.lower():
+                    if self.debug:
+                        print(f"[DEBUG] keywords完全一致: '{keyword}' == '{item_keyword}'")
+                    return True
+        
+        # 効果キーワード判定（effect_1フィールドでの検索）
         effect_keywords = [
             "進化", "必殺", "守護", "疾走", "突進", "回復", "ドロー", "サーチ", 
-            "召喚", "破壊", "バフ", "デバフ", "スペル", "アミュレット"
+            "召喚", "破壊", "バフ", "デバフ", "スペル", "アミュレット",
+            "ファンファーレ", "ラストワード", "コンボ", "覚醒", "土の印", "スペルブースト",
+            "ネクロマンス", "エンハンス", "アクセラレート", "チョイス", "融合"
         ]
         for effect_keyword in effect_keywords:
             if effect_keyword in keyword:
-                item_effect = str(item.get("effect", ""))
-                result = (effect_keyword in item_effect)
-                if self.debug:
-                    print(f"[DEBUG] 効果判定: '{effect_keyword}' in '{item_effect}', result={result}")
-                return result
+                # effect_1フィールドでの検索
+                item_effect = str(item.get("effect_1", ""))
+                if effect_keyword in item_effect:
+                    if self.debug:
+                        print(f"[DEBUG] effect_1判定: '{effect_keyword}' in '{item_effect}'")
+                    return True
+                # keywordsフィールドでの検索
+                if isinstance(item_keywords, list) and effect_keyword in item_keywords:
+                    if self.debug:
+                        print(f"[DEBUG] keywords効果判定: '{effect_keyword}' in {item_keywords}")
+                    return True
         
         # デフォルト: 名前部分一致
         name = str(item.get("name", ""))
