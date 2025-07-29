@@ -77,11 +77,16 @@ cardsテーブル
 - rarity: string（レアリティ）
 - cost: integer（コスト）
 - class: string（クラス）
-- hp: integer（HP・体力）
-- attack: integer（攻撃力）
-- effect_1: string（効果の説明）
+- hp: integer（HP・体力 - スペルの場合は存在しない）
+- attack: integer（攻撃力 - スペルの場合は存在しない）
+- effect_1: string（メイン効果）
+- effect_2: string（サブ効果・進化時効果等 - 存在する場合のみ）
+- effect_3: string（追加効果 - 存在する場合のみ）
 - type: string（タイプ・属性）
 - keywords: array（効果キーワードのリスト：ファンファーレ、ラストワード、コンボ等）
+- cv: string（声優名）
+- illustrator: string（イラストレーター名）
+- qa: array（Q&A情報）
 
 【指示】
 ユーザーのクエリから、以下のJSON形式で検索条件を抽出してください。
@@ -104,20 +109,26 @@ cardsテーブル
     },
     "type": "<タイプまたは空文字>",
     "effect": "<効果キーワードまたは空文字>",
-    "keywords": ["<keywordsフィールドで検索するキーワードのリスト>"]
+    "keywords": ["<keywordsフィールドで検索するキーワードのリスト>"],
+    "cv": "<声優名または空文字>",
+    "illustrator": "<イラストレーター名または空文字>",
+    "qa_search": "<Q&A内容での検索キーワードまたは空文字>"
   },
   "reasoning": "抽出理由"
 }
 
 【抽出ルール】
 1. コスト・HP・攻撃力：「5コスト」「HP100以上」「体力50以下」「攻撃40以上」「ダメージ30以上」などから数値と条件を抽出
-2. クラス：「エルフ」「ドラゴン」「ロイヤル」「ウィッチ」「ネクロマンサー」「ビショップ」「ネメシス」「ヴァンパイア」「ニュートラル」
-3. レアリティ：「レジェンド」「ゴールドレア」「シルバーレア」「ブロンズ」「レア」
+2. クラス：「エルフ」「ドラゴン」「ロイヤル」「ウィッチ」「ネクロマンサー」「ビショップ」「ネメシス」「ヴァンパイア」「ニュートラル」「ナイトメア」
+3. レアリティ：「レジェンド」「ゴールドレア」「シルバーレア」「ブロンズレア」
 4. タイプ・属性：「炎」「水」「草」「電気」「超」「闘」「悪」「鋼」「フェアリー」「タイプ」など
 5. 効果：「進化」「必殺」「守護」「疾走」「突進」「回復」「ドロー」「サーチ」などの効果キーワード
 6. keywords：「ファンファーレ」「ラストワード」「コンボ」「覚醒」「土の印」「スペルブースト」「ネクロマンス」「エンハンス」「アクセラレート」「チョイス」「融合」など
 7. 「ダメージ」「攻撃」は attack フィールドとして扱う
-8. 抽出できない場合は空文字またはnullまたは空配列を設定
+8. 声優：「門脇舞以」「日笠陽子」など cv フィールドで検索
+9. イラストレーター：「ツネくん」「やまもも」など illustrator フィールドで検索
+10. Q&A検索：「使い方」「効果の詳細」「ルール」などはqa_searchフィールドで検索
+11. 抽出できない場合は空文字またはnullまたは空配列を設定
 
 【例1】
 ユーザー: 「5コストのレジェンドカードを探して」
@@ -141,7 +152,10 @@ cardsテーブル
     },
     "type": "",
     "effect": "",
-    "keywords": []
+    "keywords": [],
+    "cv": "",
+    "illustrator": "",
+    "qa_search": ""
   },
   "reasoning": "5コストの条件とレジェンドレアリティを抽出"
 }
@@ -168,7 +182,10 @@ cardsテーブル
     },
     "type": "水",
     "effect": "",
-    "keywords": []
+    "keywords": [],
+    "cv": "",
+    "illustrator": "",
+    "qa_search": ""
   },
   "reasoning": "ダメージ40以上の条件と水タイプを抽出"
 }
@@ -195,9 +212,42 @@ cardsテーブル
     },
     "type": "",
     "effect": "",
-    "keywords": ["ファンファーレ"]
+    "keywords": ["ファンファーレ"],
+    "cv": "",
+    "illustrator": "",
+    "qa_search": ""
   },
   "reasoning": "エルフクラスとファンファーレキーワードを抽出"
+}
+
+【例4】
+ユーザー: 「門脇舞以が声優のカードの使い方を教えて」
+出力:
+{
+  "conditions": {
+    "name": "",
+    "rarity": "",
+    "cost": {
+      "value": null,
+      "operator": null
+    },
+    "class": "",
+    "hp": {
+      "value": null,
+      "operator": null
+    },
+    "attack": {
+      "value": null,
+      "operator": null
+    },
+    "type": "",
+    "effect": "",
+    "keywords": [],
+    "cv": "門脇舞以",
+    "illustrator": "",
+    "qa_search": "使い方"
+  },
+  "reasoning": "声優条件とQ&A検索条件を抽出"
 }
 
 必ずJSONのみで回答してください。他の文章は含めないでください。
@@ -254,7 +304,10 @@ cardsテーブル
             "attack": {"value": None, "operator": None},
             "type": "",
             "effect": "",
-            "keywords": []
+            "keywords": [],
+            "cv": "",
+            "illustrator": "",
+            "qa_search": ""
         }
         
         import re
@@ -280,14 +333,14 @@ cardsテーブル
             conditions["attack"] = {"value": attack_val, "operator": operator}
         
         # クラス検出
-        classes = ["エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー", "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル"]
+        classes = ["エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー", "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル", "ナイトメア"]
         for cls in classes:
             if cls in query:
                 conditions["class"] = cls
                 break
         
         # レアリティ検出
-        rarities = ["レジェンド", "ゴールドレア", "シルバーレア", "ブロンズ", "レア"]
+        rarities = ["レジェンド", "ゴールドレア", "シルバーレア", "ブロンズレア"]
         for rarity in rarities:
             if rarity in query:
                 conditions["rarity"] = rarity
@@ -322,11 +375,36 @@ cardsテーブル
                 conditions["effect"] = effect
                 break
         
+        # 声優検出
+        cv_names = ["門脇舞以", "日笠陽子", "内田雄馬", "辻あゆみ", "潘めぐみ"]
+        for cv in cv_names:
+            if cv in query:
+                conditions["cv"] = cv
+                break
+        
+        # イラストレーター検出
+        illustrator_names = ["ツネくん", "やまもも", "伊吹つくば", "misekiss", "言犬", "林", "りょうへい", "あかかがち"]
+        for illustrator in illustrator_names:
+            if illustrator in query:
+                conditions["illustrator"] = illustrator
+                break
+        
+        # Q&A検索検出
+        qa_keywords = ["使い方", "効果", "ルール", "働く", "できる", "プレイ", "場合", "とき"]
+        for qa_keyword in qa_keywords:
+            if qa_keyword in query:
+                conditions["qa_search"] = qa_keyword
+                break
+        
         return {
             "conditions": conditions,
             "reasoning": f"モック環境でのクエリ解析: {query}"
         }
     async def filter_search_async(self, keywords: list[str], top_k: int = 10) -> list[str]:
+        # 空キーワードまたはデータが空なら即空リスト返却
+        if not keywords or not self.data_cache:
+            return []
+            
         # キーワードを自然言語クエリとして結合してLLMベース検索を優先
         query = " ".join(keywords)
         
@@ -345,6 +423,10 @@ cardsテーブル
 
     async def filter_search_llm_async(self, query: str, top_k: int = 10) -> list[str]:
         """LLMベースのフィルタ検索（カード名リストを返す）"""
+        
+        # データが空なら即空リスト返却
+        if not self.data_cache:
+            return []
         
         # LLMベースの検索を実行
         results = await self._search_filterable_llm(query, top_k)
@@ -444,7 +526,7 @@ cardsテーブル
         keywords = []
         
         # 1. クラス名を抽出
-        classes = ["エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー", "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル"]
+        classes = ["エルフ", "ドラゴン", "ロイヤル", "ウィッチ", "ネクロマンサー", "ビショップ", "ネメシス", "ヴァンパイア", "ニュートラル", "ナイトメア"]
         for cls in classes:
             if cls in query:
                 keywords.append(cls)
@@ -491,7 +573,7 @@ cardsテーブル
                 break
         
         # 5. レアリティを抽出
-        rarities = ["レジェンド", "ゴールドレア", "シルバーレア", "ブロンズ", "レア"]
+        rarities = ["レジェンド", "ゴールドレア", "シルバーレア", "ブロンズレア"]
         for rarity in rarities:
             if rarity in query:
                 keywords.append(rarity)
@@ -617,11 +699,31 @@ cardsテーブル
             # 効果条件チェック
             effect_condition = conditions.get("effect", "")
             if effect_condition:
-                item_effect = str(item.get("effect_1", ""))  # effect -> effect_1に修正
-                if effect_condition not in item_effect:
+                # effect_1, effect_2, effect_3すべてで検索
+                effect_found = False
+                for effect_field in ["effect_1", "effect_2", "effect_3"]:
+                    item_effect = str(item.get(effect_field, ""))
+                    if effect_condition in item_effect:
+                        effect_found = True
+                        break
+                if not effect_found:
                     if self.debug:
-                        print(f"[DEBUG] 効果条件不一致: {effect_condition} not in {item_effect}")
+                        print(f"[DEBUG] 効果条件不一致: {effect_condition} not found in effects")
                     return False
+            
+            # 声優条件チェック
+            cv_condition = conditions.get("cv", "")
+            if cv_condition and str(item.get("cv", "")) != cv_condition:
+                if self.debug:
+                    print(f"[DEBUG] 声優条件不一致: {item.get('cv', '')} != {cv_condition}")
+                return False
+            
+            # イラストレーター条件チェック
+            illustrator_condition = conditions.get("illustrator", "")
+            if illustrator_condition and str(item.get("illustrator", "")) != illustrator_condition:
+                if self.debug:
+                    print(f"[DEBUG] イラストレーター条件不一致: {item.get('illustrator', '')} != {illustrator_condition}")
+                return False
             
             # keywords条件チェック（新機能）
             keywords_conditions = conditions.get("keywords", [])
@@ -707,6 +809,24 @@ cardsテーブル
                         print(f"[DEBUG] 攻撃力条件不一致: {item_attack} > {attack_value}")
                     return False
             
+            # Q&A検索条件チェック
+            qa_search_condition = conditions.get("qa_search", "")
+            if qa_search_condition:
+                qa_data = item.get("qa", [])
+                qa_found = False
+                if isinstance(qa_data, list):
+                    for qa in qa_data:
+                        if isinstance(qa, dict):
+                            question = str(qa.get("question", ""))
+                            answer = str(qa.get("answer", ""))
+                            if qa_search_condition in question or qa_search_condition in answer:
+                                qa_found = True
+                                break
+                if not qa_found:
+                    if self.debug:
+                        print(f"[DEBUG] Q&A条件不一致: '{qa_search_condition}' not found in Q&A data")
+                    return False
+            
             if self.debug:
                 print(f"[DEBUG] 全条件一致: {item.get('name', '')}")
             return True
@@ -775,7 +895,7 @@ cardsテーブル
         
         # レアリティ条件判定
         rarity_names = [
-            "レジェンド", "ゴールドレア", "シルバーレア", "ブロンズ", "レア"
+            "レジェンド", "ゴールドレア", "シルバーレア", "ブロンズレア"
         ]
         if keyword in rarity_names:
             item_rarity = str(item.get("rarity", ""))
@@ -870,7 +990,7 @@ cardsテーブル
                         print(f"[DEBUG] keywords完全一致: '{keyword}' == '{item_keyword}'")
                     return True
         
-        # 効果キーワード判定（effect_1フィールドでの検索）
+        # 効果キーワード判定（effect_1, effect_2, effect_3フィールドでの検索）
         effect_keywords = [
             "進化", "必殺", "守護", "疾走", "突進", "回復", "ドロー", "サーチ", 
             "召喚", "破壊", "バフ", "デバフ", "スペル", "アミュレット",
@@ -879,16 +999,37 @@ cardsテーブル
         ]
         for effect_keyword in effect_keywords:
             if effect_keyword in keyword:
-                # effect_1フィールドでの検索
-                item_effect = str(item.get("effect_1", ""))
-                if effect_keyword in item_effect:
-                    if self.debug:
-                        print(f"[DEBUG] effect_1判定: '{effect_keyword}' in '{item_effect}'")
-                    return True
+                # effect_1, effect_2, effect_3フィールドでの検索
+                for effect_field in ["effect_1", "effect_2", "effect_3"]:
+                    item_effect = str(item.get(effect_field, ""))
+                    if effect_keyword in item_effect:
+                        if self.debug:
+                            print(f"[DEBUG] {effect_field}判定: '{effect_keyword}' in '{item_effect}'")
+                        return True
                 # keywordsフィールドでの検索
                 if isinstance(item_keywords, list) and effect_keyword in item_keywords:
                     if self.debug:
                         print(f"[DEBUG] keywords効果判定: '{effect_keyword}' in {item_keywords}")
+                    return True
+        
+        # 声優名判定
+        cv_names = ["門脇舞以", "日笠陽子", "内田雄馬", "辻あゆみ", "潘めぐみ"]
+        for cv_name in cv_names:
+            if cv_name in keyword:
+                item_cv = str(item.get("cv", ""))
+                if cv_name in item_cv:
+                    if self.debug:
+                        print(f"[DEBUG] 声優判定: '{cv_name}' in '{item_cv}'")
+                    return True
+        
+        # イラストレーター名判定
+        illustrator_names = ["ツネくん", "やまもも", "伊吹つくば", "misekiss", "言犬", "林", "りょうへい", "あかかがち"]
+        for illustrator_name in illustrator_names:
+            if illustrator_name in keyword:
+                item_illustrator = str(item.get("illustrator", ""))
+                if illustrator_name in item_illustrator:
+                    if self.debug:
+                        print(f"[DEBUG] イラストレーター判定: '{illustrator_name}' in '{item_illustrator}'")
                     return True
         
         # デフォルト: 名前部分一致
@@ -897,6 +1038,18 @@ cardsテーブル
             if self.debug:
                 print(f"[DEBUG] 名前部分一致: {keyword} in {name}")
             return True
+        
+        # Q&Aデータでの検索（自然言語クエリに有効）
+        qa_data = item.get("qa", [])
+        if isinstance(qa_data, list):
+            for qa in qa_data:
+                if isinstance(qa, dict):
+                    question = str(qa.get("question", ""))
+                    answer = str(qa.get("answer", ""))
+                    if keyword in question or keyword in answer:
+                        if self.debug:
+                            print(f"[DEBUG] Q&A一致: '{keyword}' found in Q&A")
+                        return True
         
         if self.debug:
             print(f"[DEBUG] マッチしなかった: {keyword}")
@@ -1002,7 +1155,7 @@ cardsテーブル
                 cond = m.group(2) or '以上'  # デフォルトは「以上」
                 damage_conditions.append((value, cond))
         if has_damage_keyword and damage_conditions and not hp_matched:
-            for ef in ["effect_1", "effect_2", "effect_3"]:
+            for ef in ["effect_1", "effect_2", "effect_3", "effect_4", "effect_5"]:
                 if ef in item and item[ef]:
                     m = re.search(r"(\d+)ダメージ", str(item[ef]))
                     if m:
@@ -1069,7 +1222,9 @@ cardsテーブル
 
     def _build_searchable_text(self, item: Dict[str, Any]) -> str:
         fields = [
-            "id", "name", "class", "rarity", "cost", "attack", "hp", "effect_1", "effect_2", "effect_3", "cv", "illustrator", "crest"
+            "id", "name", "class", "rarity", "cost", "attack", "hp", "type", 
+            "effect_1", "effect_2", "effect_3", "effect_4", "effect_5", 
+            "cv", "illustrator", "crest"
         ]
         text = []
         for field in fields:

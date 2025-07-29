@@ -242,6 +242,9 @@ class TestDatabaseService:
     async def test_filter_search_with_empty_data(self, database_service, monkeypatch):
         """データなしでの検索テスト"""
         monkeypatch.setattr(database_service, "_load_data", lambda: [])
+        # data_cacheもリセットする
+        database_service.data_cache = []
+        database_service.title_to_data = {}
         results = await database_service.filter_search_async(["HP", "100以上"], top_k=5)
         # データが空なので0件が正
         assert len(results) == 0
