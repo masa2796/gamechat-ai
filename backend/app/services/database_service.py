@@ -308,12 +308,16 @@ cardsテーブル
                 max_tokens=500
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            if content is None:
+                return {}
+            
+            content = content.strip()
             if self.debug:
                 print(f"[DEBUG] LLM Response: {content}")
             
             # JSONをパース
-            analysis_result = json.loads(content)
+            analysis_result: dict[str, Any] = json.loads(content)
             return analysis_result
             
         except Exception as e:
@@ -648,7 +652,7 @@ cardsテーブル
         if not hasattr(self, "data_cache") or not self.data_cache:
             self.reload_data()
             
-        issues = {
+        issues: dict[str, list[str]] = {
             "missing_fields": [],
             "invalid_values": [],
             "duplicate_ids": [],
@@ -727,7 +731,7 @@ cardsテーブル
             except Exception as e:
                 if self.debug:
                     print(f"[DEBUG] キーワード解析エラー: {kw}, {e}")
-                keyword_analyses[kw] = None
+                keyword_analyses[kw] = {}
         
         results = []
         for item in self.data_cache:
@@ -1631,7 +1635,7 @@ cardsテーブル
         if not hasattr(self, "data_cache") or not self.data_cache:
             self.reload_data()
             
-        stats = {
+        stats: dict[str, Any] = {
             "total_cards": len(self.data_cache),
             "classes": {},
             "rarities": {},
@@ -1643,16 +1647,22 @@ cardsテーブル
         for item in self.data_cache:
             # クラス統計
             class_name = str(item.get("class", "不明"))
-            stats["classes"][class_name] = stats["classes"].get(class_name, 0) + 1
+            classes_dict = stats["classes"]
+            assert isinstance(classes_dict, dict)
+            classes_dict[class_name] = classes_dict.get(class_name, 0) + 1
             
             # レアリティ統計
             rarity = str(item.get("rarity", "不明"))
-            stats["rarities"][rarity] = stats["rarities"].get(rarity, 0) + 1
+            rarities_dict = stats["rarities"]
+            assert isinstance(rarities_dict, dict)
+            rarities_dict[rarity] = rarities_dict.get(rarity, 0) + 1
             
             # コスト統計
             try:
                 cost = int(item.get("cost", 0))
-                stats["cost_distribution"][cost] = stats["cost_distribution"].get(cost, 0) + 1
+                cost_dist_dict = stats["cost_distribution"]
+                assert isinstance(cost_dist_dict, dict)
+                cost_dist_dict[cost] = cost_dist_dict.get(cost, 0) + 1
             except (ValueError, TypeError):
                 pass
                 
@@ -1660,8 +1670,10 @@ cardsテーブル
             try:
                 hp = int(item.get("hp", 0))
                 if hp > 0:
-                    stats["hp_range"]["min"] = min(stats["hp_range"]["min"], hp)
-                    stats["hp_range"]["max"] = max(stats["hp_range"]["max"], hp)
+                    hp_range_dict = stats["hp_range"]
+                    assert isinstance(hp_range_dict, dict)
+                    hp_range_dict["min"] = min(hp_range_dict["min"], hp)
+                    hp_range_dict["max"] = max(hp_range_dict["max"], hp)
             except (ValueError, TypeError):
                 pass
                 
@@ -1669,16 +1681,23 @@ cardsテーブル
             try:
                 attack = int(item.get("attack", 0))
                 if attack > 0:
-                    stats["attack_range"]["min"] = min(stats["attack_range"]["min"], attack)
-                    stats["attack_range"]["max"] = max(stats["attack_range"]["max"], attack)
+                    attack_range_dict = stats["attack_range"]
+                    assert isinstance(attack_range_dict, dict)
+                    attack_range_dict["min"] = min(attack_range_dict["min"], attack)
+                    attack_range_dict["max"] = max(attack_range_dict["max"], attack)
             except (ValueError, TypeError):
                 pass
         
         # 無限大値の修正
-        if stats["hp_range"]["min"] == float("inf"):
-            stats["hp_range"]["min"] = 0
-        if stats["attack_range"]["min"] == float("inf"):
-            stats["attack_range"]["min"] = 0
+        hp_range_dict = stats["hp_range"]
+        assert isinstance(hp_range_dict, dict)
+        if hp_range_dict["min"] == float("inf"):
+            hp_range_dict["min"] = 0
+        
+        attack_range_dict = stats["attack_range"]
+        assert isinstance(attack_range_dict, dict)
+        if attack_range_dict["min"] == float("inf"):
+            attack_range_dict["min"] = 0
             
         return stats
 
