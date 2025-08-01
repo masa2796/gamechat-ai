@@ -32,8 +32,6 @@ export const useChat = () => {
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
-  // context（カード詳細jsonリスト）を保持
-  const [cardContext, setCardContext] = useState<import("../../types/rag").RagContextItem[] | undefined>(undefined);
 
   // 送信モードの初期化
   useEffect(() => {
@@ -72,18 +70,39 @@ export const useChat = () => {
   // メッセージ送信ロジック
   const sendMessage = useCallback(async () => {
     if (!input.trim() || loading) return;
-    const userMessage: Message = { role: "user", content: input.trim() };
+    const userMessage: Message = { 
+      id: `user_${Date.now()}`,
+      role: "user", 
+      content: input.trim() 
+    };
     setLoading(true);
     setInput("");
 
+    console.log(`[useChat] ユーザーメッセージ送信前のメッセージ数: ${messages.length}`);
+    
     // 「サンプル出力」ならCardListを表示する特殊メッセージを追加
     if (input.trim() === "サンプル出力") {
-      setMessages(prev => [...prev, userMessage, { role: "assistant", content: "__show_sample_cards__" }]);
+      console.log(`[useChat] サンプル出力モード`);
+      setMessages(prev => {
+        const sampleMessage: Message = { 
+          id: `assistant_sample_${Date.now()}`,
+          role: "assistant", 
+          content: "__show_sample_cards__" 
+        };
+        const newMessages = [...prev, userMessage, sampleMessage];
+        console.log(`[useChat] サンプル出力後のメッセージ数: ${newMessages.length}`);
+        return newMessages;
+      });
       setLoading(false);
       return;
     }
 
-    setMessages(prev => [...prev, userMessage]);
+    console.log(`[useChat] 通常メッセージ送信`);
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage];
+      console.log(`[useChat] ユーザーメッセージ追加後: ${newMessages.length}件`);
+      return newMessages;
+    });
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL 
       ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
@@ -112,11 +131,11 @@ export const useChat = () => {
           // reCAPTCHAエラー時の処理
           const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : "reCAPTCHAの処理中にエラーが発生しました";
           const assistantMessage: Message = { 
+            id: `assistant_recaptcha_error_${Date.now()}`,
             role: "assistant", 
             content: `申し訳ありませんが、セキュリティ認証でエラーが発生しました: ${errorMessage}` 
           };
           setMessages(prev => [...prev, assistantMessage]);
-          setCardContext(undefined);
           setLoading(false);
           return;
         }
@@ -150,17 +169,22 @@ export const useChat = () => {
       
       // 正常な応答の場合、answerを使ってassistantメッセージを追加
       const assistantMessage: Message = { 
+        id: `assistant_${Date.now()}`,
         role: "assistant", 
-        content: data.answer || "応答を受け取りました。" 
+        content: data.answer || "応答を受け取りました。",
+        cardContext: Array.isArray(data.context) && typeof data.context[0] === "object" ? data.context : undefined
       };
-      setMessages(prev => [...prev, assistantMessage]);
       
-      // context（カード詳細jsonリスト）をstateに格納
-      if (Array.isArray(data.context) && typeof data.context[0] === "object") {
-        setCardContext(data.context);
-      } else {
-        setCardContext(undefined);
-      }
+      console.log(`[useChat] API応答受信 - cardContext: ${assistantMessage.cardContext?.length || 0}件`);
+      
+      setMessages(prev => {
+        const newMessages = [...prev, assistantMessage];
+        console.log(`[useChat] API応答後のメッセージ数: ${newMessages.length}`);
+        newMessages.forEach((msg, idx) => {
+          console.log(`[useChat] メッセージ${idx}: role=${msg.role}, cardContext=${msg.cardContext?.length || 0}件`);
+        });
+        return newMessages;
+      });
     } catch (error) {
       // APIエラー時の処理
       console.error(error);
@@ -178,15 +202,15 @@ export const useChat = () => {
       }
       
       const assistantMessage: Message = { 
+        id: `assistant_error_${Date.now()}`,
         role: "assistant", 
         content: errorMessage 
       };
       setMessages(prev => [...prev, assistantMessage]);
-      setCardContext(undefined);
     } finally {
       setLoading(false);
     }
-  }, [input, loading, recaptchaReady]);
+  }, [input, loading, recaptchaReady, messages.length]);
 
   return {
     messages,
@@ -197,8 +221,6 @@ export const useChat = () => {
     setSendMode,
     sendMessage,
     recaptchaReady,
-    setRecaptchaReady,
-    cardContext,
-    setCardContext
+    setRecaptchaReady
   };
 };

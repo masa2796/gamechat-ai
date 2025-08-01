@@ -621,15 +621,87 @@ cardsテーブル
         """
         データを再読み込みし、キャッシュとtitle_to_dataを構築
         """
-        data = self._load_data()
-        self.data_cache = data
-        self.title_to_data = {}
-        for item in data:
-            # nameフィールドがキー（正規化処理を強化）
-            name = item.get("name")
-            if name:
-                norm_name = self._normalize_title(str(name))
-                self.title_to_data[norm_name] = item
+        try:
+            data = self._load_data()
+            self.data_cache = data
+            self.title_to_data = {}
+            
+            # インデックス構築
+            for item in data:
+                # nameフィールドがキー（正規化処理を強化）
+                name = item.get("name")
+                if name:
+                    norm_name = self._normalize_title(str(name))
+                    self.title_to_data[norm_name] = item
+                    
+            if self.debug:
+                print(f"[DEBUG] データリロード完了: {len(data)}件のカード, {len(self.title_to_data)}件のインデックス")
+                
+        except Exception as e:
+            print(f"[ERROR] データリロード失敗: {e}")
+            self.data_cache = []
+            self.title_to_data = {}
+            raise DatabaseServiceException(f"データベースの初期化に失敗しました: {e}")
+
+    def validate_data_integrity(self) -> dict[str, Any]:
+        """データ整合性チェック"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        issues = {
+            "missing_fields": [],
+            "invalid_values": [],
+            "duplicate_ids": [],
+            "duplicate_names": []
+        }
+        
+        seen_ids = set()
+        seen_names = set()
+        required_fields = ["id", "name", "class", "rarity", "cost"]
+        
+        for i, item in enumerate(self.data_cache):
+            # 必須フィールドチェック
+            for field in required_fields:
+                if field not in item or item[field] is None or str(item[field]).strip() == "":
+                    issues["missing_fields"].append(f"項目{i}: {field}フィールドが不正")
+            
+            # 数値フィールドチェック
+            for field in ["cost", "hp", "attack"]:
+                if field in item and item[field] is not None:
+                    try:
+                        int(item[field])
+                    except (ValueError, TypeError):
+                        issues["invalid_values"].append(f"項目{i}: {field}={item[field]}は数値ではない")
+            
+            # ID重複チェック
+            card_id = str(item.get("id", ""))
+            if card_id in seen_ids:
+                issues["duplicate_ids"].append(f"項目{i}: ID {card_id} が重複")
+            seen_ids.add(card_id)
+            
+            # 名前重複チェック
+            name = str(item.get("name", ""))
+            if name in seen_names:
+                issues["duplicate_names"].append(f"項目{i}: 名前 {name} が重複")
+            seen_names.add(name)
+        
+        return {
+            "total_cards": len(self.data_cache),
+            "issues_found": sum(len(v) for v in issues.values()),
+            "details": issues
+        }
+
+    def get_cache_info(self) -> dict[str, Any]:
+        """キャッシュ情報取得"""
+        return {
+            "data_cache_loaded": hasattr(self, "data_cache") and self.data_cache is not None,
+            "data_cache_size": len(self.data_cache) if hasattr(self, "data_cache") and self.data_cache else 0,
+            "title_to_data_loaded": hasattr(self, "title_to_data") and self.title_to_data is not None,
+            "title_to_data_size": len(self.title_to_data) if hasattr(self, "title_to_data") and self.title_to_data else 0,
+            "data_path": self.data_path,
+            "debug_mode": self.debug,
+            "llm_mocked": self.is_mocked
+        }
     async def _search_filterable(self, keywords: list[str], top_k: int = 10) -> list[dict[str, Any]]:
         """最適化されたフィルタ検索（LLMベースを優先）"""
         
@@ -1373,6 +1445,125 @@ cardsテーブル
                 details.append(item)
         return details
 
+    def get_card_by_id(self, card_id: str) -> Optional[dict[str, Any]]:
+        """IDによるカード詳細取得"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+        
+        for item in self.data_cache:
+            if str(item.get("id", "")) == str(card_id):
+                return item
+        return None
+
+    def get_all_cards(self, limit: Optional[int] = None, offset: int = 0) -> list[dict[str, Any]]:
+        """全カード取得（ページネーション対応）"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+        
+        if limit is None:
+            return self.data_cache[offset:]
+        return self.data_cache[offset:offset + limit]
+
+    def get_total_card_count(self) -> int:
+        """総カード数取得"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+        return len(self.data_cache)
+
+    def search_by_filters(self, 
+                         class_filter: Optional[str] = None,
+                         rarity_filter: Optional[str] = None,
+                         cost_min: Optional[int] = None,
+                         cost_max: Optional[int] = None,
+                         hp_min: Optional[int] = None,
+                         hp_max: Optional[int] = None,
+                         attack_min: Optional[int] = None,
+                         attack_max: Optional[int] = None,
+                         type_filter: Optional[str] = None,
+                         keywords_filter: Optional[list[str]] = None,
+                         limit: Optional[int] = None,
+                         offset: int = 0) -> list[dict[str, Any]]:
+        """高度なフィルタ検索"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+        
+        results = []
+        for item in self.data_cache:
+            # クラスフィルタ
+            if class_filter and str(item.get("class", "")) != class_filter:
+                continue
+                
+            # レアリティフィルタ
+            if rarity_filter and str(item.get("rarity", "")) != rarity_filter:
+                continue
+                
+            # コストフィルタ
+            if cost_min is not None or cost_max is not None:
+                try:
+                    cost = int(item.get("cost", 0))
+                    if cost_min is not None and cost < cost_min:
+                        continue
+                    if cost_max is not None and cost > cost_max:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                    
+            # HPフィルタ
+            if hp_min is not None or hp_max is not None:
+                try:
+                    hp = int(item.get("hp", 0))
+                    if hp_min is not None and hp < hp_min:
+                        continue
+                    if hp_max is not None and hp > hp_max:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                    
+            # 攻撃力フィルタ
+            if attack_min is not None or attack_max is not None:
+                try:
+                    attack = int(item.get("attack", 0))
+                    if attack_min is not None and attack < attack_min:
+                        continue
+                    if attack_max is not None and attack > attack_max:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                    
+            # タイプフィルタ
+            if type_filter:
+                item_type = str(item.get("type", ""))
+                if type_filter not in item_type:
+                    continue
+                    
+            # キーワードフィルタ
+            if keywords_filter:
+                item_keywords = item.get("keywords", [])
+                if not isinstance(item_keywords, list):
+                    continue
+                for keyword in keywords_filter:
+                    if not any(keyword.lower() in str(k).lower() for k in item_keywords):
+                        continue
+                        
+            results.append(item)
+            
+        # ページネーション適用
+        if limit is None:
+            return results[offset:]
+        return results[offset:offset + limit]
+
+    def get_random_cards(self, count: int = 5) -> list[dict[str, Any]]:
+        """ランダムカード取得"""
+        import random
+        
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        if count >= len(self.data_cache):
+            return self.data_cache.copy()
+            
+        return random.sample(self.data_cache, count)
+
     def _normalize_title(self, title: str) -> str:
         """
         カード名の正規化（空白・全角スペース・改行・記号除去など）
@@ -1384,3 +1575,165 @@ cardsテーブル
         normalized = re.sub(r"[（）()・・]+", "", normalized)   # 一部記号除去
         normalized = normalized.replace("　", "")
         return normalized
+
+    def bulk_get_card_details(self, identifiers: list[str], by_field: str = "id") -> list[dict[str, Any]]:
+        """複数カードの一括取得（IDまたは名前で検索）"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        results = []
+        for identifier in identifiers:
+            found = False
+            for item in self.data_cache:
+                if by_field == "id" and str(item.get("id", "")) == str(identifier):
+                    results.append(item)
+                    found = True
+                    break
+                elif by_field == "name":
+                    norm_identifier = self._normalize_title(str(identifier))
+                    norm_item_name = self._normalize_title(str(item.get("name", "")))
+                    if norm_identifier == norm_item_name:
+                        results.append(item)
+                        found = True
+                        break
+            if not found and self.debug:
+                print(f"[DEBUG] カードが見つかりません: {identifier} (by_{by_field})")
+        return results
+
+    def get_cards_by_class(self, class_name: str, limit: Optional[int] = None) -> list[dict[str, Any]]:
+        """クラス別カード取得"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        results = []
+        for item in self.data_cache:
+            if str(item.get("class", "")) == class_name:
+                results.append(item)
+                if limit and len(results) >= limit:
+                    break
+        return results
+
+    def get_cards_by_rarity(self, rarity: str, limit: Optional[int] = None) -> list[dict[str, Any]]:
+        """レアリティ別カード取得"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        results = []
+        for item in self.data_cache:
+            if str(item.get("rarity", "")) == rarity:
+                results.append(item)
+                if limit and len(results) >= limit:
+                    break
+        return results
+
+    def get_statistics(self) -> dict[str, Any]:
+        """データベース統計情報取得"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        stats = {
+            "total_cards": len(self.data_cache),
+            "classes": {},
+            "rarities": {},
+            "cost_distribution": {},
+            "hp_range": {"min": float("inf"), "max": 0},
+            "attack_range": {"min": float("inf"), "max": 0}
+        }
+        
+        for item in self.data_cache:
+            # クラス統計
+            class_name = str(item.get("class", "不明"))
+            stats["classes"][class_name] = stats["classes"].get(class_name, 0) + 1
+            
+            # レアリティ統計
+            rarity = str(item.get("rarity", "不明"))
+            stats["rarities"][rarity] = stats["rarities"].get(rarity, 0) + 1
+            
+            # コスト統計
+            try:
+                cost = int(item.get("cost", 0))
+                stats["cost_distribution"][cost] = stats["cost_distribution"].get(cost, 0) + 1
+            except (ValueError, TypeError):
+                pass
+                
+            # HP範囲
+            try:
+                hp = int(item.get("hp", 0))
+                if hp > 0:
+                    stats["hp_range"]["min"] = min(stats["hp_range"]["min"], hp)
+                    stats["hp_range"]["max"] = max(stats["hp_range"]["max"], hp)
+            except (ValueError, TypeError):
+                pass
+                
+            # 攻撃力範囲
+            try:
+                attack = int(item.get("attack", 0))
+                if attack > 0:
+                    stats["attack_range"]["min"] = min(stats["attack_range"]["min"], attack)
+                    stats["attack_range"]["max"] = max(stats["attack_range"]["max"], attack)
+            except (ValueError, TypeError):
+                pass
+        
+        # 無限大値の修正
+        if stats["hp_range"]["min"] == float("inf"):
+            stats["hp_range"]["min"] = 0
+        if stats["attack_range"]["min"] == float("inf"):
+            stats["attack_range"]["min"] = 0
+            
+        return stats
+
+    def search_cards_with_pagination(self, 
+                                   query: str = "", 
+                                   page: int = 1, 
+                                   page_size: int = 20,
+                                   sort_by: str = "name",
+                                   sort_order: str = "asc") -> dict[str, Any]:
+        """ページネーション付き検索"""
+        if not hasattr(self, "data_cache") or not self.data_cache:
+            self.reload_data()
+            
+        # 検索実行
+        if query:
+            # 簡単な文字列検索
+            filtered_cards = []
+            query_lower = query.lower()
+            for item in self.data_cache:
+                if (query_lower in str(item.get("name", "")).lower() or
+                    query_lower in str(item.get("effect_1", "")).lower() or
+                    query_lower in str(item.get("effect_2", "")).lower() or
+                    query_lower in str(item.get("class", "")).lower() or
+                    query_lower in str(item.get("type", "")).lower()):
+                    filtered_cards.append(item)
+        else:
+            filtered_cards = self.data_cache.copy()
+        
+        # ソート
+        if sort_by in ["name", "cost", "hp", "attack", "class", "rarity"]:
+            reverse = (sort_order == "desc")
+            try:
+                if sort_by in ["cost", "hp", "attack"]:
+                    filtered_cards.sort(key=lambda x: int(x.get(sort_by, 0)), reverse=reverse)
+                else:
+                    filtered_cards.sort(key=lambda x: str(x.get(sort_by, "")), reverse=reverse)
+            except Exception as e:
+                if self.debug:
+                    print(f"[DEBUG] ソートエラー: {e}")
+        
+        # ページネーション計算
+        total_count = len(filtered_cards)
+        total_pages = (total_count + page_size - 1) // page_size
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        page_cards = filtered_cards[start_index:end_index]
+        
+        return {
+            "cards": page_cards,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
+        }

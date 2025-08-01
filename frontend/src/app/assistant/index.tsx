@@ -17,7 +17,6 @@ const AssistantPage: React.FC = () => {
   const sendMode = chat.sendMode || "enter";
   const setSendMode = chat.setSendMode || (() => {});
   const sendMessage = chat.sendMessage || (() => {});
-  const cardContext = chat.cardContext;
 
   return (
     <div className="chat-bg min-h-screen w-screen overflow-x-hidden">
@@ -32,7 +31,7 @@ const AssistantPage: React.FC = () => {
             {/* チャット出力エリア */}
             <div id="chat-area" className="chat-area bg-white rounded-[10px] shadow-[0_2px_8px_#0001] flex flex-col overflow-hidden relative" style={{height: 'calc(100vh - 7rem - 20px)'}}>
               <div className="chat-messages-scroll flex-1 overflow-y-auto p-6">
-                <ChatMessages messages={messages} loading={loading} cardContext={cardContext} />
+                <ChatMessages messages={messages} loading={loading} />
               </div>
             </div>
           {/* 入力欄を画面最下部に固定 */}
