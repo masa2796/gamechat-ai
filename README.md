@@ -514,7 +514,7 @@ npm run lint
 
 # 型チェック
 cd frontend && npm run typecheck
-cd backend && mypy app/
+cd backend && mypy app/ 
 
 # セキュリティチェック
 npm run security-check

@@ -17,6 +17,7 @@ const AssistantPage: React.FC = () => {
   const sendMode = chat.sendMode || "enter";
   const setSendMode = chat.setSendMode || (() => {});
   const sendMessage = chat.sendMessage || (() => {});
+  const clearHistory = chat.clearHistory || (() => {});
 
   return (
     <div className="chat-bg min-h-screen w-screen overflow-x-hidden">
@@ -30,6 +31,19 @@ const AssistantPage: React.FC = () => {
           <div className="chat-container w-full max-w-[900px] mx-auto flex flex-col h-full relative">
             {/* チャット出力エリア */}
             <div id="chat-area" className="chat-area bg-white rounded-[10px] shadow-[0_2px_8px_#0001] flex flex-col overflow-hidden relative" style={{height: 'calc(100vh - 7rem - 20px)'}}>
+              {/* チャットヘッダー */}
+              <div className="chat-header flex items-center justify-between p-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-800">チャット</h2>
+                {messages.length > 0 && (
+                  <button
+                    onClick={clearHistory}
+                    className="px-3 py-1 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded border border-gray-300 hover:border-red-300 transition-colors"
+                    title="チャット履歴をクリア"
+                  >
+                    履歴クリア
+                  </button>
+                )}
+              </div>
               <div className="chat-messages-scroll flex-1 overflow-y-auto p-6">
                 <ChatMessages messages={messages} loading={loading} />
               </div>

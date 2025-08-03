@@ -20,3 +20,16 @@ export interface ChatInputProps {
   sendMode: "enter" | "mod+enter";
   onSendModeChange: (mode: "enter" | "mod+enter") => void;
 }
+
+export interface UseChatReturn {
+  messages: Message[];
+  input: string;
+  setInput: (value: string) => void;
+  loading: boolean;
+  sendMode: "enter" | "mod+enter";
+  setSendMode: (mode: "enter" | "mod+enter") => void;
+  sendMessage: () => Promise<void>;
+  recaptchaReady: boolean;
+  setRecaptchaReady: (ready: boolean) => void;
+  clearHistory: () => void;
+}

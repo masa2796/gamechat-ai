@@ -33,6 +33,33 @@ export const useChat = () => {
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
 
+  // チャット履歴の保存キー
+  const CHAT_HISTORY_KEY = "chat-history";
+
+  // チャット履歴をLocalStorageから読み込み
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(CHAT_HISTORY_KEY);
+      if (saved) {
+        try {
+          const parsedMessages = JSON.parse(saved);
+          if (Array.isArray(parsedMessages)) {
+            setMessages(parsedMessages);
+          }
+        } catch (error) {
+          console.warn("Failed to parse chat history:", error);
+        }
+      }
+    }
+  }, []);
+
+  // メッセージが変更されたらLocalStorageに保存
+  useEffect(() => {
+    if (typeof window !== "undefined" && messages.length > 0) {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
+
   // 送信モードの初期化
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -212,6 +239,14 @@ export const useChat = () => {
     }
   }, [input, loading, recaptchaReady, messages.length]);
 
+  // チャット履歴をクリアする関数
+  const clearHistory = useCallback(() => {
+    setMessages([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+    }
+  }, []);
+
   return {
     messages,
     input,
@@ -221,6 +256,7 @@ export const useChat = () => {
     setSendMode,
     sendMessage,
     recaptchaReady,
-    setRecaptchaReady
+    setRecaptchaReady,
+    clearHistory
   };
 };
