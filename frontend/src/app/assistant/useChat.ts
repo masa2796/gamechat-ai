@@ -160,12 +160,22 @@ export const useChat = () => {
           const assistantMessage: Message = { 
             id: `assistant_recaptcha_error_${Date.now()}`,
             role: "assistant", 
-            content: `申し訳ありませんが、セキュリティ認証でエラーが発生しました: ${errorMessage}` 
+            content: errorMessage 
           };
           setMessages(prev => [...prev, assistantMessage]);
           setLoading(false);
           return;
         }
+      } else if (!isRecaptchaDisabled()) {
+        // reCAPTCHAが有効なのに準備ができていない場合
+        const assistantMessage: Message = { 
+          id: `assistant_recaptcha_notready_${Date.now()}`,
+          role: "assistant", 
+          content: "reCAPTCHA未準備" 
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setLoading(false);
+        return;
       }
       
       const res = await fetch(apiUrl, {
@@ -221,7 +231,8 @@ export const useChat = () => {
         // 認証エラーの特別な処理
         if (error.message.includes("Invalid authentication credentials") || 
             error.message.includes("認証エラー") ||
-            error.message.includes("authentication")) {
+            error.message.includes("authentication") ||
+            error.message.includes("認証に失敗しました")) {
           errorMessage = "認証に失敗しました。再度ログインしてお試しください。";
         } else {
           errorMessage = `申し訳ありませんが、エラーが発生しました: ${error.message}`;
