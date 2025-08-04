@@ -1,7 +1,7 @@
 """
 VectorService用のモッククラス
 """
-from typing import List, Optional
+from typing import Optional
 from unittest.mock import MagicMock
 from app.models.rag_models import ContextItem
 from app.models.classification_models import ClassificationResult
@@ -37,24 +37,18 @@ class MockVectorService:
             )
         ]
     
-    def set_mock_results(self, results: List[ContextItem]) -> None:
-        """テスト用の結果を設定"""
+    def set_mock_results(self, results: list[str]) -> None:
+        """テスト用のカード名リストを設定"""
         self._mock_results = results
     
     async def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 50,
-        namespaces: Optional[List[str]] = None,
+        namespaces: Optional[list[str]] = None,
         classification: Optional[ClassificationResult] = None,
         min_score: Optional[float] = None
-    ) -> List[ContextItem]:
-        """モック検索結果を返す"""
+    ) -> list[str]:
+        """モック検索結果（カード名リスト）を返す"""
         results = self._mock_results.copy()
-        
-        # min_scoreフィルタリング
-        if min_score is not None:
-            results = [r for r in results if r.score >= min_score]
-        
-        # top_kに制限
         return results[:min(top_k, len(results))]

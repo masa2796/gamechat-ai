@@ -41,6 +41,7 @@ async def rag_query(
     auth_info: dict = Depends(require_read_permission)
 ) -> Dict[str, Any]:
     """RAGクエリエンドポイント - API認証とreCAPTCHA認証の両方が必要"""
+    print(f"[API] /rag/query クエリ受信: {rag_req.question}")
     recaptcha_status = await auth_service.verify_request(
         request, response, rag_req.recaptchaToken, recaptcha_passed
     )
@@ -61,6 +62,7 @@ async def search_test(
     auth_info: dict = Depends(require_read_permission)
 ) -> Dict[str, Any]:
     """ハイブリッド検索のテスト用エンドポイント - API認証とreCAPTCHA認証の両方が必要"""
+    print(f"[API] /rag/search-test クエリ受信: {query_data.get('query', '')}")
     recaptcha_status = await auth_service.verify_request(
         request, response, query_data.get("recaptchaToken"), recaptcha_passed
     )
@@ -96,6 +98,7 @@ async def chat(
     """一般的なチャットエンドポイント - API認証とreCAPTCHA認証の両方が必要"""
     # リクエストデータをRagRequestに変換
     question = chat_data.get("message") or chat_data.get("question", "")
+    print(f"[API] /chat クエリ受信: {question}")
     if not question:
         raise HTTPException(status_code=400, detail="メッセージまたは質問が必要です")
     

@@ -380,12 +380,7 @@ class FastQueryCache(QueryCache):
 fast_query_cache = FastQueryCache()
 
 # プリウォーミング用のよくある質問
-COMMON_QUESTIONS = [
-    "ゲームの基本的な遊び方を教えて",
-    "最新のアップデート情報は？",
-    "初心者向けのアドバイスをください",
-    "上級者向けの戦略を教えて",
-    "ゲーム内のアイテムについて詳しく説明して"
+COMMON_QUESTIONS: list[str] = [
 ]
 
 class PrewarmedCache:

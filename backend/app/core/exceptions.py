@@ -20,6 +20,18 @@ class GameChatException(Exception):
         super().__init__(self.message)
 
 
+class DatabaseServiceException(GameChatException):
+    """データベースサービス関連の例外"""
+    
+    def __init__(
+        self,
+        message: str,
+        code: str = "DATABASE_ERROR",
+        details: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(message, code, details)
+
+
 class DatabaseException(GameChatException):
     """データベース関連例外"""
     

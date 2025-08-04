@@ -2,36 +2,47 @@ import os
 import json
 from upstash_vector import Index, Vector
 from dotenv import load_dotenv
+from pathlib import Path
 
 # backend/.envのみ参照
 dotenv_path_global = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
 load_dotenv(dotenv_path=dotenv_path_global)
 
 def upload_embeddings_to_upstash():
+    # backend/.envを明示的にロード
+    project_root = Path(__file__).resolve().parent.parent.parent
+    backend_env_path = project_root / 'backend' / '.env'
+    load_dotenv(dotenv_path=backend_env_path, override=True)
     url = os.getenv("UPSTASH_VECTOR_REST_URL")
     token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
     if not url or not token:
-        print("Error: UPSTASH_VECTOR_REST_URL or UPSTASH_VECTOR_REST_TOKEN not found.")
+        print("Error: UPSTASH_VECTOR_REST_URL or UPSTASH_VECTOR_REST_TOKEN not found in backend/.env.")
         return
 
     index = Index(url=url, token=token)
-    embedding_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'embedding_list.jsonl')
+    embedding_list_path = project_root / 'data' / 'embedding_list.jsonl'
 
-    with open(embedding_path, encoding='utf-8') as f:
+    if not embedding_list_path.exists():
+        print(f"Error: 入力ファイルが存在しません: {embedding_list_path}")
+        return
+    with open(embedding_list_path, encoding='utf-8') as f:
         for line in f:
             if not line.strip():
                 continue
             data = json.loads(line)
+            namespace = data.get("namespace", "default")
+            embedding = data.get("embedding")
+            metadata = data.get("metadata", {})
+            if embedding is None:
+                print(f"Warning: embedding missing for id={data.get('id')}")
+                continue
             vector = Vector(
                 id=data.get("id"),
-                vector=data.get("embedding"),
-                metadata={                    
-                    "text": data.get("text")
-                }
+                vector=embedding,
+                metadata=metadata
             )
-            ns = data.get("namespace")
-            index.upsert(vectors=[vector],namespace=ns)
-            print(f"Upserted vector: {data.get('id')}")
+            index.upsert(vectors=[vector], namespace=namespace)
+            print(f"Upserted vector: {data.get('id')} (namespace: {namespace})")
 
 if __name__ == "__main__":
     upload_embeddings_to_upstash()

@@ -70,59 +70,60 @@ class TestAssertions:
     @staticmethod
     def assert_search_result_structure(result: dict):
         """検索結果辞書の構造を検証"""
-        required_keys = ['classification', 'db_results', 'vector_results', 'merged_results']
+        required_keys = ['classification', 'context']
         
         for key in required_keys:
             assert key in result, f"検索結果に{key}キーが必要です"
         
         # 各結果の型チェック
         TestAssertions.assert_classification_valid(result['classification'])
-        TestAssertions.assert_context_items_valid(result['db_results'])
-        TestAssertions.assert_context_items_valid(result['vector_results'])
-        TestAssertions.assert_context_items_valid(result['merged_results'])
+        # contextは詳細JSONリストまたはContextItemリスト
+        context = result['context']
+        assert isinstance(context, list), "contextはリストである必要があります"
     
-    @staticmethod
-    def assert_merged_results_logic(db_results: list[ContextItem], 
-                                  vector_results: list[ContextItem], 
-                                  merged_results: list[ContextItem]):
-        """マージ結果のロジックを検証"""
-        TestAssertions.assert_context_items_valid(db_results)
-        TestAssertions.assert_context_items_valid(vector_results)
-        TestAssertions.assert_context_items_valid(merged_results)
-        
-        # マージ結果は元の結果の総和以下である必要がある（重複除去のため）
-        max_possible = len(db_results) + len(vector_results)
-        assert len(merged_results) <= max_possible, "マージ結果が元の結果を超えています"
-        
-        # マージ結果は重複がない
-        TestAssertions.assert_no_duplicates(merged_results)
-        
-        # マージ結果はスコア順にソートされている
-        TestAssertions.assert_items_sorted_by_score(merged_results)
-    
-    @staticmethod
-    def assert_query_type_behavior(classification: ClassificationResult, 
-                                 db_results: list[ContextItem], 
-                                 vector_results: list[ContextItem]):
-        """クエリタイプに応じた適切な動作を検証"""
-        TestAssertions.assert_classification_valid(classification)
-        TestAssertions.assert_context_items_valid(db_results)
-        TestAssertions.assert_context_items_valid(vector_results)
-        
-        if classification.query_type == QueryType.FILTERABLE:
-            # フィルタ可能な場合、DB結果があってベクトル結果は空またはDBより少ない
-            assert len(db_results) > 0 or len(vector_results) == 0, \
-                "フィルタ可能クエリではDB検索が優先されるべきです"
-        
-        elif classification.query_type == QueryType.SEMANTIC:
-            # セマンティックな場合、ベクトル結果があってDB結果は空またはベクトルより少ない
-            assert len(vector_results) > 0 or len(db_results) == 0, \
-                "セマンティッククエリではベクトル検索が優先されるべきです"
-        
-        elif classification.query_type == QueryType.HYBRID:
-            # ハイブリッドの場合、両方の結果がある可能性
-            total_results = len(db_results) + len(vector_results)
-            assert total_results > 0, "ハイブリッドクエリでは何らかの結果があるべきです"
+    # 注意: 以下のメソッドは旧API構造用で現在は使用されていません
+    # @staticmethod
+    # def assert_merged_results_logic(db_results: list[ContextItem], 
+    #                               vector_results: list[ContextItem], 
+    #                               merged_results: list[ContextItem]):
+    #     """マージ結果のロジックを検証"""
+    #     TestAssertions.assert_context_items_valid(db_results)
+    #     TestAssertions.assert_context_items_valid(vector_results)
+    #     TestAssertions.assert_context_items_valid(merged_results)
+    #     
+    #     # マージ結果は元の結果の総和以下である必要がある（重複除去のため）
+    #     max_possible = len(db_results) + len(vector_results)
+    #     assert len(merged_results) <= max_possible, "マージ結果が元の結果を超えています"
+    #     
+    #     # マージ結果は重複がない
+    #     TestAssertions.assert_no_duplicates(merged_results)
+    #     
+    #     # マージ結果はスコア順にソートされている
+    #     TestAssertions.assert_items_sorted_by_score(merged_results)
+    # 
+    # @staticmethod
+    # def assert_query_type_behavior(classification: ClassificationResult, 
+    #                              db_results: list[ContextItem], 
+    #                              vector_results: list[ContextItem]):
+    #     """クエリタイプに応じた適切な動作を検証"""
+    #     TestAssertions.assert_classification_valid(classification)
+    #     TestAssertions.assert_context_items_valid(db_results)
+    #     TestAssertions.assert_context_items_valid(vector_results)
+    #     
+    #     if classification.query_type == QueryType.FILTERABLE:
+    #         # フィルタ可能な場合、DB結果があってベクトル結果は空またはDBより少ない
+    #         assert len(db_results) > 0 or len(vector_results) == 0, \
+    #             "フィルタ可能クエリではDB検索が優先されるべきです"
+    #     
+    #     elif classification.query_type == QueryType.SEMANTIC:
+    #         # セマンティックな場合、ベクトル結果があってDB結果は空またはベクトルより少ない
+    #         assert len(vector_results) > 0 or len(db_results) == 0, \
+    #             "セマンティッククエリではベクトル検索が優先されるべきです"
+    #     
+    #     elif classification.query_type == QueryType.HYBRID:
+    #         # ハイブリッドの場合、両方の結果がある可能性
+    #         total_results = len(db_results) + len(vector_results)
+    #         assert total_results > 0, "ハイブリッドクエリでは何らかの結果があるべきです"
     
     @staticmethod
     def assert_confidence_based_behavior(classification: ClassificationResult, 

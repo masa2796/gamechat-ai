@@ -27,7 +27,7 @@ from google.cloud import storage  # 追加: GCSクライアント
 
 # 通信レイヤの冗長ログ抑制
 logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.INFO)  # ここはINFOでも残す価値あり
+logging.getLogger("httpx").setLevel(logging.INFO)
 logging.getLogger("google.cloud").setLevel(logging.WARNING)
 logging.getLogger("passlib").setLevel(logging.WARNING)
 logging.getLogger("google.cloud").setLevel(logging.WARNING)

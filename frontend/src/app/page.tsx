@@ -1,5 +1,7 @@
-import { Assistant } from "./assistant";
+
+import AssistantPage from "./assistant/index";
+
 
 export default function Home() {
-  return <Assistant />;
+  return <AssistantPage />;
 }

@@ -2,7 +2,7 @@
 
 import { renderHook, act } from '@testing-library/react';
 import { waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useChat } from '../useChat';
 
 // Mock global.fetch outside of the describe block for general use,
@@ -27,15 +27,27 @@ describe('useChat', () => {
       })
     ) as unknown as typeof fetch;
     delete ((window as unknown) as Record<string, unknown>).grecaptcha;
+    delete ((window as unknown) as Record<string, unknown>).firebaseAuth;
+
+    // LocalStorageをクリア
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+      },
+      writable: true,
+    });
 
     // 環境変数を保存
     originalEnv = process.env;
-    // テストごとに環境変数をリセットして、reCAPTCHAが有効になるように設定
+    // テストごとに環境変数をリセットして、reCAPTCHAが無効になるように設定
     process.env = {
       ...originalEnv, // 既存の環境変数をコピー
-      NEXT_PUBLIC_DISABLE_RECAPTCHA: 'false',
-      NEXT_PUBLIC_ENVIRONMENT: 'development', // 'test' 以外に設定
-      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: 'test-site-key', // reCAPTCHAが有効になるようにキーを設定
+      NEXT_PUBLIC_DISABLE_RECAPTCHA: 'true', // reCAPTCHAを無効に
+      NEXT_PUBLIC_ENVIRONMENT: 'test',
+      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: 'test-site-key',
     };
   });
 
@@ -61,11 +73,13 @@ describe('useChat', () => {
     });
     expect(result.current.messages.length).toBe(2); // user, assistant
     expect(result.current.messages[0].content).toBe('こんにちは');
+    // assistant応答も確認（mock応答）
+    expect(result.current.messages[1].role).toBe('assistant');
     expect(result.current.messages[1].content).toBe('テスト応答');
   });
 
   it('APIエラー時はassistantロールのエラーメッセージが追加される', async () => {
-    (global.fetch as unknown as typeof fetch) = vi.fn(() =>
+    const fetchSpy = vi.fn(() =>
       Promise.resolve({
         ok: false,
         status: 500,
@@ -84,7 +98,13 @@ describe('useChat', () => {
         text: async () => '',
       } as unknown as Response)
     );
+    global.fetch = fetchSpy;
+    
     const { result } = renderHook(() => useChat());
+    
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+    
     act(() => {
       result.current.setInput('エラーを起こす');
     });
@@ -97,11 +117,11 @@ describe('useChat', () => {
   });
 
   it('認証失敗時はassistantロールの認証エラーメッセージが追加される', async () => {
-    (global.fetch as unknown as typeof fetch) = vi.fn(() =>
+    const fetchSpy = vi.fn(() =>
       Promise.resolve({
         ok: false,
         status: 401,
-        json: () => Promise.resolve({ error: { message: '認証エラー発生' } }),
+        json: () => Promise.resolve({ error: { message: 'Invalid authentication credentials' } }),
         headers: new Headers(),
         redirected: false,
         statusText: '認証エラー発生',
@@ -116,7 +136,13 @@ describe('useChat', () => {
         text: async () => '',
       } as unknown as Response)
     );
+    global.fetch = fetchSpy;
+    
     const { result } = renderHook(() => useChat());
+    
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+    
     act(() => {
       result.current.setInput('認証エラーを起こす');
     });
@@ -129,14 +155,18 @@ describe('useChat', () => {
   });
 
   it('reCAPTCHA失敗時はassistantロールのエラーメッセージが追加される', async () => {
-    // fetchが呼ばれないことを確認するためのモック。
-    // 万が一呼ばれても、エラーになるように設定し、内容がテストに影響しないようにする。
+    // reCAPTCHAを有効にするため環境変数を設定
+    process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA = 'false';
+    process.env.NEXT_PUBLIC_ENVIRONMENT = 'development'; // testではなくdevelopmentに
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = 'test-site-key';
+    
+    // fetchが呼ばれないことを確認するためのモック
     const fetchSpy = vi.fn(() => Promise.resolve({
       ok: false,
       json: () => Promise.resolve({ error: { message: 'MOCKED_FETCH_ERROR_SHOULD_NOT_BE_SEEN' } }),
       status: 500,
-    }));
-    (global.fetch as unknown) = fetchSpy;
+    })) as unknown as typeof fetch;
+    global.fetch = fetchSpy;
 
     // grecaptcha.executeがエラーを返すようにモックする
     ((window as unknown) as Record<string, unknown>).grecaptcha = {
@@ -145,21 +175,18 @@ describe('useChat', () => {
 
     const { result } = renderHook(() => useChat());
 
-    // recaptchaReadyをtrueに設定するのは、grecaptchaがモックされた後かつ、
-    // sendMessageが呼び出される前に行う。
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+
     act(() => {
-      // isRecaptchaDisabled() が false を返すため、setRecaptchaReady(true) は必要ないはずですが、
-      // 念のため明示的にtrueに設定して、reCAPTCHAの実行パスを確保します。
       result.current.setRecaptchaReady(true);
       result.current.setInput('reCAPTCHAエラー');
     });
 
-    // sendMessageを呼び出すと、内部でreCAPTCHAの実行が試みられ、エラーが発生するはず
     await act(async () => {
       await result.current.sendMessage();
     });
 
-    // 非同期処理が完了し、メッセージが更新されるのを待つ
     await waitFor(() => {
       expect(result.current.messages.length).toBe(2); // ユーザーメッセージとアシスタントのエラーメッセージ
       expect(result.current.messages[0].content).toBe('reCAPTCHAエラー'); // ユーザーメッセージの確認
@@ -170,7 +197,6 @@ describe('useChat', () => {
 
     // fetchが呼び出されていないことを確認
     expect(fetchSpy).not.toHaveBeenCalled();
-
   });
 
   it('APIリクエストの内容とレスポンスを正しく処理する', async () => {
@@ -178,10 +204,14 @@ describe('useChat', () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ answer: mockAnswer }),
-    });
+    }) as unknown as typeof fetch;
     global.fetch = fetchSpy;
 
     const { result } = renderHook(() => useChat());
+    
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+    
     act(() => {
       result.current.setInput('APIリクエストテスト');
     });
@@ -191,11 +221,12 @@ describe('useChat', () => {
 
     // fetchが正しい引数で呼ばれているか
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchSpy.mock.calls[0];
+    const fetchCall = (fetchSpy as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0];
+    const [url, options] = fetchCall;
     expect(url).toMatch(/\/api\/rag\/query/);
     expect(options.method).toBe('POST');
-    expect(options.headers['Content-Type']).toBe('application/json');
-    const body = JSON.parse(options.body);
+    expect((options.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+    const body = JSON.parse(options.body as string);
     expect(body.question).toBe('APIリクエストテスト');
     expect(body.top_k).toBe(5);
     expect(body.with_context).toBe(true);
@@ -222,10 +253,14 @@ describe('useChat', () => {
         ok: true,
         json: () => Promise.resolve({ answer: 'リトライ成功応答' }),
       });
-    });
+    }) as unknown as typeof fetch;
     global.fetch = fetchSpy;
 
     const { result } = renderHook(() => useChat());
+    
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+    
     act(() => {
       result.current.setInput('リトライテスト');
     });
@@ -250,27 +285,39 @@ describe('useChat', () => {
   });
 
   it('reCAPTCHA無効時はreCAPTCHAトークンが"test"でAPIリクエストされる', async () => {
+    // reCAPTCHAを無効に戻す
     process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA = 'true';
+    process.env.NEXT_PUBLIC_ENVIRONMENT = 'test';
+    
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ answer: 'reCAPTCHA無効応答' }),
-    });
+    }) as unknown as typeof fetch;
     global.fetch = fetchSpy;
 
     const { result } = renderHook(() => useChat());
+    
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+    
     act(() => {
       result.current.setInput('reCAPTCHA無効テスト');
     });
     await act(async () => {
       await result.current.sendMessage();
     });
-    const [, options] = fetchSpy.mock.calls[0];
-    const body = JSON.parse(options.body);
+    const fetchCall = (fetchSpy as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0];
+    const [, options] = fetchCall;
+    const body = JSON.parse(options.body as string);
     expect(body.recaptchaToken).toBe('test');
     expect(result.current.messages[1].content).toBe('reCAPTCHA無効応答');
   });
 
   it('firebase認証トークンが取得できた場合はAuthorizationヘッダーに付与される', async () => {
+    // reCAPTCHAを無効に戻す
+    process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA = 'true';
+    process.env.NEXT_PUBLIC_ENVIRONMENT = 'test';
+    
     const mockIdToken = 'dummy-id-token';
     ((window as unknown) as Record<string, unknown>).firebaseAuth = {
       currentUser: {
@@ -280,18 +327,23 @@ describe('useChat', () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ answer: '認証トークン応答' }),
-    });
+    }) as unknown as typeof fetch;
     global.fetch = fetchSpy;
 
     const { result } = renderHook(() => useChat());
+    
+    // 初期状態を確認
+    expect(result.current.messages.length).toBe(0);
+    
     act(() => {
       result.current.setInput('認証トークンテスト');
     });
     await act(async () => {
       await result.current.sendMessage();
     });
-    const [, options] = fetchSpy.mock.calls[0];
-    expect(options.headers.Authorization).toBe(`Bearer ${mockIdToken}`);
+    const fetchCall = (fetchSpy as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0];
+    const [, options] = fetchCall;
+    expect((options.headers as Record<string, string>).Authorization).toBe(`Bearer ${mockIdToken}`);
     expect(result.current.messages[1].content).toBe('認証トークン応答');
   });
 });

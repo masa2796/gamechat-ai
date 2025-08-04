@@ -210,8 +210,7 @@ class TestScenarioFactory:
         return {
             "query": "炎タイプで攻撃力の高いカード",
             "classification": ClassificationResultFactory.create_hybrid_result(),
-            "db_results": ContextItemFactory.create_db_search_items(2),
-            "vector_results": ContextItemFactory.create_vector_search_items(2),
+            "context": ContextItemFactory.create_high_score_items(4),  # 詳細JSON形式
             "expected_response_keywords": ["炎", "攻撃力", "高い"]
         }
     

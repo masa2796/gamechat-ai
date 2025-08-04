@@ -241,19 +241,19 @@ class PerformanceOptimizationTest:
     
     def test_cache_effectiveness(self) -> Dict[str, Any]:
         """キャッシュ効果をテスト"""
-        print("🔄 キャッシュ効果をテスト中...")
+        print("🔄 キャッシュ効果をテスト中...", flush=True)
         
         test_question = "ゲームの基本的な遊び方を教えて"
         
         # 1回目のリクエスト（キャッシュなし）
-        print("   - 1回目のリクエスト（キャッシュなし）...")
+        print("   - 1回目のリクエスト（キャッシュなし）...", flush=True)
         first_result = self.test_rag_endpoint_with_profiling(test_question)
         
         # 少し待機
         time.sleep(0.5)
         
         # 2回目のリクエスト（キャッシュあり期待）
-        print("   - 2回目のリクエスト（キャッシュあり期待）...")
+        print("   - 2回目のリクエスト（キャッシュあり期待）...", flush=True)
         second_result = self.test_rag_endpoint_with_profiling(test_question)
         
         cache_improvement = 0
@@ -278,33 +278,33 @@ class PerformanceOptimizationTest:
         
         self.cache_test_results.append(cache_test_result)
         
-        print(f"   - 1回目: {first_result.get('duration', 0):.3f}秒")
-        print(f"   - 2回目: {second_result.get('duration', 0):.3f}秒")
-        print(f"   - キャッシュ改善: {cache_improvement:.1f}%")
+        print(f"   - 1回目: {first_result.get('duration', 0):.3f}秒", flush=True)
+        print(f"   - 2回目: {second_result.get('duration', 0):.3f}秒", flush=True)
+        print(f"   - キャッシュ改善: {cache_improvement:.1f}%", flush=True)
         
         return cache_test_result
 
     def run_basic_tests(self) -> List[Dict[str, Any]]:
         """基本的なテストを実行"""
-        print("🔍 基本的なパフォーマンステストを開始します...")
+        print("🔍 基本的なパフォーマンステストを開始します...", flush=True)
         
         # ヘルスチェックテスト
-        print("1. ヘルスチェックエンドポイントをテスト中...")
+        print("1. ヘルスチェックエンドポイントをテスト中...", flush=True)
         health_result = self.test_health_endpoint()
         self.results.append(health_result)
-        print(f"   - ステータス: {health_result['status']}")
-        print(f"   - レスポンス時間: {health_result['duration']:.3f}秒")
+        print(f"   - ステータス: {health_result['status']}", flush=True)
+        print(f"   - レスポンス時間: {health_result['duration']:.3f}秒", flush=True)
         
         # 詳細ヘルスチェックテスト
-        print("2. 詳細ヘルスチェックエンドポイントをテスト中...")
+        print("2. 詳細ヘルスチェックエンドポイントをテスト中...", flush=True)
         detailed_health_result = self.test_detailed_health_endpoint()
         self.results.append(detailed_health_result)
-        print(f"   - ステータス: {detailed_health_result['status']}")
-        print(f"   - レスポンス時間: {detailed_health_result['duration']:.3f}秒")
+        print(f"   - ステータス: {detailed_health_result['status']}", flush=True)
+        print(f"   - レスポンス時間: {detailed_health_result['duration']:.3f}秒", flush=True)
         
         # RAGエンドポイントテスト（サーバーが起動している場合のみ）
         if health_result['success']:
-            print("3. RAGエンドポイントをテスト中...")
+            print("3. RAGエンドポイントをテスト中...", flush=True)
             test_questions = [
                 "ゲームの基本的な遊び方を教えて",
                 "最新のアップデート情報は？",
@@ -312,12 +312,12 @@ class PerformanceOptimizationTest:
             ]
             
             for i, question in enumerate(test_questions):
-                print(f"   - テスト質問 {i+1}: {question[:30]}...")
+                print(f"   - テスト質問 {i+1}: {question[:30]}...", flush=True)
                 rag_result = self.test_rag_endpoint(question)
                 self.results.append(rag_result)
-                print(f"     ステータス: {rag_result['status']}, 時間: {rag_result['duration']:.3f}秒")
+                print(f"     ステータス: {rag_result['status']}, 時間: {rag_result['duration']:.3f}秒", flush=True)
         else:
-            print("3. サーバーが利用できないため、RAGテストをスキップします")
+            print("3. サーバーが利用できないため、RAGテストをスキップします", flush=True)
         
         return self.results
     
@@ -329,7 +329,7 @@ class PerformanceOptimizationTest:
         successes = 0
         
         for i in range(iterations):
-            print(f"   テスト {i+1}/{iterations}...")
+            print(f"   テスト {i+1}/{iterations}...", flush=True)
             result = self.test_health_endpoint()
             durations.append(result['duration'])
             if result['success']:
@@ -351,24 +351,24 @@ class PerformanceOptimizationTest:
             "all_durations": durations
         }
         
-        print(f"   - 成功率: {success_rate:.1f}%")
-        print(f"   - 平均レスポンス時間: {avg_duration:.3f}秒")
-        print(f"   - 最短レスポンス時間: {min_duration:.3f}秒")
-        print(f"   - 最長レスポンス時間: {max_duration:.3f}秒")
+        print(f"   - 成功率: {success_rate:.1f}%", flush=True)
+        print(f"   - 平均レスポンス時間: {avg_duration:.3f}秒", flush=True)
+        print(f"   - 最短レスポンス時間: {min_duration:.3f}秒", flush=True)
+        print(f"   - 最長レスポンス時間: {max_duration:.3f}秒", flush=True)
         
         return load_test_result
     
     def print_summary(self):
         """テスト結果のサマリーを表示"""
-        print("\n📊 テスト結果サマリー:")
-        print("=" * 50)
+        print("\n📊 テスト結果サマリー:", flush=True)
+        print("=" * 50, flush=True)
         
         successful_tests = [r for r in self.results if r.get('success', False)]
         failed_tests = [r for r in self.results if not r.get('success', False)]
         
-        print(f"総テスト数: {len(self.results)}")
-        print(f"成功: {len(successful_tests)}")
-        print(f"失敗: {len(failed_tests)}")
+        print(f"総テスト数: {len(self.results)}", flush=True)
+        print(f"成功: {len(successful_tests)}", flush=True)
+        print(f"失敗: {len(failed_tests)}", flush=True)
         
         if successful_tests:
             durations = [r['duration'] for r in successful_tests]

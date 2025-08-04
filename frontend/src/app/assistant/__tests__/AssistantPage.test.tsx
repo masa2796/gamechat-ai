@@ -26,6 +26,7 @@ describe("AssistantPage", () => {
       sendMessage: vi.fn(),
       recaptchaReady: true,
       setRecaptchaReady: vi.fn(),
+      clearHistory: vi.fn(),
     });
     render(<AssistantPage />);
     expect(screen.getByTestId("chat-messages")).toBeInTheDocument();
@@ -39,5 +40,45 @@ describe("AssistantPage", () => {
     // UIが最低限表示されること（クラッシュしない）
     expect(screen.getByTestId("chat-messages")).toBeInTheDocument();
     expect(screen.getByTestId("chat-input")).toBeInTheDocument();
+  });
+
+  it("メッセージがある場合は履歴クリアボタンが表示される", () => {
+    const clearHistoryMock = vi.fn();
+    vi.spyOn(useChatModule, "useChat").mockReturnValue({
+      messages: [{ role: "user", content: "テストメッセージ" }],
+      input: "",
+      setInput: vi.fn(),
+      loading: false,
+      sendMode: "enter",
+      setSendMode: vi.fn(),
+      sendMessage: vi.fn(),
+      recaptchaReady: true,
+      setRecaptchaReady: vi.fn(),
+      clearHistory: clearHistoryMock,
+    });
+    render(<AssistantPage />);
+    const clearButton = screen.getByText("履歴クリア");
+    expect(clearButton).toBeInTheDocument();
+    
+    // ボタンをクリックして関数が呼ばれることを確認
+    clearButton.click();
+    expect(clearHistoryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("メッセージがない場合は履歴クリアボタンが表示されない", () => {
+    vi.spyOn(useChatModule, "useChat").mockReturnValue({
+      messages: [],
+      input: "",
+      setInput: vi.fn(),
+      loading: false,
+      sendMode: "enter",
+      setSendMode: vi.fn(),
+      sendMessage: vi.fn(),
+      recaptchaReady: true,
+      setRecaptchaReady: vi.fn(),
+      clearHistory: vi.fn(),
+    });
+    render(<AssistantPage />);
+    expect(screen.queryByText("履歴クリア")).not.toBeInTheDocument();
   });
 });

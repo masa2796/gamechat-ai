@@ -1,5 +1,7 @@
+"use client";
 import { useState, useEffect, useCallback } from "react";
 import type { Message } from "../../types/chat";
+import type { RagResponse } from "../../types/rag";
 
 // reCAPTCHAが無効かどうかを判定するヘルパー関数
 const isRecaptchaDisabled = () => {
@@ -30,6 +32,33 @@ export const useChat = () => {
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
+
+  // チャット履歴の保存キー
+  const CHAT_HISTORY_KEY = "chat-history";
+
+  // チャット履歴をLocalStorageから読み込み
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(CHAT_HISTORY_KEY);
+      if (saved) {
+        try {
+          const parsedMessages = JSON.parse(saved);
+          if (Array.isArray(parsedMessages)) {
+            setMessages(parsedMessages);
+          }
+        } catch (error) {
+          console.warn("Failed to parse chat history:", error);
+        }
+      }
+    }
+  }, []);
+
+  // メッセージが変更されたらLocalStorageに保存
+  useEffect(() => {
+    if (typeof window !== "undefined" && messages.length > 0) {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
 
   // 送信モードの初期化
   useEffect(() => {
@@ -68,10 +97,39 @@ export const useChat = () => {
   // メッセージ送信ロジック
   const sendMessage = useCallback(async () => {
     if (!input.trim() || loading) return;
-    const userMessage: Message = { role: "user", content: input.trim() };
+    const userMessage: Message = { 
+      id: `user_${Date.now()}`,
+      role: "user", 
+      content: input.trim() 
+    };
     setLoading(true);
     setInput("");
-    setMessages(prev => [...prev, userMessage]);
+
+    console.log(`[useChat] ユーザーメッセージ送信前のメッセージ数: ${messages.length}`);
+    
+    // 「サンプル出力」ならCardListを表示する特殊メッセージを追加
+    if (input.trim() === "サンプル出力") {
+      console.log(`[useChat] サンプル出力モード`);
+      setMessages(prev => {
+        const sampleMessage: Message = { 
+          id: `assistant_sample_${Date.now()}`,
+          role: "assistant", 
+          content: "__show_sample_cards__" 
+        };
+        const newMessages = [...prev, userMessage, sampleMessage];
+        console.log(`[useChat] サンプル出力後のメッセージ数: ${newMessages.length}`);
+        return newMessages;
+      });
+      setLoading(false);
+      return;
+    }
+
+    console.log(`[useChat] 通常メッセージ送信`);
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage];
+      console.log(`[useChat] ユーザーメッセージ追加後: ${newMessages.length}件`);
+      return newMessages;
+    });
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL 
       ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
@@ -86,15 +144,40 @@ export const useChat = () => {
           console.warn("Failed to get auth token:", error);
         }
       }
+      
       let recaptchaToken = "";
       if (isRecaptchaDisabled()) {
         recaptchaToken = "test";
       } else if (typeof window !== "undefined" && window.grecaptcha && recaptchaReady) {
-        recaptchaToken = await window.grecaptcha.execute(
-          process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
-          { action: "submit" }
-        );
+        try {
+          recaptchaToken = await window.grecaptcha.execute(
+            process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+            { action: "submit" }
+          );
+        } catch (recaptchaError) {
+          // reCAPTCHAエラー時の処理
+          const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : "reCAPTCHAの処理中にエラーが発生しました";
+          const assistantMessage: Message = { 
+            id: `assistant_recaptcha_error_${Date.now()}`,
+            role: "assistant", 
+            content: errorMessage 
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setLoading(false);
+          return;
+        }
+      } else if (!isRecaptchaDisabled()) {
+        // reCAPTCHAが有効なのに準備ができていない場合
+        const assistantMessage: Message = { 
+          id: `assistant_recaptcha_notready_${Date.now()}`,
+          role: "assistant", 
+          content: "reCAPTCHA未準備" 
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setLoading(false);
+        return;
       }
+      
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -110,41 +193,70 @@ export const useChat = () => {
         }),
         credentials: "include"
       });
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: { message: `HTTP error! status: ${res.status}` } }));
         throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
       }
-      const data = await res.json();
+      
+      const data: RagResponse = await res.json();
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
-      const botMessage: Message = { 
+      
+      // 正常な応答の場合、answerを使ってassistantメッセージを追加
+      const assistantMessage: Message = { 
+        id: `assistant_${Date.now()}`,
         role: "assistant", 
-        content: data.answer || "エラーが発生しました" 
+        content: data.answer || "応答を受け取りました。",
+        cardContext: Array.isArray(data.context) && typeof data.context[0] === "object" ? data.context : undefined
       };
-      setMessages(prev => [...prev, botMessage]);
+      
+      console.log(`[useChat] API応答受信 - cardContext: ${assistantMessage.cardContext?.length || 0}件`);
+      
+      setMessages(prev => {
+        const newMessages = [...prev, assistantMessage];
+        console.log(`[useChat] API応答後のメッセージ数: ${newMessages.length}`);
+        newMessages.forEach((msg, idx) => {
+          console.log(`[useChat] メッセージ${idx}: role=${msg.role}, cardContext=${msg.cardContext?.length || 0}件`);
+        });
+        return newMessages;
+      });
     } catch (error) {
-      let displayMessage = "エラーが発生しました。もう一度お試しください。";
+      // APIエラー時の処理
+      console.error(error);
+      
+      let errorMessage = "申し訳ありませんが、エラーが発生しました。";
       if (error instanceof Error) {
-        if (
-          error.message.includes("認証") ||
-          error.message.includes("Invalid authentication credentials") ||
-          error.message.includes("401")
-        ) {
-          displayMessage = "認証に失敗しました。APIキーの設定を確認してください。";
+        // 認証エラーの特別な処理
+        if (error.message.includes("Invalid authentication credentials") || 
+            error.message.includes("認証エラー") ||
+            error.message.includes("authentication") ||
+            error.message.includes("認証に失敗しました")) {
+          errorMessage = "認証に失敗しました。再度ログインしてお試しください。";
         } else {
-          displayMessage = error.message;
+          errorMessage = `申し訳ありませんが、エラーが発生しました: ${error.message}`;
         }
       }
-      const errorMessage: Message = { 
+      
+      const assistantMessage: Message = { 
+        id: `assistant_error_${Date.now()}`,
         role: "assistant", 
-        content: displayMessage
+        content: errorMessage 
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, assistantMessage]);
     } finally {
       setLoading(false);
     }
-  }, [input, loading, recaptchaReady]);
+  }, [input, loading, recaptchaReady, messages.length]);
+
+  // チャット履歴をクリアする関数
+  const clearHistory = useCallback(() => {
+    setMessages([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+    }
+  }, []);
 
   return {
     messages,
@@ -155,6 +267,7 @@ export const useChat = () => {
     setSendMode,
     sendMessage,
     recaptchaReady,
-    setRecaptchaReady // 追加
+    setRecaptchaReady,
+    clearHistory
   };
 };
