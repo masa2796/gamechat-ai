@@ -33,7 +33,8 @@ describe("AssistantPage", () => {
       setSendMode: vi.fn(),
       sendMessage: vi.fn(),
       recaptchaReady: true,
-      setRecaptchaReady: vi.fn()
+      setRecaptchaReady: vi.fn(),
+      clearHistory: vi.fn()
     });
     render(<AssistantPage />);
     expect(ChatMessagesMock).toHaveBeenCalledWith(

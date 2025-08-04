@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch, MagicMock
 
 class MockVectorService:
     def __init__(self):
