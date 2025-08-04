@@ -61,35 +61,29 @@ class TestRagModels:
     def test_rag_response_creation(self):
         """RagResponseの作成テスト"""
         context_items = [
-            ContextItem(title="カード1", content="内容1", score=0.9),
-            ContextItem(title="カード2", content="内容2", score=0.8)
+            ContextItem(title="カード1", text="内容1", score=0.9),
+            ContextItem(title="カード2", text="内容2", score=0.8)
         ]
         
         response = RagResponse(
             answer="テスト回答",
-            query_type=QueryType.SEMANTIC,
-            context_items=context_items,
-            confidence=0.85
+            context=context_items
         )
         
         assert response.answer == "テスト回答"
-        assert response.query_type == QueryType.SEMANTIC
-        assert len(response.context_items) == 2
-        assert response.confidence == 0.85
+        assert len(response.context) == 2
+        assert response.context[0].title == "カード1"
+        assert response.context[0].text == "内容1"
     
     def test_rag_response_empty_context(self):
         """空のコンテキストでのRagResponseテスト"""
         response = RagResponse(
             answer="コンテキストなしの回答",
-            query_type=QueryType.GREETING,
-            context_items=[],
-            confidence=1.0
+            context=[]
         )
         
         assert response.answer == "コンテキストなしの回答"
-        assert response.query_type == QueryType.GREETING
-        assert len(response.context_items) == 0
-        assert response.confidence == 1.0
+        assert len(response.context) == 0
 
 
 class TestClassificationModels:
@@ -191,20 +185,18 @@ class TestModelIntegration:
         
         # コンテキストアイテム
         context_items = [
-            ContextItem(title="リザードン", content="強力な炎タイプ", score=0.95),
-            ContextItem(title="ファイヤー", content="伝説の炎タイプ", score=0.90)
+            ContextItem(title="リザードン", text="強力な炎タイプ", score=0.95),
+            ContextItem(title="ファイヤー", text="伝説の炎タイプ", score=0.90)
         ]
         
         # RAGレスポンス
         rag_response = RagResponse(
             answer="強い炎タイプのカードについて説明します。",
-            query_type=classification_result.query_type,
-            context_items=context_items,
-            confidence=classification_result.confidence
+            context=context_items
         )
         
         # モデル間の一貫性を確認
-        assert rag_response.query_type == classification_result.query_type
-        assert rag_response.confidence == classification_result.confidence
-        assert len(rag_response.context_items) == 2
-        assert all(isinstance(item, ContextItem) for item in rag_response.context_items)
+        assert len(rag_response.context) == 2
+        assert all(isinstance(item, ContextItem) for item in rag_response.context)
+        assert rag_response.context[0].title == "リザードン"
+        assert rag_response.context[1].title == "ファイヤー"

@@ -2,9 +2,7 @@ from typing import List, Optional, Dict, Any, AsyncGenerator
 import os
 import asyncio
 from app.models.rag_models import ContextItem
-
-class LLMException(Exception):
-    pass
+from app.core.exceptions import LLMException
 
 class LLMService:
 
