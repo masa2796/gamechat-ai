@@ -9,6 +9,12 @@ from ..core.config import settings
 from ..core.exceptions import DatabaseServiceException
 
 class DatabaseService:
+    # 集約クエリパターン定数
+    AGGREGATION_PATTERNS = {
+        'max': r'(一番高い|最大|最高|トップ)\s*(HP|ダメージ|攻撃力|コスト)',
+        'min': r'(一番低い|最小|最低|ボトム)\s*(HP|ダメージ|攻撃力|コスト)',
+        'top_n': r'(上位|トップ)(\d+)\s*(HP|ダメージ|攻撃力|コスト)'
+    }
     def __init__(self, data_path: Optional[str] = None):
         import os
         # data_pathが指定されていればそれを、なければプロジェクトルート基準の絶対パス
@@ -290,6 +296,115 @@ cardsテーブル
         elif hasattr(self.storage_service, "load_data"):
             return self.storage_service.load_data()
         return []
+
+    def _detect_aggregation_query(self, query: str) -> Dict[str, Any]:
+        """集約クエリの検出"""
+        aggregation_info = {
+            "is_aggregation": False,
+            "aggregation_type": None,  # 'max', 'min', 'top_n'
+            "field": None,  # 'hp', 'attack', 'cost'
+            "count": None  # top_nの場合の件数
+        }
+        
+        # 各パターンをチェック
+        for agg_type, pattern in self.AGGREGATION_PATTERNS.items():
+            match = re.search(pattern, query, re.IGNORECASE)
+            if match:
+                aggregation_info["is_aggregation"] = True
+                aggregation_info["aggregation_type"] = agg_type
+                
+                # フィールド名の正規化
+                field_text = match.group(2) if len(match.groups()) >= 2 else ""
+                field_mapping = {
+                    "HP": "hp",
+                    "ダメージ": "attack", 
+                    "攻撃力": "attack",
+                    "コスト": "cost"
+                }
+                aggregation_info["field"] = field_mapping.get(field_text, field_text.lower())
+                
+                # top_nの場合は件数を抽出
+                if agg_type == "top_n" and len(match.groups()) >= 3:
+                    try:
+                        aggregation_info["count"] = int(match.group(2))
+                    except (ValueError, TypeError):
+                        aggregation_info["count"] = 5  # デフォルト値
+                break
+                
+        return aggregation_info
+
+    def _parse_aggregation_condition(self, query: str) -> Dict[str, Any]:
+        """集約クエリ条件のパース"""
+        aggregation_info = self._detect_aggregation_query(query)
+        
+        if not aggregation_info["is_aggregation"]:
+            return {}
+            
+        return {
+            "aggregation": aggregation_info,
+            "reasoning": f"集約クエリを検出: {aggregation_info['aggregation_type']} {aggregation_info['field']}"
+        }
+
+    def _extract_numeric_field(self, item: Dict[str, Any], field: str) -> Optional[float]:
+        """アイテムから数値フィールドを抽出"""
+        try:
+            value = item.get(field)
+            if value is None:
+                return None
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+
+    def _sort_by_field(self, items: List[Dict[str, Any]], field: str, reverse: bool = False) -> List[Dict[str, Any]]:
+        """指定フィールドでソート"""
+        def sort_key(item):
+            value = self._extract_numeric_field(item, field)
+            return value if value is not None else -1
+        
+        return sorted(items, key=sort_key, reverse=reverse)
+
+    def _get_max_value_items(self, items: List[Dict[str, Any]], field: str) -> List[Dict[str, Any]]:
+        """最大値を持つアイテムを取得"""
+        if not items:
+            return []
+        
+        # 有効な数値を持つアイテムのみを対象
+        valid_items = [item for item in items if self._extract_numeric_field(item, field) is not None]
+        if not valid_items:
+            return []
+        
+        # 最大値を取得
+        max_value = max(self._extract_numeric_field(item, field) for item in valid_items)
+        
+        # 最大値を持つ全てのアイテムを返す
+        return [item for item in valid_items if self._extract_numeric_field(item, field) == max_value]
+
+    def _get_min_value_items(self, items: List[Dict[str, Any]], field: str) -> List[Dict[str, Any]]:
+        """最小値を持つアイテムを取得"""
+        if not items:
+            return []
+        
+        # 有効な数値を持つアイテムのみを対象
+        valid_items = [item for item in items if self._extract_numeric_field(item, field) is not None]
+        if not valid_items:
+            return []
+        
+        # 最小値を取得
+        min_value = min(self._extract_numeric_field(item, field) for item in valid_items)
+        
+        # 最小値を持つ全てのアイテムを返す
+        return [item for item in valid_items if self._extract_numeric_field(item, field) == min_value]
+
+    def _get_top_n_items(self, items: List[Dict[str, Any]], field: str, n: int) -> List[Dict[str, Any]]:
+        """上位N件のアイテムを取得"""
+        if not items or n <= 0:
+            return []
+        
+        # フィールドでソート（降順）
+        sorted_items = self._sort_by_field(items, field, reverse=True)
+        
+        # 上位N件を返す
+        return sorted_items[:n]
 
     async def _analyze_query_with_llm(self, query: str) -> Dict[str, Any]:
         """LLMを使用してクエリを解析し、構造化された検索条件を抽出"""
@@ -754,9 +869,16 @@ cardsテーブル
         return results
 
     async def _search_filterable_llm(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
-        """LLMを使用したフィルタ検索（新実装）"""
+        """LLMを使用したフィルタ検索（集約クエリ対応版）"""
         
-        # LLMでクエリを解析
+        # 集約クエリかどうかをチェック
+        aggregation_result = self._parse_aggregation_condition(query)
+        
+        if aggregation_result and aggregation_result.get("aggregation", {}).get("is_aggregation"):
+            # 集約クエリの場合
+            return await self._handle_aggregation_query(query, aggregation_result, top_k)
+        
+        # 通常のフィルタクエリの場合
         query_analysis = await self._analyze_query_with_llm(query)
         if self.debug:
             print(f"[DEBUG] クエリ解析結果: {query_analysis}")
@@ -770,12 +892,67 @@ cardsテーブル
         
         return results
 
+    async def _handle_aggregation_query(self, query: str, aggregation_result: Dict[str, Any], top_k: int = 10) -> list[dict[str, Any]]:
+        """集約クエリの処理"""
+        try:
+            aggregation_info = aggregation_result.get("aggregation", {})
+            agg_type = aggregation_info.get("aggregation_type")
+            field = aggregation_info.get("field")
+            count = aggregation_info.get("count", top_k)
+            
+            if not field:
+                if self.debug:
+                    print(f"[DEBUG] 集約クエリでフィールドが指定されていません: {aggregation_info}")
+                return []
+            
+            # フィールドマッピングの検証
+            valid_fields = ["hp", "attack", "cost"]
+            if field not in valid_fields:
+                if self.debug:
+                    print(f"[DEBUG] 無効なフィールドです: {field}. 有効なフィールド: {valid_fields}")
+                return []
+            
+            # 該当フィールドが存在するアイテムのみを対象とする
+            valid_items = [item for item in self.data_cache if self._extract_numeric_field(item, field) is not None]
+            
+            if not valid_items:
+                if self.debug:
+                    print(f"[DEBUG] フィールド '{field}' を持つアイテムが見つかりません")
+                return []
+            
+            if agg_type == "max":
+                result = self._get_max_value_items(valid_items, field)
+            elif agg_type == "min":
+                result = self._get_min_value_items(valid_items, field)
+            elif agg_type == "top_n":
+                if count <= 0:
+                    count = top_k
+                result = self._get_top_n_items(valid_items, field, count)
+            else:
+                if self.debug:
+                    print(f"[DEBUG] 未対応の集約タイプ: {agg_type}")
+                return []
+            
+            if self.debug:
+                print(f"[DEBUG] 集約クエリ結果: {len(result)}件 (タイプ: {agg_type}, フィールド: {field})")
+            
+            return result
+            
+        except Exception as e:
+            if self.debug:
+                print(f"[DEBUG] 集約クエリ処理エラー: {e}")
+            return []
+
     async def _match_filterable_llm(self, item: Dict[str, Any], query_analysis: Dict[str, Any]) -> bool:
         """LLM解析結果を使用してアイテムがフィルター条件に一致するかを判定（拡張版）"""
         if self.debug:
             print(f"[DEBUG] _match_filterable_llm: item={item.get('name', '')}")
         
         try:
+            # 集約クエリの場合はスキップ（別途 _handle_aggregation_query で処理）
+            if query_analysis.get("aggregation", {}).get("is_aggregation"):
+                return True
+            
             conditions = query_analysis.get("conditions", {})
             
             # 名前条件チェック
