@@ -15,6 +15,24 @@ class DatabaseService:
         'min': r'(一番低い|最小|最低|ボトム)\s*(HP|ダメージ|攻撃力|コスト)',
         'top_n': r'(上位|トップ)(\d+)\s*(HP|ダメージ|攻撃力|コスト)'
     }
+    
+    # 複雑な数値パターン定数
+    COMPLEX_NUMERIC_PATTERNS = {
+        'range': r'(\d+)から(\d+)の間|(\d+)～(\d+)|(\d+)-(\d+)',
+        'multiple': r'(\d+)または(\d+)|(\d+)か(\d+)',
+        'approximate': r'約(\d+)|(\d+)程度|およそ(\d+)|(\d+)くらい'
+    }
+    
+    # フィールドマッピング辞書（多様な表現に対応）
+    FIELD_MAPPINGS = {
+        'cost': ['コスト', 'cost', 'マナコスト', 'マナ', 'mana'],
+        'hp': ['HP', 'hp', '体力', 'ヒットポイント', 'hitpoint', 'health'],
+        'attack': ['攻撃力', '攻撃', 'ダメージ', 'attack', 'damage', 'アタック'],
+        'name': ['名前', 'カード名', 'name', '名称'],
+        'class': ['クラス', 'class', '職業', 'クラス名'],
+        'rarity': ['レアリティ', 'rarity', '希少度'],
+        'type': ['タイプ', 'type', '種族', '属性']
+    }
     def __init__(self, data_path: Optional[str] = None):
         import os
         # data_pathが指定されていればそれを、なければプロジェクトルート基準の絶対パス
@@ -125,6 +143,9 @@ cardsテーブル
 
 【抽出ルール】
 1. コスト・HP・攻撃力：「5コスト」「HP100以上」「体力50以下」「攻撃40以上」「ダメージ30以上」などから数値と条件を抽出
+   - 範囲指定：「50から100の間」「50～100」「50-100」→ 範囲条件として抽出
+   - 複数値：「50または60」「50か60」→ 複数値条件として抽出  
+   - 近似値：「約50」「50程度」「およそ50」「50くらい」→ 近似値条件として抽出
 2. クラス：「エルフ」「ドラゴン」「ロイヤル」「ウィッチ」「ネクロマンサー」「ビショップ」「ネメシス」「ヴァンパイア」「ニュートラル」「ナイトメア」
 3. レアリティ：「レジェンド」「ゴールドレア」「シルバーレア」「ブロンズレア」
 4. タイプ・属性：「ルミナス」「土の印」「マナリア」「レヴィオン」「アナテマ」など
@@ -395,16 +416,143 @@ cardsテーブル
         # 最小値を持つ全てのアイテムを返す
         return [item for item in valid_items if self._extract_numeric_field(item, field) == min_value]
 
-    def _get_top_n_items(self, items: List[Dict[str, Any]], field: str, n: int) -> List[Dict[str, Any]]:
-        """上位N件のアイテムを取得"""
-        if not items or n <= 0:
-            return []
+    def _parse_complex_numeric_conditions(self, query: str) -> Dict[str, Any]:
+        """複雑な数値条件のパース（範囲指定、複数値、近似値）"""
+        complex_conditions = {
+            "range_conditions": [],
+            "multiple_conditions": [],
+            "approximate_conditions": []
+        }
         
-        # フィールドでソート（降順）
-        sorted_items = self._sort_by_field(items, field, reverse=True)
+        import re
         
-        # 上位N件を返す
-        return sorted_items[:n]
+        # 範囲指定パターンの検出
+        range_pattern = self.COMPLEX_NUMERIC_PATTERNS['range']
+        for match in re.finditer(range_pattern, query):
+            # パターンに応じて数値を抽出
+            if match.group(1) and match.group(2):  # "NからMの間"
+                min_val, max_val = int(match.group(1)), int(match.group(2))
+            elif match.group(3) and match.group(4):  # "N～M"
+                min_val, max_val = int(match.group(3)), int(match.group(4))
+            elif match.group(5) and match.group(6):  # "N-M"
+                min_val, max_val = int(match.group(5)), int(match.group(6))
+            else:
+                continue
+                
+            # 最小値と最大値の順序を正す
+            if min_val > max_val:
+                min_val, max_val = max_val, min_val
+                
+            # フィールドを特定
+            field = self._identify_field_in_context(query, match.start(), match.end())
+            complex_conditions["range_conditions"].append({
+                "field": field,
+                "min_value": min_val,
+                "max_value": max_val,
+                "original_text": match.group(0)
+            })
+        
+        # 複数値パターンの検出
+        multiple_pattern = self.COMPLEX_NUMERIC_PATTERNS['multiple']
+        for match in re.finditer(multiple_pattern, query):
+            if match.group(1) and match.group(2):  # "NまたはM"
+                val1, val2 = int(match.group(1)), int(match.group(2))
+            elif match.group(3) and match.group(4):  # "NかM"
+                val1, val2 = int(match.group(3)), int(match.group(4))
+            else:
+                continue
+                
+            field = self._identify_field_in_context(query, match.start(), match.end())
+            complex_conditions["multiple_conditions"].append({
+                "field": field,
+                "values": [val1, val2],
+                "original_text": match.group(0)
+            })
+        
+        # 近似値パターンの検出
+        approximate_pattern = self.COMPLEX_NUMERIC_PATTERNS['approximate']
+        for match in re.finditer(approximate_pattern, query):
+            if match.group(1):  # "約N"
+                value = int(match.group(1))
+            elif match.group(2):  # "N程度"
+                value = int(match.group(2))
+            elif match.group(3):  # "およそN"
+                value = int(match.group(3))
+            elif match.group(4):  # "Nくらい"
+                value = int(match.group(4))
+            else:
+                continue
+                
+            field = self._identify_field_in_context(query, match.start(), match.end())
+            complex_conditions["approximate_conditions"].append({
+                "field": field,
+                "value": value,
+                "tolerance": max(5, value * 0.1),  # 10%の許容範囲（最小5）
+                "original_text": match.group(0)
+            })
+        
+        return complex_conditions
+
+    def _identify_field_in_context(self, query: str, start_pos: int, end_pos: int) -> str:
+        """クエリ内の位置からフィールド名を特定"""
+        # 数値パターンの前後20文字を解析対象とする
+        context_start = max(0, start_pos - 20)
+        context_end = min(len(query), end_pos + 20)
+        context = query[context_start:context_end].lower()
+        
+        # フィールドマッピングを使用して最適なフィールドを特定
+        for field, aliases in self.FIELD_MAPPINGS.items():
+            for alias in aliases:
+                if alias.lower() in context:
+                    return field
+        
+        # デフォルトは'unknown'
+        return 'unknown'
+
+    def _normalize_field_name(self, field_input: str) -> str:
+        """多様なフィールド名表現を正規化"""
+        field_lower = field_input.lower()
+        
+        for standard_field, aliases in self.FIELD_MAPPINGS.items():
+            for alias in aliases:
+                if alias.lower() == field_lower or alias.lower() in field_lower:
+                    return standard_field
+        
+        return field_input  # 正規化できない場合はそのまま返す
+
+    def _match_complex_numeric_condition(self, item: Dict[str, Any], condition: Dict[str, Any], condition_type: str) -> bool:
+        """複雑な数値条件のマッチング"""
+        field = condition.get("field", "unknown")
+        if field == "unknown":
+            return False
+            
+        # アイテムから対象フィールドの値を取得
+        item_value = self._extract_numeric_field(item, field)
+        if item_value is None:
+            return False
+        
+        try:
+            if condition_type == "range":
+                # 範囲条件のチェック
+                min_val = condition["min_value"]
+                max_val = condition["max_value"]
+                return min_val <= item_value <= max_val
+                
+            elif condition_type == "multiple":
+                # 複数値条件のチェック
+                values = condition["values"]
+                return item_value in values
+                
+            elif condition_type == "approximate":
+                # 近似値条件のチェック
+                target_value = condition["value"]
+                tolerance = condition["tolerance"]
+                return abs(item_value - target_value) <= tolerance
+                
+        except (ValueError, TypeError):
+            return False
+        
+        return False
 
     async def _analyze_query_with_llm(self, query: str) -> Dict[str, Any]:
         """LLMを使用してクエリを解析し、構造化された検索条件を抽出"""
@@ -543,6 +691,62 @@ cardsテーブル
         for qa_keyword in qa_keywords:
             if qa_keyword in query:
                 conditions["qa_search"] = qa_keyword
+                break
+        
+        # Phase 2: 複雑な数値パターンの検出（モック環境用）
+        # 範囲指定パターンの検出
+        range_patterns = [
+            r'HP(\d+)から(\d+)の間',
+            r'攻撃力(\d+)～(\d+)',
+            r'コスト(\d+)-(\d+)',
+            r'ダメージ(\d+)から(\d+)の間'
+        ]
+        for pattern in range_patterns:
+            match = re.search(pattern, query)
+            if match:
+                min_val, max_val = int(match.group(1)), int(match.group(2))
+                if 'HP' in pattern:
+                    conditions["hp"] = {"value": min_val, "operator": "範囲", "max_value": max_val}
+                elif '攻撃力' in pattern or 'ダメージ' in pattern:
+                    conditions["attack"] = {"value": min_val, "operator": "範囲", "max_value": max_val}
+                elif 'コスト' in pattern:
+                    conditions["cost"] = {"value": min_val, "operator": "範囲", "max_value": max_val}
+                break
+        
+        # 複数値パターンの検出
+        multiple_patterns = [
+            r'HP(\d+)または(\d+)',
+            r'攻撃力(\d+)か(\d+)',
+            r'コスト(\d+)または(\d+)'
+        ]
+        for pattern in multiple_patterns:
+            match = re.search(pattern, query)
+            if match:
+                val1, val2 = int(match.group(1)), int(match.group(2))
+                if 'HP' in pattern:
+                    conditions["hp"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
+                elif '攻撃力' in pattern:
+                    conditions["attack"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
+                elif 'コスト' in pattern:
+                    conditions["cost"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
+                break
+        
+        # 近似値パターンの検出
+        approximate_patterns = [
+            r'約HP(\d+)|HP(\d+)程度',
+            r'約攻撃力(\d+)|攻撃力(\d+)程度',
+            r'約コスト(\d+)|コスト(\d+)程度'
+        ]
+        for pattern in approximate_patterns:
+            match = re.search(pattern, query)
+            if match:
+                value = int(match.group(1) or match.group(2))
+                if 'HP' in pattern:
+                    conditions["hp"] = {"value": value, "operator": "近似"}
+                elif '攻撃力' in pattern:
+                    conditions["attack"] = {"value": value, "operator": "近似"}
+                elif 'コスト' in pattern:
+                    conditions["cost"] = {"value": value, "operator": "近似"}
                 break
         
         return {
@@ -1045,7 +1249,27 @@ cardsテーブル
                 cost_value = cost_condition["value"]
                 cost_operator = cost_condition.get("operator", "等しい")
                 
-                if cost_operator == "等しい" and item_cost != cost_value:
+                # Phase 2: 複雑な数値条件のチェック
+                if cost_operator == "範囲":
+                    max_value = cost_condition.get("max_value", cost_value)
+                    if not (cost_value <= item_cost <= max_value):
+                        if self.debug:
+                            print(f"[DEBUG] コスト範囲条件不一致: {item_cost} not in range [{cost_value}, {max_value}]")
+                        return False
+                elif cost_operator == "複数値":
+                    additional_values = cost_condition.get("additional_values", [])
+                    allowed_values = [cost_value] + additional_values
+                    if item_cost not in allowed_values:
+                        if self.debug:
+                            print(f"[DEBUG] コスト複数値条件不一致: {item_cost} not in {allowed_values}")
+                        return False
+                elif cost_operator == "近似":
+                    tolerance = max(1, cost_value * 0.2)  # コストは20%の許容範囲（最小1）
+                    if abs(item_cost - cost_value) > tolerance:
+                        if self.debug:
+                            print(f"[DEBUG] コスト近似条件不一致: {item_cost} not within {tolerance} of {cost_value}")
+                        return False
+                elif cost_operator == "等しい" and item_cost != cost_value:
                     if self.debug:
                         print(f"[DEBUG] コスト条件不一致: {item_cost} != {cost_value}")
                     return False
@@ -1065,7 +1289,27 @@ cardsテーブル
                 hp_value = hp_condition["value"]
                 hp_operator = hp_condition.get("operator", "以上")
                 
-                if hp_operator == "等しい" and item_hp != hp_value:
+                # Phase 2: 複雑な数値条件のチェック
+                if hp_operator == "範囲":
+                    max_value = hp_condition.get("max_value", hp_value)
+                    if not (hp_value <= item_hp <= max_value):
+                        if self.debug:
+                            print(f"[DEBUG] HP範囲条件不一致: {item_hp} not in range [{hp_value}, {max_value}]")
+                        return False
+                elif hp_operator == "複数値":
+                    additional_values = hp_condition.get("additional_values", [])
+                    allowed_values = [hp_value] + additional_values
+                    if item_hp not in allowed_values:
+                        if self.debug:
+                            print(f"[DEBUG] HP複数値条件不一致: {item_hp} not in {allowed_values}")
+                        return False
+                elif hp_operator == "近似":
+                    tolerance = max(5, hp_value * 0.1)  # 10%の許容範囲（最小5）
+                    if abs(item_hp - hp_value) > tolerance:
+                        if self.debug:
+                            print(f"[DEBUG] HP近似条件不一致: {item_hp} not within {tolerance} of {hp_value}")
+                        return False
+                elif hp_operator == "等しい" and item_hp != hp_value:
                     if self.debug:
                         print(f"[DEBUG] HP条件不一致: {item_hp} != {hp_value}")
                     return False
@@ -1085,7 +1329,27 @@ cardsテーブル
                 attack_value = attack_condition["value"]
                 attack_operator = attack_condition.get("operator", "以上")
                 
-                if attack_operator == "等しい" and item_attack != attack_value:
+                # Phase 2: 複雑な数値条件のチェック
+                if attack_operator == "範囲":
+                    max_value = attack_condition.get("max_value", attack_value)
+                    if not (attack_value <= item_attack <= max_value):
+                        if self.debug:
+                            print(f"[DEBUG] 攻撃力範囲条件不一致: {item_attack} not in range [{attack_value}, {max_value}]")
+                        return False
+                elif attack_operator == "複数値":
+                    additional_values = attack_condition.get("additional_values", [])
+                    allowed_values = [attack_value] + additional_values
+                    if item_attack not in allowed_values:
+                        if self.debug:
+                            print(f"[DEBUG] 攻撃力複数値条件不一致: {item_attack} not in {allowed_values}")
+                        return False
+                elif attack_operator == "近似":
+                    tolerance = max(5, attack_value * 0.1)  # 10%の許容範囲（最小5）
+                    if abs(item_attack - attack_value) > tolerance:
+                        if self.debug:
+                            print(f"[DEBUG] 攻撃力近似条件不一致: {item_attack} not within {tolerance} of {attack_value}")
+                        return False
+                elif attack_operator == "等しい" and item_attack != attack_value:
                     if self.debug:
                         print(f"[DEBUG] 攻撃力条件不一致: {item_attack} != {attack_value}")
                     return False
@@ -1146,6 +1410,30 @@ cardsテーブル
         """従来の正規表現ベースのフィルタリング（フォールバック用・拡張版）"""
         if self.debug:
             print(f"[DEBUG] _match_filterable_fallback: item={item.get('name', '')}, keyword={keyword}")
+        
+        # Phase 2: 複雑な数値パターンのチェック
+        complex_conditions = self._parse_complex_numeric_conditions(keyword)
+        
+        # 範囲条件のチェック
+        for range_condition in complex_conditions["range_conditions"]:
+            if self._match_complex_numeric_condition(item, range_condition, "range"):
+                if self.debug:
+                    print(f"[DEBUG] 範囲条件一致: {range_condition}")
+                return True
+        
+        # 複数値条件のチェック
+        for multiple_condition in complex_conditions["multiple_conditions"]:
+            if self._match_complex_numeric_condition(item, multiple_condition, "multiple"):
+                if self.debug:
+                    print(f"[DEBUG] 複数値条件一致: {multiple_condition}")
+                return True
+        
+        # 近似値条件のチェック
+        for approximate_condition in complex_conditions["approximate_conditions"]:
+            if self._match_complex_numeric_condition(item, approximate_condition, "approximate"):
+                if self.debug:
+                    print(f"[DEBUG] 近似値条件一致: {approximate_condition}")
+                return True
         
         # コスト条件判定: "コストN" または "Nコスト" → item["cost"] == N
         m1 = re.match(r"コスト(\d+)", keyword)  # "コストN" 形式
