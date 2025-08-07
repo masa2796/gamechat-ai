@@ -13,7 +13,7 @@ class DatabaseService:
     AGGREGATION_PATTERNS = {
         'max': r'(一番高い|最大|最高|トップ)\s*(HP|ダメージ|攻撃力|コスト)',
         'min': r'(一番低い|最小|最低|ボトム)\s*(HP|ダメージ|攻撃力|コスト)',
-        'top_n': r'(上位|トップ)(\d+)\s*(HP|ダメージ|攻撃力|コスト)'
+        'top_n': r'(上位|トップ)(\d+)位?\s*(の)?\s*(HP|ダメージ|攻撃力|コスト)'
     }
     
     # 複雑な数値パターン定数
@@ -335,7 +335,13 @@ cardsテーブル
                 aggregation_info["aggregation_type"] = agg_type
                 
                 # フィールド名の正規化
-                field_text = match.group(2) if len(match.groups()) >= 2 else ""
+                if agg_type == "top_n":
+                    # top_nパターンの場合: グループ4がフィールド名
+                    field_text = match.group(4) if len(match.groups()) >= 4 else ""
+                else:
+                    # max/minパターンの場合: グループ2がフィールド名
+                    field_text = match.group(2) if len(match.groups()) >= 2 else ""
+                    
                 field_mapping = {
                     "HP": "hp",
                     "ダメージ": "attack", 
@@ -345,7 +351,7 @@ cardsテーブル
                 aggregation_info["field"] = field_mapping.get(field_text, field_text.lower())
                 
                 # top_nの場合は件数を抽出
-                if agg_type == "top_n" and len(match.groups()) >= 3:
+                if agg_type == "top_n" and len(match.groups()) >= 2:
                     try:
                         aggregation_info["count"] = int(match.group(2))
                     except (ValueError, TypeError):
@@ -415,6 +421,22 @@ cardsテーブル
         
         # 最小値を持つ全てのアイテムを返す
         return [item for item in valid_items if self._extract_numeric_field(item, field) == min_value]
+
+    def _get_top_n_items(self, items: List[Dict[str, Any]], field: str, count: int) -> List[Dict[str, Any]]:
+        """上位N件のアイテムを取得"""
+        if not items or count <= 0:
+            return []
+        
+        # 有効な数値を持つアイテムのみを対象
+        valid_items = [item for item in items if self._extract_numeric_field(item, field) is not None]
+        if not valid_items:
+            return []
+        
+        # フィールド値で降順ソート（高い値から順に）
+        sorted_items = self._sort_by_field(valid_items, field, reverse=True)
+        
+        # 上位N件を返す
+        return sorted_items[:count]
 
     def _parse_complex_numeric_conditions(self, query: str) -> Dict[str, Any]:
         """複雑な数値条件のパース（範囲指定、複数値、近似値）"""
