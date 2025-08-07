@@ -715,18 +715,21 @@ cardsテーブル
         
         # 複数値パターンの検出
         multiple_patterns = [
-            r'HP(\d+)または(\d+)',
+            r'攻撃力(\d+)または(\d+)',
             r'攻撃力(\d+)か(\d+)',
-            r'コスト(\d+)または(\d+)'
+            r'HP(\d+)または(\d+)',
+            r'HP(\d+)か(\d+)',
+            r'コスト(\d+)または(\d+)',
+            r'コスト(\d+)か(\d+)'
         ]
         for pattern in multiple_patterns:
             match = re.search(pattern, query)
             if match:
                 val1, val2 = int(match.group(1)), int(match.group(2))
-                if 'HP' in pattern:
-                    conditions["hp"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
-                elif '攻撃力' in pattern:
+                if '攻撃力' in pattern:
                     conditions["attack"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
+                elif 'HP' in pattern:
+                    conditions["hp"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
                 elif 'コスト' in pattern:
                     conditions["cost"] = {"value": val1, "operator": "複数値", "additional_values": [val2]}
                 break
