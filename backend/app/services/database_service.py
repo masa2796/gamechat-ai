@@ -35,6 +35,10 @@ class DatabaseService:
     }
     def __init__(self, data_path: Optional[str] = None):
         import os
+        
+        # テスト環境の判定
+        is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+        
         # data_pathが指定されていればそれを、なければプロジェクトルート基準の絶対パス
         if data_path:
             self.data_path = data_path
@@ -47,24 +51,33 @@ class DatabaseService:
         # LLM初期化
         self._init_llm()
         
-        # 実データをロードするストレージサービス
-        class JsonFileStorageService:
-            def __init__(self, file_path: str) -> None:
-                self.file_path = file_path
-            def load_data(self) -> list[dict[str, Any]]:
-                import json
-                try:
-                    with open(self.file_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        return data if isinstance(data, list) else []
-                except Exception as e:
-                    print(f"[ERROR] データファイルの読み込みに失敗: {e}")
-                    return []
-            def load_json_data(self) -> list[dict[str, Any]]:
-                return self.load_data()
+        # テストモードの場合はファイル読み込みをスキップ
+        if is_test_mode:
+            # テスト用の空データで初期化
+            self.storage_service = None
+            self.data_cache: List[Dict[str, Any]] = []
+            self.title_to_data: Dict[str, Dict[str, Any]] = {}
+            # dataプロパティも空で初期化（テストで上書きされる）
+            self.data = []
+        else:
+            # 実データをロードするストレージサービス
+            class JsonFileStorageService:
+                def __init__(self, file_path: str) -> None:
+                    self.file_path = file_path
+                def load_data(self) -> list[dict[str, Any]]:
+                    import json
+                    try:
+                        with open(self.file_path, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            return data if isinstance(data, list) else []
+                    except Exception as e:
+                        print(f"[ERROR] データファイルの読み込みに失敗: {e}")
+                        return []
+                def load_json_data(self) -> list[dict[str, Any]]:
+                    return self.load_data()
 
-        self.storage_service = JsonFileStorageService(self.data_path)
-        self.reload_data()
+            self.storage_service = JsonFileStorageService(self.data_path)
+            self.reload_data()
 
     def _init_llm(self) -> None:
         """LLMクライアントを初期化"""
@@ -312,19 +325,36 @@ cardsテーブル
 
     def _load_data(self) -> list[dict[str, Any]]:
         # テスト用: StorageServiceのload_json_dataを呼ぶ
-        if hasattr(self.storage_service, "load_json_data"):
+        if self.storage_service is not None and hasattr(self.storage_service, "load_json_data"):
             return self.storage_service.load_json_data()
-        elif hasattr(self.storage_service, "load_data"):
+        elif self.storage_service is not None and hasattr(self.storage_service, "load_data"):
             return self.storage_service.load_data()
         return []
 
+    @property
+    def data(self) -> List[Dict[str, Any]]:
+        """テスト用のdataプロパティ - data_cacheへのアクセサ"""
+        return getattr(self, 'data_cache', [])
+    
+    @data.setter
+    def data(self, value: List[Dict[str, Any]]) -> None:
+        """テスト用のdataプロパティセッター"""
+        self.data_cache = value
+        # title_to_dataマッピングも更新
+        self.title_to_data = {}
+        if value:
+            for item in value:
+                title = item.get("title") or item.get("name")
+                if title:
+                    self.title_to_data[title] = item
+
     def _detect_aggregation_query(self, query: str) -> Dict[str, Any]:
         """集約クエリの検出"""
-        aggregation_info = {
+        aggregation_info: Dict[str, Any] = {
             "is_aggregation": False,
-            "aggregation_type": None,  # 'max', 'min', 'top_n'
-            "field": None,  # 'hp', 'attack', 'cost'
-            "count": None  # top_nの場合の件数
+            "aggregation_type": None,  # Optional[str] - 'max', 'min', 'top_n'
+            "field": None,  # Optional[str] - 'hp', 'attack', 'cost'
+            "count": None  # Optional[int] - top_nの場合の件数
         }
         
         # 各パターンをチェック
@@ -332,7 +362,7 @@ cardsテーブル
             match = re.search(pattern, query, re.IGNORECASE)
             if match:
                 aggregation_info["is_aggregation"] = True
-                aggregation_info["aggregation_type"] = agg_type
+                aggregation_info["aggregation_type"] = agg_type  # str を代入
                 
                 # フィールド名の正規化
                 if agg_type == "top_n":
@@ -348,14 +378,14 @@ cardsテーブル
                     "攻撃力": "attack",
                     "コスト": "cost"
                 }
-                aggregation_info["field"] = field_mapping.get(field_text, field_text.lower())
+                aggregation_info["field"] = field_mapping.get(field_text, field_text.lower())  # str を代入
                 
                 # top_nの場合は件数を抽出
                 if agg_type == "top_n" and len(match.groups()) >= 2:
                     try:
-                        aggregation_info["count"] = int(match.group(2))
+                        aggregation_info["count"] = int(match.group(2))  # int を代入
                     except (ValueError, TypeError):
-                        aggregation_info["count"] = 5  # デフォルト値
+                        aggregation_info["count"] = 5  # デフォルト値 int を代入
                 break
                 
         return aggregation_info
@@ -384,9 +414,9 @@ cardsテーブル
 
     def _sort_by_field(self, items: List[Dict[str, Any]], field: str, reverse: bool = False) -> List[Dict[str, Any]]:
         """指定フィールドでソート"""
-        def sort_key(item):
+        def sort_key(item: Dict[str, Any]) -> float:
             value = self._extract_numeric_field(item, field)
-            return value if value is not None else -1
+            return value if value is not None else -1.0
         
         return sorted(items, key=sort_key, reverse=reverse)
 
@@ -401,7 +431,11 @@ cardsテーブル
             return []
         
         # 最大値を取得
-        max_value = max(self._extract_numeric_field(item, field) for item in valid_items)
+        valid_numeric_values = [self._extract_numeric_field(item, field) for item in valid_items]
+        filtered_values = [v for v in valid_numeric_values if v is not None]
+        if not filtered_values:
+            return []
+        max_value = max(filtered_values)
         
         # 最大値を持つ全てのアイテムを返す
         return [item for item in valid_items if self._extract_numeric_field(item, field) == max_value]
@@ -417,7 +451,11 @@ cardsテーブル
             return []
         
         # 最小値を取得
-        min_value = min(self._extract_numeric_field(item, field) for item in valid_items)
+        valid_numeric_values = [self._extract_numeric_field(item, field) for item in valid_items]
+        filtered_values = [v for v in valid_numeric_values if v is not None]
+        if not filtered_values:
+            return []
+        min_value = min(filtered_values)
         
         # 最小値を持つ全てのアイテムを返す
         return [item for item in valid_items if self._extract_numeric_field(item, field) == min_value]
@@ -440,7 +478,7 @@ cardsテーブル
 
     def _parse_complex_numeric_conditions(self, query: str) -> Dict[str, Any]:
         """複雑な数値条件のパース（範囲指定、複数値、近似値）"""
-        complex_conditions = {
+        complex_conditions: Dict[str, List[Dict[str, Any]]] = {
             "range_conditions": [],
             "multiple_conditions": [],
             "approximate_conditions": []
@@ -556,20 +594,20 @@ cardsテーブル
         try:
             if condition_type == "range":
                 # 範囲条件のチェック
-                min_val = condition["min_value"]
-                max_val = condition["max_value"]
-                return min_val <= item_value <= max_val
+                min_val = float(condition["min_value"])
+                max_val = float(condition["max_value"])
+                return bool(min_val <= item_value <= max_val)
                 
             elif condition_type == "multiple":
                 # 複数値条件のチェック
                 values = condition["values"]
-                return item_value in values
+                return bool(item_value in values)
                 
             elif condition_type == "approximate":
                 # 近似値条件のチェック
-                target_value = condition["value"]
-                tolerance = condition["tolerance"]
-                return abs(item_value - target_value) <= tolerance
+                target_value = float(condition["value"])
+                tolerance = float(condition["tolerance"])
+                return bool(abs(item_value - target_value) <= tolerance)
                 
         except (ValueError, TypeError):
             return False
@@ -1939,7 +1977,7 @@ cardsテーブル
                 details.append(item)
         return details
 
-    def get_card_by_id(self, card_id: str) -> Optional[dict[str, Any]]:
+    def get_card_by_id(self, card_id: str) -> Optional[Dict[str, Any]]:
         """IDによるカード詳細取得"""
         if not hasattr(self, "data_cache") or not self.data_cache:
             self.reload_data()
