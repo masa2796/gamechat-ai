@@ -15,16 +15,16 @@
   - [x] `chat-storage.ts`ファイルの作成
   - [x] LocalStorageの読み書き関数実装
   - [x] データ圧縮・最適化機能
-- [ ] **データマイグレーション機能**
-  - [ ] 旧チャット履歴形式の検出
-  - [ ] 新形式への自動変換処理
-  - [ ] マイグレーション完了後の旧データ削除
-- [ ] **useChatHistoryフックの実装**
-  - [ ] セッション状態管理（useState）
-  - [ ] `createNewChat`関数の実装
-  - [ ] `switchToChat`関数の実装
-  - [ ] `deleteChat`関数の実装
-  - [ ] LocalStorageとの同期処理
+- [x] **データマイグレーション機能**
+  - [x] 旧チャット履歴形式の検出
+  - [x] 新形式への自動変換処理
+  - [x] マイグレーション完了後の旧データ削除
+- [x] **useChatHistoryフックの実装**
+  - [x] セッション状態管理（useState）
+  - [x] `createNewChat`関数の実装
+  - [x] `switchToChat`関数の実装
+  - [x] `deleteChat`関数の実装
+  - [x] LocalStorageとの同期処理
 
 #### Phase 2: UI実装（1-2週間）
 - [ ] **サイドバー機能拡張**

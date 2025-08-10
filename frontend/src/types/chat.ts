@@ -87,16 +87,36 @@ export const STORAGE_KEYS = {
  * チャット履歴管理フックの返り値型
  */
 export interface UseChatHistoryReturn {
-  /** 全セッション */
+  /** 全セッション（更新日時降順） */
   sessions: ChatSession[];
   /** アクティブセッションID */
   activeSessionId: string | null;
+  /** アクティブセッション */
+  activeSession: ChatSession | null;
+  /** ローディング状態 */
+  isLoading: boolean;
+  /** エラーメッセージ */
+  error: string | null;
+  /** ストレージ使用状況 */
+  storageUsage: {
+    totalSize: number;
+    sessionCount: number;
+    averageSessionSize: number;
+    isNearLimit: boolean;
+    isOverWarningThreshold: boolean;
+  };
   /** 新規チャット作成 */
-  createNewChat: () => string;
+  createNewChat: (initialMessage?: string) => string;
   /** チャット切り替え */
   switchToChat: (sessionId: string) => void;
   /** チャット削除 */
   deleteChat: (sessionId: string) => void;
   /** チャットタイトル更新 */
   updateChatTitle: (sessionId: string, title: string) => void;
+  /** セッションのメッセージ更新 */
+  updateSessionMessages: (sessionId: string, messages: Message[]) => void;
+  /** エラークリア */
+  clearError: () => void;
+  /** 全履歴削除 */
+  clearAllHistory: () => void;
 }
