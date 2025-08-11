@@ -12,6 +12,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useChatHistory } from "@/hooks/useChatHistory"
+import { useChat } from "@/app/assistant/useChat"
 import { formatRelativeTime } from "@/utils/time-format"
 import { cn } from "@/lib/utils"
 
@@ -19,19 +20,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const {
     sessions,
     activeSessionId,
-    createNewChat,
-    switchToChat,
     deleteChat,
     isLoading,
     error
   } = useChatHistory()
 
+  // チャット機能（入力フィールドクリア付きのセッション操作用）
+  const {
+    createNewChatAndSwitch,
+    switchToChatAndClear
+  } = useChat()
+
   const handleCreateNewChat = () => {
-    createNewChat()
+    createNewChatAndSwitch()
   }
 
   const handleSwitchToChat = (sessionId: string) => {
-    switchToChat(sessionId)
+    switchToChatAndClear(sessionId)
   }
 
   const handleDeleteChat = (sessionId: string, event: React.MouseEvent) => {

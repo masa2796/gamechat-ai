@@ -8,15 +8,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useChatHistory } from "@/hooks/useChatHistory";
 // import { CardList } from "@/components/CardList";
 const AssistantPage: React.FC = () => {
-  // チャット履歴管理フック
-  const { activeSessionId, createNewChat, isLoading } = useChatHistory();
-
-  // アクティブセッションがない場合は新規セッションを作成
-  useEffect(() => {
-    if (!isLoading && !activeSessionId) {
-      createNewChat();
-    }
-  }, [activeSessionId, createNewChat, isLoading]);
+  // チャット履歴管理フック（状態監視用）
+  const { activeSessionId, isLoading } = useChatHistory();
 
   // useChatの返り値が空でもデフォルト値で動作するようにする
   const chat = useChat() || {};
@@ -29,6 +22,16 @@ const AssistantPage: React.FC = () => {
   const sendMessage = chat.sendMessage || (() => {});
   const clearHistory = chat.clearHistory || (() => {});
   const activeSession = chat.activeSession;
+
+  // アクティブセッションがない場合は新規セッションを作成
+  useEffect(() => {
+    if (!isLoading && !activeSessionId) {
+      const createNewChatFunc = chat.createNewChatAndSwitch;
+      if (createNewChatFunc) {
+        createNewChatFunc();
+      }
+    }
+  }, [activeSessionId, isLoading, chat.createNewChatAndSwitch]);
 
   return (
     <div className="chat-bg min-h-screen w-screen overflow-x-hidden">

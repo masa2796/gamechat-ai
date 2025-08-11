@@ -34,6 +34,8 @@ export const useChat = () => {
     activeSession,
     updateSessionMessages,
     updateChatTitle,
+    createNewChat,
+    switchToChat,
   } = useChatHistory();
 
   // 現在のセッションのメッセージを取得（useMemoで最適化）
@@ -45,6 +47,11 @@ export const useChat = () => {
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
+
+  // セッション変更時の入力フィールドクリア
+  useEffect(() => {
+    setInput("");
+  }, [activeSessionId]);
 
   // メッセージ更新時にセッションに同期
   const setMessages = useCallback((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
@@ -266,6 +273,21 @@ export const useChat = () => {
     }
   }, [activeSessionId, setMessages]);
 
+  // 新しいチャットを作成して自動的に切り替え
+  const createNewChatAndSwitch = useCallback(() => {
+    const newSessionId = createNewChat();
+    // 入力フィールドもクリア
+    setInput("");
+    return newSessionId;
+  }, [createNewChat]);
+
+  // チャットセッションを切り替え
+  const switchToChatAndClear = useCallback((sessionId: string) => {
+    switchToChat(sessionId);
+    // 入力フィールドをクリア
+    setInput("");
+  }, [switchToChat]);
+
   return {
     messages,
     input,
@@ -279,6 +301,9 @@ export const useChat = () => {
     clearHistory,
     // チャット履歴管理機能を公開
     activeSessionId,
-    activeSession
+    activeSession,
+    // セッション操作機能
+    createNewChatAndSwitch,
+    switchToChatAndClear
   };
 };

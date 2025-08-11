@@ -35,6 +35,9 @@ export interface UseChatReturn {
   // チャット履歴管理機能
   activeSessionId: string | null;
   activeSession: ChatSession | null;
+  // セッション操作機能
+  createNewChatAndSwitch: () => string;
+  switchToChatAndClear: (sessionId: string) => void;
 }
 
 // チャット履歴管理のための新しい型定義
