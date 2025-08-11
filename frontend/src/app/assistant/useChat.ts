@@ -40,8 +40,14 @@ export const useChat = () => {
 
   // 現在のセッションのメッセージを取得（useMemoで最適化）
   const messages = useMemo(() => {
-    return activeSession?.messages || [];
-  }, [activeSession?.messages]);
+    const sessionMessages = activeSession?.messages || [];
+    console.log('[useChat] Messages computed:', {
+      activeSessionId,
+      sessionMessagesCount: sessionMessages.length,
+      activeSession: !!activeSession
+    });
+    return sessionMessages;
+  }, [activeSession, activeSessionId]);
   
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,13 +61,33 @@ export const useChat = () => {
 
   // メッセージ更新時にセッションに同期
   const setMessages = useCallback((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
-    if (!activeSessionId) return;
+    console.log('[useChat] setMessages called:', {
+      activeSessionId,
+      hasActiveSession: !!activeSession,
+      messagesType: typeof newMessages
+    });
+    
+    if (!activeSessionId) {
+      console.warn('[useChat] No active session, cannot set messages');
+      return;
+    }
     
     const updatedMessages = typeof newMessages === 'function' 
       ? newMessages(messages) 
       : newMessages;
     
-    updateSessionMessages(activeSessionId, updatedMessages);
+    console.log('[useChat] Updating messages:', {
+      previousCount: messages.length,
+      newCount: updatedMessages.length
+    });
+    
+    // Message型からuseChatHistoryが期待する型に変換
+    const convertedMessages = updatedMessages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+    
+    updateSessionMessages(activeSessionId, convertedMessages);
     
     // 最初のユーザーメッセージの場合、タイトルを自動生成
     if (updatedMessages.length === 1 && updatedMessages[0].role === 'user' && activeSession) {
@@ -70,6 +96,7 @@ export const useChat = () => {
         // タイトル自動生成（generateSmartTitleは既にtime-format.tsに実装済み）
         import('../../utils/time-format').then(({ generateSmartTitle }) => {
           const newTitle = generateSmartTitle(firstMessage);
+          console.log('[useChat] Auto-generating title:', newTitle);
           updateChatTitle(activeSessionId, newTitle);
         });
       }

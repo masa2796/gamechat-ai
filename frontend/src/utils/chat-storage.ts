@@ -99,22 +99,31 @@ export function loadChatSessions(): ChatSession[] {
   try {
     // SSR中はlocalStorageが利用できないため、空配列を返す
     if (typeof window === 'undefined' || !window.localStorage) {
+      console.log('[loadChatSessions] SSR環境またはlocalStorage未対応');
       return [];
     }
     
+    console.log('[loadChatSessions] LocalStorageアクセス開始');
     const sessionsData = localStorage.getItem(STORAGE_KEYS.CHAT_SESSIONS);
+    console.log('[loadChatSessions] SessionsData:', sessionsData);
+    
     if (!sessionsData) {
+      console.log('[loadChatSessions] セッションデータなし');
       return [];
     }
 
     const sessions: ChatSession[] = JSON.parse(sessionsData);
+    console.log('[loadChatSessions] パースされたセッション数:', sessions.length);
     
     // Date オブジェクトに変換
-    return sessions.map(session => ({
+    const convertedSessions = sessions.map(session => ({
       ...session,
       createdAt: new Date(session.createdAt),
       updatedAt: new Date(session.updatedAt)
     }));
+    
+    console.log('[loadChatSessions] 変換されたセッション:', convertedSessions.map(s => ({ id: s.id, title: s.title })));
+    return convertedSessions;
   } catch (error) {
     console.error('Failed to load chat sessions:', error);
     throw new ChatStorageError('チャット履歴の読み込みに失敗しました', 'LOAD_ERROR');
@@ -209,14 +218,23 @@ export function saveActiveSessionId(sessionId: string | null): void {
  * チャット履歴の全体状態を読み込み
  */
 export function loadChatHistoryState(): ChatHistoryState {
+  console.log('[loadChatHistoryState] チャット履歴状態の読み込み開始');
   const sessions = loadChatSessions();
   const activeSessionId = loadActiveSessionId();
   
-  return {
+  const state = {
     sessions,
     activeSessionId,
     maxSessions: STORAGE_LIMITS.MAX_SESSIONS
   };
+  
+  console.log('[loadChatHistoryState] 読み込み完了:', {
+    sessionsCount: sessions.length,
+    activeSessionId,
+    maxSessions: STORAGE_LIMITS.MAX_SESSIONS
+  });
+  
+  return state;
 }
 
 /**
@@ -234,10 +252,17 @@ export function detectOldChatHistory(): boolean {
   try {
     // SSR中はlocalStorageが利用できないため、falseを返す
     if (typeof window === 'undefined' || !window.localStorage) {
+      console.log('[detectOldChatHistory] SSR環境またはlocalStorage未対応');
       return false;
     }
     
     const oldHistory = localStorage.getItem('chat-history');
+    console.log('[detectOldChatHistory] 旧形式チャット履歴:', oldHistory ? '存在' : '存在しない');
+    
+    // 他のキーも確認
+    const allKeys = Object.keys(localStorage);
+    console.log('[detectOldChatHistory] LocalStorageのキー一覧:', allKeys);
+    
     return oldHistory !== null;
   } catch {
     return false;

@@ -6,7 +6,7 @@ import { useChat } from "./useChat";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useChatHistory } from "@/hooks/useChatHistory";
-// import { CardList } from "@/components/CardList";
+
 const AssistantPage: React.FC = () => {
   // チャット履歴管理フック（状態監視用）
   const { activeSessionId, isLoading } = useChatHistory();

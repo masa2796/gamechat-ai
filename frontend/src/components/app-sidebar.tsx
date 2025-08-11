@@ -25,14 +25,68 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     error
   } = useChatHistory()
 
+  // デバッグ情報
+  console.log('[AppSidebar] Debug Info:', {
+    sessionsCount: sessions.length,
+    activeSessionId,
+    isLoading,
+    error,
+    sessions: sessions.map(s => ({ id: s.id, title: s.title, messagesCount: s.messages.length }))
+  });
+
   // チャット機能（入力フィールドクリア付きのセッション操作用）
   const {
     createNewChatAndSwitch,
     switchToChatAndClear
   } = useChat()
 
+  // 手動でテストデータを作成する関数（デバッグ用）
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).createTestData = () => {
+        const testSession = {
+          id: crypto.randomUUID(),
+          title: 'テストチャット',
+          messages: [
+            { id: crypto.randomUUID(), role: 'user' as const, content: 'テストメッセージ1' },
+            { id: crypto.randomUUID(), role: 'assistant' as const, content: 'テスト応答1' }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: false
+        };
+        
+        console.log('[createTestData] Creating test session:', testSession);
+        localStorage.setItem('chatSessions', JSON.stringify([testSession]));
+        localStorage.setItem('activeSessionId', testSession.id);
+        window.location.reload(); // ページをリロードして状態を更新
+      };
+      
+      (window as any).clearTestData = () => {
+        console.log('[clearTestData] Clearing all chat data');
+        localStorage.removeItem('chatSessions');
+        localStorage.removeItem('activeSessionId');
+        localStorage.removeItem('chatHistoryState');
+        window.location.reload();
+      };
+      
+      (window as any).debugStorage = () => {
+        console.log('[debugStorage] Current localStorage data:');
+        console.log('chatSessions:', localStorage.getItem('chatSessions'));
+        console.log('activeSessionId:', localStorage.getItem('activeSessionId'));
+        console.log('chatHistoryState:', localStorage.getItem('chatHistoryState'));
+      };
+    }
+  }, []);
+
   const handleCreateNewChat = () => {
-    createNewChatAndSwitch()
+    console.log('[AppSidebar] Creating new chat...');
+    try {
+      const result = createNewChatAndSwitch();
+      console.log('[AppSidebar] New chat created:', result);
+    } catch (err) {
+      console.error('[AppSidebar] Failed to create new chat:', err);
+    }
   }
 
   const handleSwitchToChat = (sessionId: string) => {
@@ -70,12 +124,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* 新規チャットボタン */}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton 
-              onClick={handleCreateNewChat}
-              className="w-full"
-              data-testid="new-chat-button"
-              disabled={isLoading}
-            >
+                          <SidebarMenuButton
+                onClick={handleCreateNewChat}
+                className="w-full"
+                disabled={isLoading}
+                data-testid="new-chat-button"
+              >
               <Plus className="size-4" />
               <span>新規チャット</span>
             </SidebarMenuButton>
@@ -89,12 +143,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         )}
 
-        {/* チャット履歴リスト */}
-        {sessions.length > 0 && (
-          <SidebarMenu>
-            <div className="px-2 py-1 text-xs font-medium text-sidebar-foreground/70">
-              履歴 ({sessions.length})
-            </div>
+        {/* チャット履歴リスト - SSRセーフ表示 */}
+        <SidebarMenu>
+          <div className="px-2 py-1 text-xs font-medium text-sidebar-foreground/70">
+            履歴 ({isLoading ? 0 : sessions.length}) - Loading: {isLoading ? 'Yes' : 'No'} - Error: {error || 'None'}
+          </div>
+          
+          {/* デバッグ情報表示 */}
+          <div className="px-2 py-1 text-xs text-gray-500">
+            Debug: Sessions={isLoading ? 0 : sessions.length}, ActiveId={activeSessionId}
+          </div>
+          
+          {!isLoading && sessions.length > 0 ? (
             <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
               {sessions.map((session) => (
                 <SidebarMenuItem key={session.id} className="relative group">
@@ -142,11 +202,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               ))}
             </div>
-          </SidebarMenu>
-        )}
+          ) : (
+            <div className="px-2 py-1 text-xs text-gray-500">
+              {isLoading ? 'Loading...' : 'No chat sessions found'}
+            </div>
+          )}
+        </SidebarMenu>
 
         {/* 履歴が空の場合 */}
-        {sessions.length === 0 && !isLoading && (
+        {!isLoading && sessions.length === 0 && (
           <div className="px-2 py-4 text-center">
             <div className="text-sidebar-foreground/50 text-sm">
               チャット履歴がありません

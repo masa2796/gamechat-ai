@@ -1,351 +1,215 @@
 /**
  * チャット履歴管理のためのカスタムフック
- * 複数のチャットセッションを管理し、LocalStorageとの同期を担当
+ * 複数のチャットセッションを管理し、LocalStorageと同期する
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChatSession, ChatHistoryState, UseChatHistoryReturn, Message } from '@/types/chat';
-import {
-  loadChatHistoryState,
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { 
   saveChatHistoryState,
-  detectOldChatHistory,
-  migrateOldChatHistory,
-  ChatStorageError,
-  getStorageUsage
-} from '@/utils/chat-storage';
-import { generateDefaultTitle, generateSmartTitle } from '@/utils/time-format';
+  loadChatHistoryState
+} from '@/utils/chat-storage'
+import { ChatSession } from '@/types/chat'
+
+// フック戻り値の型定義
+export interface UseChatHistoryReturn {
+  sessions: ChatSession[]
+  activeSessionId: string | null
+  activeSession: ChatSession | null
+  isLoading: boolean
+  error: string | null
+  createNewChat: () => string
+  switchToChat: (sessionId: string) => void
+  deleteChat: (sessionId: string) => Promise<void>
+  updateChatTitle: (sessionId: string, title: string) => void
+  addMessageToChat: (sessionId: string, message: { role: 'user' | 'assistant', content: string }) => void
+  updateSessionMessages: (sessionId: string, messages: { role: 'user' | 'assistant', content: string }[]) => void
+}
 
 /**
- * チャット履歴管理フック
+ * チャット履歴管理のカスタムフック
  */
 export function useChatHistory(): UseChatHistoryReturn {
-  // セッション状態管理
+  // SSRセーフな初期化
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  /**
-   * 初期データの読み込みとマイグレーション
-   */
-  useEffect(() => {
-    const initializeHistory = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // SSRチェック - サーバーサイドでは何もしない
-        if (typeof window === 'undefined') {
-          setIsLoading(false);
-          return;
-        }
-
-        // 旧形式のデータ検出とマイグレーション
-        if (detectOldChatHistory()) {
-          console.log('Detected old chat history, migrating...');
-          const migratedSessions = migrateOldChatHistory();
-          if (migratedSessions.length > 0) {
-            setSessions(migratedSessions);
-            setActiveSessionId(migratedSessions[0].id);
-            
-            // マイグレーション完了後にLocalStorageに保存
-            const newState: ChatHistoryState = {
-              sessions: migratedSessions,
-              activeSessionId: migratedSessions[0].id,
-              maxSessions: 50
-            };
-            saveChatHistoryState(newState);
-            console.log('Migration completed successfully');
-          }
-        } else {
-          // 既存データの読み込み
-          const state = loadChatHistoryState();
-          setSessions(state.sessions);
-          setActiveSessionId(state.activeSessionId);
-        }
-      } catch (err) {
-        console.error('Failed to initialize chat history:', err);
-        const errorMessage = err instanceof ChatStorageError 
-          ? err.message 
-          : 'チャット履歴の初期化に失敗しました';
-        setError(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeHistory();
-  }, []);
-
-  /**
-   * 状態変更時のLocalStorage同期
-   */
-  useEffect(() => {
-    // SSRチェック - サーバーサイドでは何もしない
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (!isLoading && sessions.length >= 0) {
-      try {
-        const state: ChatHistoryState = {
-          sessions,
-          activeSessionId,
-          maxSessions: 50
-        };
-        saveChatHistoryState(state);
-      } catch (err) {
-        console.error('Failed to save chat history state:', err);
-        if (err instanceof ChatStorageError) {
-          setError(err.message);
-        }
-      }
-    }
-  }, [sessions, activeSessionId, isLoading]);
-
-  /**
-   * 新規チャット作成
-   */
-  const createNewChat = useCallback((initialMessage?: string): string => {
-    try {
-      const newSessionId = crypto.randomUUID();
-      const now = new Date();
-      
-      // タイトル生成
-      const title = initialMessage 
-        ? generateSmartTitle(initialMessage)
-        : generateDefaultTitle(now);
-
-      const newSession: ChatSession = {
-        id: newSessionId,
-        title,
-        messages: [],
-        createdAt: now,
-        updatedAt: now,
-        isActive: true
-      };
-
-      // 他のセッションを非アクティブに
-      setSessions(prevSessions => {
-        const updatedSessions = prevSessions.map(session => ({
-          ...session,
-          isActive: false
-        }));
-        return [...updatedSessions, newSession];
-      });
-
-      setActiveSessionId(newSessionId);
-      setError(null);
-
-      console.log('Created new chat session:', newSessionId);
-      return newSessionId;
-    } catch (err) {
-      console.error('Failed to create new chat:', err);
-      setError('新しいチャットの作成に失敗しました');
-      throw err;
-    }
-  }, []);
-
-  /**
-   * チャット切り替え
-   */
-  const switchToChat = useCallback((sessionId: string): void => {
-    try {
-      const targetSession = sessions.find(s => s.id === sessionId);
-      if (!targetSession) {
-        console.warn('Session not found:', sessionId);
-        setError('指定されたチャットが見つかりません');
-        return;
-      }
-
-      // 全セッションを非アクティブに設定し、対象セッションのみアクティブに
-      setSessions(prevSessions => 
-        prevSessions.map(session => ({
-          ...session,
-          isActive: session.id === sessionId
-        }))
-      );
-
-      setActiveSessionId(sessionId);
-      setError(null);
-
-      console.log('Switched to chat session:', sessionId);
-    } catch (err) {
-      console.error('Failed to switch chat:', err);
-      setError('チャットの切り替えに失敗しました');
-    }
-  }, [sessions]);
-
-  /**
-   * チャット削除
-   */
-  const deleteChat = useCallback((sessionId: string): void => {
-    try {
-      const sessionToDelete = sessions.find(s => s.id === sessionId);
-      if (!sessionToDelete) {
-        console.warn('Session not found for deletion:', sessionId);
-        return;
-      }
-
-      const remainingSessions = sessions.filter(s => s.id !== sessionId);
-      
-      // 削除されたセッションがアクティブだった場合
-      if (activeSessionId === sessionId) {
-        if (remainingSessions.length > 0) {
-          // 最新のセッションをアクティブに
-          const latestSession = remainingSessions.reduce((latest, current) => 
-            new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest
-          );
-          
-          setSessions(remainingSessions.map(session => ({
-            ...session,
-            isActive: session.id === latestSession.id
-          })));
-          setActiveSessionId(latestSession.id);
-        } else {
-          // 全てのセッションが削除された場合
-          setSessions([]);
-          setActiveSessionId(null);
-        }
-      } else {
-        setSessions(remainingSessions);
-      }
-
-      setError(null);
-      console.log('Deleted chat session:', sessionId);
-    } catch (err) {
-      console.error('Failed to delete chat:', err);
-      setError('チャットの削除に失敗しました');
-    }
-  }, [sessions, activeSessionId]);
-
-  /**
-   * チャットタイトル更新
-   */
-  const updateChatTitle = useCallback((sessionId: string, newTitle: string): void => {
-    try {
-      if (!newTitle.trim()) {
-        setError('タイトルを入力してください');
-        return;
-      }
-
-      setSessions(prevSessions => 
-        prevSessions.map(session => 
-          session.id === sessionId 
-            ? { ...session, title: newTitle.trim(), updatedAt: new Date() }
-            : session
-        )
-      );
-
-      setError(null);
-      console.log('Updated chat title:', sessionId, newTitle);
-    } catch (err) {
-      console.error('Failed to update chat title:', err);
-      setError('タイトルの更新に失敗しました');
-    }
-  }, []);
-
-  /**
-   * セッションのメッセージ更新
-   */
-  const updateSessionMessages = useCallback((sessionId: string, messages: Message[]): void => {
-    try {
-      setSessions(prevSessions => 
-        prevSessions.map(session => 
-          session.id === sessionId 
-            ? { 
-                ...session, 
-                messages, 
-                updatedAt: new Date(),
-                // 最初のメッセージがある場合、スマートタイトル生成を試行
-                title: session.messages.length === 0 && messages.length > 0 && messages[0].role === 'user'
-                  ? generateSmartTitle(messages[0].content)
-                  : session.title
-              }
-            : session
-        )
-      );
-
-      setError(null);
-    } catch (err) {
-      console.error('Failed to update session messages:', err);
-      setError('メッセージの更新に失敗しました');
-    }
-  }, []);
-
-  /**
-   * アクティブセッションの取得
-   */
+  // 現在のアクティブセッションを計算
   const activeSession = useMemo(() => {
     return sessions.find(session => session.id === activeSessionId) || null;
   }, [sessions, activeSessionId]);
 
-  /**
-   * ソート済みセッションリスト（更新日時の降順）
-   */
-  const sortedSessions = useMemo(() => {
-    return [...sessions].sort((a, b) => 
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+  // デバッグ情報
+  console.log('[useChatHistory] Hook initialized with state:', {
+    sessionsCount: sessions.length,
+    activeSessionId,
+    isLoading,
+    error,
+    isClient,
+    timestamp: new Date().toISOString()
+  });
+
+  // クライアントサイドマウント後の初期化
+  useEffect(() => {
+    console.log('[useChatHistory] Client-side initialization starting...');
+    setIsClient(true);
+    
+    try {
+      const state = loadChatHistoryState();
+      console.log('[useChatHistory] Loaded state:', {
+        sessionsCount: state.sessions.length,
+        activeSessionId: state.activeSessionId
+      });
+      
+      setSessions(state.sessions);
+      setActiveSessionId(state.activeSessionId);
+    } catch (err) {
+      console.error('[useChatHistory] Initialization error:', err);
+      setError(err instanceof Error ? err.message : 'Initialization failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // セッションが変更されたときの保存処理
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessions.length >= 0) {
+      console.log('[useChatHistory] Saving sessions to localStorage:', {
+        sessionsCount: sessions.length,
+        activeSessionId
+      });
+      
+      try {
+        saveChatHistoryState({ 
+          sessions, 
+          activeSessionId,
+          maxSessions: 50 // STORAGE_LIMITS.MAX_SESSIONSの値
+        });
+      } catch (err) {
+        console.error('[useChatHistory] Failed to save state:', err);
+        setError(err instanceof Error ? err.message : 'Failed to save state');
+      }
+    }
+  }, [sessions, activeSessionId]);
+
+  // 新しいチャットを作成
+  const createNewChat = useCallback((): string => {
+    console.log('[useChatHistory] Creating new chat...');
+    
+    const newSession: ChatSession = {
+      id: crypto.randomUUID(),
+      title: '新しいチャット',
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: false
+    };
+
+    console.log('[useChatHistory] Created new session:', {
+      id: newSession.id,
+      title: newSession.title
+    });
+
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+    
+    return newSession.id;
+  }, []);
+
+  // チャットを切り替え
+  const switchToChat = useCallback((sessionId: string) => {
+    console.log('[useChatHistory] Switching to chat:', sessionId);
+    
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setActiveSessionId(sessionId);
+    } else {
+      console.warn('[useChatHistory] Session not found:', sessionId);
+      setError(`セッション ${sessionId} が見つかりません`);
+    }
   }, [sessions]);
 
-  /**
-   * ストレージ使用状況の監視
-   */
-  const storageUsage = useMemo(() => {
+  // チャットを削除
+  const deleteChat = useCallback(async (sessionId: string): Promise<void> => {
+    console.log('[useChatHistory] Deleting chat:', sessionId);
+    
     try {
-      return getStorageUsage();
-    } catch {
-      return {
-        totalSize: 0,
-        sessionCount: 0,
-        averageSessionSize: 0,
-        isNearLimit: false,
-        isOverWarningThreshold: false
-      };
-    }
-  }, []);
-
-  /**
-   * エラークリア
-   */
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  /**
-   * 全履歴削除（デバッグ用）
-   */
-  const clearAllHistory = useCallback(() => {
-    try {
-      setSessions([]);
-      setActiveSessionId(null);
-      setError(null);
-      console.log('Cleared all chat history');
+      // セッション一覧から削除
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      
+      // アクティブセッションが削除されたら null に設定
+      if (activeSessionId === sessionId) {
+        setActiveSessionId(null);
+      }
+      
+      console.log('[useChatHistory] Chat deleted successfully:', sessionId);
     } catch (err) {
-      console.error('Failed to clear all history:', err);
-      setError('履歴の削除に失敗しました');
+      console.error('[useChatHistory] Failed to delete chat:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete chat');
+      throw err;
     }
+  }, [activeSessionId]);
+
+  // チャットのタイトルを更新
+  const updateChatTitle = useCallback((sessionId: string, title: string) => {
+    console.log('[useChatHistory] Updating chat title:', { sessionId, title });
+    
+    setSessions(prev => 
+      prev.map(session => 
+        session.id === sessionId 
+          ? { ...session, title, updatedAt: new Date() }
+          : session
+      )
+    );
+  }, []);
+
+  // チャットにメッセージを追加
+  const addMessageToChat = useCallback((sessionId: string, message: { role: 'user' | 'assistant', content: string }) => {
+    console.log('[useChatHistory] Adding message to chat:', { sessionId, role: message.role });
+    
+    setSessions(prev => 
+      prev.map(session => 
+        session.id === sessionId 
+          ? { 
+              ...session, 
+              messages: [...session.messages, { ...message, id: crypto.randomUUID() }],
+              updatedAt: new Date()
+            }
+          : session
+      )
+    );
+  }, []);
+
+  // セッションのメッセージを一括更新
+  const updateSessionMessages = useCallback((sessionId: string, messages: { role: 'user' | 'assistant', content: string }[]) => {
+    console.log('[useChatHistory] Updating session messages:', { sessionId, messageCount: messages.length });
+    
+    setSessions(prev => 
+      prev.map(session => 
+        session.id === sessionId 
+          ? { 
+              ...session, 
+              messages: messages.map(msg => ({ ...msg, id: crypto.randomUUID() })),
+              updatedAt: new Date()
+            }
+          : session
+      )
+    );
   }, []);
 
   return {
-    // 状態
-    sessions: sortedSessions,
+    sessions,
     activeSessionId,
     activeSession,
     isLoading,
     error,
-    storageUsage,
-
-    // セッション管理
     createNewChat,
     switchToChat,
     deleteChat,
     updateChatTitle,
-    updateSessionMessages,
-
-    // ユーティリティ
-    clearError,
-    clearAllHistory
+    addMessageToChat,
+    updateSessionMessages
   };
 }
