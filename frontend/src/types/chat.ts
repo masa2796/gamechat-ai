@@ -32,6 +32,9 @@ export interface UseChatReturn {
   recaptchaReady: boolean;
   setRecaptchaReady: (ready: boolean) => void;
   clearHistory: () => void;
+  // チャット履歴管理機能
+  activeSessionId: string | null;
+  activeSession: ChatSession | null;
 }
 
 // チャット履歴管理のための新しい型定義

@@ -34,6 +34,12 @@ export function useChatHistory(): UseChatHistoryReturn {
         setIsLoading(true);
         setError(null);
 
+        // SSRチェック - サーバーサイドでは何もしない
+        if (typeof window === 'undefined') {
+          setIsLoading(false);
+          return;
+        }
+
         // 旧形式のデータ検出とマイグレーション
         if (detectOldChatHistory()) {
           console.log('Detected old chat history, migrating...');
@@ -75,6 +81,11 @@ export function useChatHistory(): UseChatHistoryReturn {
    * 状態変更時のLocalStorage同期
    */
   useEffect(() => {
+    // SSRチェック - サーバーサイドでは何もしない
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     if (!isLoading && sessions.length >= 0) {
       try {
         const state: ChatHistoryState = {

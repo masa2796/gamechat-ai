@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Message } from "../../types/chat";
 import type { RagResponse } from "../../types/rag";
+import { useChatHistory } from "../../hooks/useChatHistory";
 
 // reCAPTCHAが無効かどうかを判定するヘルパー関数
 const isRecaptchaDisabled = () => {
@@ -27,38 +28,46 @@ interface WindowWithRecaptcha extends Window {
 declare const window: WindowWithRecaptcha;
 
 export const useChat = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // チャット履歴管理フックの統合
+  const {
+    activeSessionId,
+    activeSession,
+    updateSessionMessages,
+    updateChatTitle,
+  } = useChatHistory();
+
+  // 現在のセッションのメッセージを取得（useMemoで最適化）
+  const messages = useMemo(() => {
+    return activeSession?.messages || [];
+  }, [activeSession?.messages]);
+  
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
 
-  // チャット履歴の保存キー
-  const CHAT_HISTORY_KEY = "chat-history";
-
-  // チャット履歴をLocalStorageから読み込み
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(CHAT_HISTORY_KEY);
-      if (saved) {
-        try {
-          const parsedMessages = JSON.parse(saved);
-          if (Array.isArray(parsedMessages)) {
-            setMessages(parsedMessages);
-          }
-        } catch (error) {
-          console.warn("Failed to parse chat history:", error);
-        }
+  // メッセージ更新時にセッションに同期
+  const setMessages = useCallback((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
+    if (!activeSessionId) return;
+    
+    const updatedMessages = typeof newMessages === 'function' 
+      ? newMessages(messages) 
+      : newMessages;
+    
+    updateSessionMessages(activeSessionId, updatedMessages);
+    
+    // 最初のユーザーメッセージの場合、タイトルを自動生成
+    if (updatedMessages.length === 1 && updatedMessages[0].role === 'user' && activeSession) {
+      const firstMessage = updatedMessages[0].content;
+      if (firstMessage.trim() && activeSession.title.startsWith('新しいチャット')) {
+        // タイトル自動生成（generateSmartTitleは既にtime-format.tsに実装済み）
+        import('../../utils/time-format').then(({ generateSmartTitle }) => {
+          const newTitle = generateSmartTitle(firstMessage);
+          updateChatTitle(activeSessionId, newTitle);
+        });
       }
     }
-  }, []);
-
-  // メッセージが変更されたらLocalStorageに保存
-  useEffect(() => {
-    if (typeof window !== "undefined" && messages.length > 0) {
-      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
-    }
-  }, [messages]);
+  }, [activeSessionId, messages, updateSessionMessages, updateChatTitle, activeSession]);
 
   // 送信モードの初期化
   useEffect(() => {
@@ -248,15 +257,14 @@ export const useChat = () => {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, recaptchaReady, messages.length]);
+  }, [input, loading, recaptchaReady, messages.length, setMessages]);
 
-  // チャット履歴をクリアする関数
+  // チャット履歴をクリアする関数（現在のセッションのメッセージをクリア）
   const clearHistory = useCallback(() => {
-    setMessages([]);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(CHAT_HISTORY_KEY);
+    if (activeSessionId) {
+      setMessages([]);
     }
-  }, []);
+  }, [activeSessionId, setMessages]);
 
   return {
     messages,
@@ -268,6 +276,9 @@ export const useChat = () => {
     sendMessage,
     recaptchaReady,
     setRecaptchaReady,
-    clearHistory
+    clearHistory,
+    // チャット履歴管理機能を公開
+    activeSessionId,
+    activeSession
   };
 };

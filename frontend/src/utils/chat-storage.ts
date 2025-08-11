@@ -97,6 +97,11 @@ export function optimizeStorageData(sessions: ChatSession[]): ChatSession[] {
  */
 export function loadChatSessions(): ChatSession[] {
   try {
+    // SSR中はlocalStorageが利用できないため、空配列を返す
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return [];
+    }
+    
     const sessionsData = localStorage.getItem(STORAGE_KEYS.CHAT_SESSIONS);
     if (!sessionsData) {
       return [];
@@ -121,6 +126,11 @@ export function loadChatSessions(): ChatSession[] {
  */
 export function saveChatSessions(sessions: ChatSession[]): void {
   try {
+    // SSR中はlocalStorageが利用できないため、何もしない
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    
     // データ最適化を適用
     const optimizedSessions = optimizeStorageData(sessions);
     
@@ -163,6 +173,11 @@ export function saveChatSessions(sessions: ChatSession[]): void {
  */
 export function loadActiveSessionId(): string | null {
   try {
+    // SSR中はlocalStorageが利用できないため、nullを返す
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return null;
+    }
+    
     return localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
   } catch (error) {
     console.error('Failed to load active session ID:', error);
@@ -175,6 +190,11 @@ export function loadActiveSessionId(): string | null {
  */
 export function saveActiveSessionId(sessionId: string | null): void {
   try {
+    // SSR中はlocalStorageが利用できないため、何もしない
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    
     if (sessionId) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, sessionId);
     } else {
@@ -208,10 +228,15 @@ export function saveChatHistoryState(state: ChatHistoryState): void {
 }
 
 /**
- * 旧形式のチャット履歴を検出
+ * 旧形式のチャット履歴が存在するかどうかをチェック
  */
 export function detectOldChatHistory(): boolean {
   try {
+    // SSR中はlocalStorageが利用できないため、falseを返す
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return false;
+    }
+    
     const oldHistory = localStorage.getItem('chat-history');
     return oldHistory !== null;
   } catch {
@@ -224,6 +249,11 @@ export function detectOldChatHistory(): boolean {
  */
 export function migrateOldChatHistory(): ChatSession[] {
   try {
+    // SSR中はlocalStorageが利用できないため、空配列を返す
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return [];
+    }
+    
     const oldHistoryData = localStorage.getItem('chat-history');
     if (!oldHistoryData) {
       return [];
@@ -249,8 +279,10 @@ export function migrateOldChatHistory(): ChatSession[] {
     };
 
     // 旧データをバックアップ用キーに移動
-    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, oldHistoryData);
-    localStorage.removeItem('chat-history');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, oldHistoryData);
+      localStorage.removeItem('chat-history');
+    }
 
     console.log('Successfully migrated old chat history');
     return [migratedSession];
@@ -270,6 +302,17 @@ export function getStorageUsage(): {
   isNearLimit: boolean;
   isOverWarningThreshold: boolean;
 } {
+  // SSR中はlocalStorageが利用できないため、デフォルト値を返す
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return {
+      totalSize: 0,
+      sessionCount: 0,
+      averageSessionSize: 0,
+      isNearLimit: false,
+      isOverWarningThreshold: false
+    };
+  }
+  
   const sessions = loadChatSessions();
   const totalSize = calculateStorageSize(sessions);
   const sessionCount = sessions.length;
@@ -289,6 +332,11 @@ export function getStorageUsage(): {
  */
 export function clearChatStorage(): void {
   try {
+    // SSR中はlocalStorageが利用できないため、何もしない
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    
     localStorage.removeItem(STORAGE_KEYS.CHAT_SESSIONS);
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
     localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);

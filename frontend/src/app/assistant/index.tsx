@@ -1,12 +1,22 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { useChat } from "./useChat";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useChatHistory } from "@/hooks/useChatHistory";
 // import { CardList } from "@/components/CardList";
 const AssistantPage: React.FC = () => {
+  // チャット履歴管理フック
+  const { activeSessionId, createNewChat, isLoading } = useChatHistory();
+
+  // アクティブセッションがない場合は新規セッションを作成
+  useEffect(() => {
+    if (!isLoading && !activeSessionId) {
+      createNewChat();
+    }
+  }, [activeSessionId, createNewChat, isLoading]);
 
   // useChatの返り値が空でもデフォルト値で動作するようにする
   const chat = useChat() || {};
@@ -18,6 +28,7 @@ const AssistantPage: React.FC = () => {
   const setSendMode = chat.setSendMode || (() => {});
   const sendMessage = chat.sendMessage || (() => {});
   const clearHistory = chat.clearHistory || (() => {});
+  const activeSession = chat.activeSession;
 
   return (
     <div className="chat-bg min-h-screen w-screen overflow-x-hidden">
@@ -33,7 +44,16 @@ const AssistantPage: React.FC = () => {
             <div id="chat-area" className="chat-area bg-white rounded-[10px] shadow-[0_2px_8px_#0001] flex flex-col overflow-hidden relative" style={{height: 'calc(100vh - 7rem - 20px)'}}>
               {/* チャットヘッダー */}
               <div className="chat-header flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-800">チャット</h2>
+                <div className="flex flex-col">
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {activeSession?.title || "チャット"}
+                  </h2>
+                  {activeSession && messages.length > 0 && (
+                    <span className="text-sm text-gray-500">
+                      {messages.length}件のメッセージ
+                    </span>
+                  )}
+                </div>
                 {messages.length > 0 && (
                   <button
                     onClick={clearHistory}
