@@ -32,7 +32,7 @@ export function useChatHistory(): UseChatHistoryReturn {
   // SSRセーフな初期化
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // 初期状態をfalseに変更
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -67,27 +67,15 @@ export function useChatHistory(): UseChatHistoryReturn {
         state: state
       });
       
-      // セッションが空の場合は新規作成
-      if (state.sessions.length === 0) {
-        console.log('[useChatHistory] No sessions found, creating initial session...');
-        const newSession: ChatSession = {
-          id: crypto.randomUUID(),
-          title: '新しいチャット',
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          isActive: false
-        };
-        
-        setSessions([newSession]);
-        setActiveSessionId(newSession.id);
-        console.log('[useChatHistory] Initial session created:', newSession.id);
-      } else {
-        setSessions(state.sessions);
-        setActiveSessionId(state.activeSessionId);
-      }
+      // ロードした状態をそのまま設定（空でも自動作成はしない）
+      setSessions(state.sessions);
+      setActiveSessionId(state.activeSessionId);
       
       console.log('[useChatHistory] State updated successfully');
+      console.log('[useChatHistory] Final state after initialization:', {
+        sessionsCount: state.sessions.length,
+        activeSessionId: state.activeSessionId
+      });
     } catch (err) {
       console.error('[useChatHistory] Initialization error:', err);
       setError(err instanceof Error ? err.message : 'Initialization failed');
@@ -138,14 +126,19 @@ export function useChatHistory(): UseChatHistoryReturn {
       title: newSession.title
     });
 
+    // 新しいセッションをリストの先頭に追加
     setSessions(prev => {
       const updatedSessions = [newSession, ...prev];
       console.log('[useChatHistory] Sessions after adding new chat:', updatedSessions.length);
       return updatedSessions;
     });
     
+    // 新しいセッションをアクティブにする
     setActiveSessionId(newSession.id);
     console.log('[useChatHistory] Setting activeSessionId to:', newSession.id);
+    
+    // エラーをクリア
+    setError(null);
     
     return newSession.id;
   }, [sessions.length, activeSessionId]);
@@ -153,6 +146,7 @@ export function useChatHistory(): UseChatHistoryReturn {
   // チャットを切り替え
   const switchToChat = useCallback((sessionId: string) => {
     console.log('[useChatHistory] Switching to chat:', sessionId);
+    console.log('[useChatHistory] Available sessions:', sessions.map(s => ({ id: s.id, title: s.title })));
     
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
@@ -161,7 +155,13 @@ export function useChatHistory(): UseChatHistoryReturn {
         title: session.title,
         messageCount: session.messages.length
       });
+      
+      // アクティブセッションを切り替え
       setActiveSessionId(sessionId);
+      console.log('[useChatHistory] ActiveSessionId updated to:', sessionId);
+      
+      // エラーをクリア
+      setError(null);
     } else {
       console.warn('[useChatHistory] Session not found:', sessionId);
       console.log('[useChatHistory] Available sessions:', sessions.map(s => s.id));
@@ -254,3 +254,6 @@ export function useChatHistory(): UseChatHistoryReturn {
     updateSessionMessages
   };
 }
+
+// デフォルトエクスポートも追加
+export default useChatHistory;

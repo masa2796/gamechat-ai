@@ -5,11 +5,12 @@ import { ChatInput } from "./ChatInput";
 import { useChat } from "./useChat";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { useChatHistory } from "@/hooks/useChatHistory";
+// import { useChatHistory } from "@/hooks/useChatHistory"; // 一時的に無効化
 
 const AssistantPage: React.FC = () => {
   // チャット履歴管理フック（状態監視用）
-  const { activeSessionId } = useChatHistory();
+  // const { activeSessionId } = useChatHistory(); // 一時的に無効化
+  const activeSessionId = null; // 一時的にnullで固定
 
   // useChatの返り値が空でもデフォルト値で動作するようにする
   const chat = useChat() || {};
@@ -23,29 +24,38 @@ const AssistantPage: React.FC = () => {
   const clearHistory = chat.clearHistory || (() => {});
   const activeSession = chat.activeSession;
 
-  // アクティブセッションがない場合は新規セッションを作成
+  // アクティブセッションがない場合は新規セッションを作成（現在は無効化）
   useEffect(() => {
-    console.log('[AssistantPage] セッション自動作成チェック:', {
+    console.log('[AssistantPage] セッション自動作成チェック（無効化中）:', {
       activeSessionId,
       hasCreateFunction: !!chat.createNewChatAndSwitch
     });
     
-    // activeSessionIdがnullの場合は強制的に新規セッションを作成
-    if (!activeSessionId) {
-      console.log('[AssistantPage] 新規セッション作成を実行...');
-      const createNewChatFunc = chat.createNewChatAndSwitch;
-      if (createNewChatFunc) {
-        try {
-          const newSessionId = createNewChatFunc();
-          console.log('[AssistantPage] 新規セッション作成完了:', newSessionId);
-        } catch (err) {
-          console.error('[AssistantPage] 新規セッション作成エラー:', err);
-        }
-      } else {
-        console.warn('[AssistantPage] createNewChatAndSwitch関数が利用できません');
-      }
-    }
-  }, [activeSessionId, chat.createNewChatAndSwitch]); // isLoadingを依存関係から除外
+    // 無限ループ防止のため、自動作成を一時的に無効化
+    console.log('[AssistantPage] 自動セッション作成は現在無効化されています');
+    return;
+    
+    // 以下のコードは無効化（削除予定）
+    // 既に一度実行した場合はスキップ（無限ループ防止）
+    // if (activeSessionId !== null) {
+    //   console.log('[AssistantPage] アクティブセッションが存在するため、自動作成をスキップ');
+    //   return;
+    // }
+    
+    // createNewChatAndSwitch関数がない場合はスキップ
+    // if (!chat.createNewChatAndSwitch) {
+    //   console.log('[AssistantPage] createNewChatAndSwitch関数が利用できないため、自動作成をスキップ');
+    //   return;
+    // }
+    
+    // console.log('[AssistantPage] 新規セッション作成を実行...');
+    // try {
+    //   const newSessionId = chat.createNewChatAndSwitch();
+    //   console.log('[AssistantPage] 新規セッション作成完了:', newSessionId);
+    // } catch (err) {
+    //   console.error('[AssistantPage] 新規セッション作成エラー:', err);
+    // }
+  }, [activeSessionId, chat.createNewChatAndSwitch]); // 依存関係を元に戻す
 
   return (
     <div className="chat-bg min-h-screen w-screen overflow-x-hidden">

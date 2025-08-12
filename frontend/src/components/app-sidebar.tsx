@@ -11,19 +11,28 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useChatHistory } from "@/hooks/useChatHistory"
+// import { useChatHistory } from "@/hooks/useChatHistory" // 一時的に無効化
 import { useChat } from "@/app/assistant/useChat"
 import { formatRelativeTime } from "@/utils/time-format"
 import { cn } from "@/lib/utils"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const {
-    sessions,
-    activeSessionId,
-    deleteChat,
-    isLoading,
-    error
-  } = useChatHistory()
+  // const {
+  //   sessions,
+  //   activeSessionId,
+  //   deleteChat,
+  //   isLoading,
+  //   error
+  // } = useChatHistory() // 一時的に無効化
+  
+  // 一時的にダミーデータ
+  const sessions: never[] = [];
+  const activeSessionId: string | null = null;
+  const deleteChat = (sessionId: string) => {
+    console.log('deleteChat called with:', sessionId);
+  };
+  const isLoading = false;
+  const error: string | null = null;
 
   // デバッグ情報
   console.log('[AppSidebar] Debug Info:', {
@@ -75,6 +84,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         console.log('chatSessions:', localStorage.getItem('chatSessions'));
         console.log('activeSessionId:', localStorage.getItem('activeSessionId'));
         console.log('chatHistoryState:', localStorage.getItem('chatHistoryState'));
+      };
+      
+      (window as any).createNewChatManually = () => {
+        console.log('[createNewChatManually] Creating new chat manually...');
+        handleCreateNewChat();
       };
     }
   }, []);

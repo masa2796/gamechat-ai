@@ -58,17 +58,25 @@ export function compressSessionData(sessions: ChatSession[]): ChatSession[] {
  * LRU（Least Recently Used）でセッションを削除
  */
 export function applyLRUCleanup(sessions: ChatSession[]): ChatSession[] {
+  console.log('[applyLRUCleanup] 入力セッション数:', sessions.length);
+  
   if (sessions.length <= STORAGE_LIMITS.MAX_SESSIONS) {
+    console.log('[applyLRUCleanup] セッション数が制限内なので、そのまま返す');
     return sessions;
   }
 
+  console.log('[applyLRUCleanup] セッション数が制限を超過しています。LRU削除を実行...');
+  
   // 更新日時でソート（新しい順）
   const sortedSessions = [...sessions].sort((a, b) => 
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
   // 最大セッション数まで削減
-  return sortedSessions.slice(0, STORAGE_LIMITS.MAX_SESSIONS);
+  const cleanedSessions = sortedSessions.slice(0, STORAGE_LIMITS.MAX_SESSIONS);
+  console.log('[applyLRUCleanup] 削除後のセッション数:', cleanedSessions.length);
+  
+  return cleanedSessions;
 }
 
 /**
@@ -123,6 +131,22 @@ export function loadChatSessions(): ChatSession[] {
     }));
     
     console.log('[loadChatSessions] 変換されたセッション:', convertedSessions.map(s => ({ id: s.id, title: s.title })));
+    
+    // 異常に多いセッション数の場合は強制的に最適化を適用
+    if (convertedSessions.length > STORAGE_LIMITS.MAX_SESSIONS) {
+      console.warn('[loadChatSessions] 異常に多いセッション数を検出:', convertedSessions.length);
+      const optimizedSessions = optimizeStorageData(convertedSessions);
+      console.log('[loadChatSessions] 最適化後のセッション数:', optimizedSessions.length);
+      
+      // 最適化されたデータを即座に保存
+      if (optimizedSessions.length !== convertedSessions.length) {
+        console.log('[loadChatSessions] 最適化されたデータを保存中...');
+        localStorage.setItem(STORAGE_KEYS.CHAT_SESSIONS, JSON.stringify(optimizedSessions));
+      }
+      
+      return optimizedSessions;
+    }
+    
     return convertedSessions;
   } catch (error) {
     console.error('Failed to load chat sessions:', error);

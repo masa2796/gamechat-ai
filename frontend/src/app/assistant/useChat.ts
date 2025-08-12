@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Message } from "../../types/chat";
 import type { RagResponse } from "../../types/rag";
-import { useChatHistory } from "../../hooks/useChatHistory";
+// import { useChatHistory } from "../../hooks/useChatHistory"; // 一時的に無効化
 
 // reCAPTCHAが無効かどうかを判定するヘルパー関数
 const isRecaptchaDisabled = () => {
@@ -30,8 +30,19 @@ declare const window: WindowWithRecaptcha;
 export const useChat = () => {
   console.log('[useChat] フック初期化開始');
   
-  // チャット履歴管理フックとの統合
-  const chatHistoryHook = useChatHistory();
+  // チャット履歴管理フックとの統合 - 一時的に無効化
+  // const chatHistoryHook = useChatHistory();
+  
+  // 一時的にダミーデータ
+  const chatHistoryHook = {
+    sessions: [] as never[],
+    activeSessionId: null as string | null,
+    activeSession: null as never,
+    createNewChat: () => crypto.randomUUID(),
+    switchToChat: (id: string) => console.log('switchToChat:', id),
+    updateSessionMessages: (id: string, messages: unknown[]) => console.log('updateSessionMessages:', id, messages.length),
+    updateChatTitle: (id: string, title: string) => console.log('updateChatTitle:', id, title)
+  };
   
   console.log('[useChat] useChatHistory hook result:', {
     keys: Object.keys(chatHistoryHook),
@@ -45,7 +56,6 @@ export const useChat = () => {
     activeSession,
     createNewChat,
     switchToChat,
-    updateSessionMessages,
     updateChatTitle
   } = chatHistoryHook;
 
@@ -56,16 +66,17 @@ export const useChat = () => {
     updateChatTitleType: typeof updateChatTitle
   });
 
-  // 現在のセッションのメッセージを取得（useMemoで最適化）
+  // 現在のセッションのメッセージを取得（一時的にローカル状態で管理）
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  
   const messages = useMemo(() => {
-    const sessionMessages = activeSession?.messages || [];
     console.log('[useChat] Messages computed:', {
       activeSessionId,
-      sessionMessagesCount: sessionMessages.length,
+      localMessagesCount: localMessages.length,
       activeSession: !!activeSession
     });
-    return sessionMessages;
-  }, [activeSession, activeSessionId]);
+    return localMessages;
+  }, [localMessages, activeSession, activeSessionId]);
   
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,7 +88,7 @@ export const useChat = () => {
     setInput("");
   }, [activeSessionId]);
 
-  // メッセージ更新時にセッションに同期
+  // メッセージ更新時にローカル状態を更新（一時的にセッション同期は無効化）
   const setMessages = useCallback((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
     console.log('[useChat] setMessages called:', {
       activeSessionId,
@@ -85,47 +96,23 @@ export const useChat = () => {
       messagesType: typeof newMessages
     });
     
-    if (!activeSessionId) {
-      console.warn('[useChat] No active session, cannot set messages');
-      return;
-    }
-    
     const updatedMessages = typeof newMessages === 'function' 
-      ? newMessages(messages) 
+      ? newMessages(localMessages) 
       : newMessages;
     
     console.log('[useChat] Updating messages:', {
-      previousCount: messages.length,
+      previousCount: localMessages.length,
       newCount: updatedMessages.length
     });
     
-    // Message型からuseChatHistoryが期待する型に変換（必要な情報を保持）
-    const convertedMessages = updatedMessages.map(msg => ({
-      id: msg.id || crypto.randomUUID(), // IDが無い場合は生成
-      role: msg.role,
-      content: msg.content,
-      // cardContextがある場合は保持
-      ...(msg.cardContext && { cardContext: msg.cardContext })
-    }));
+    // ローカル状態を直接更新
+    setLocalMessages(updatedMessages);
     
-    updateSessionMessages(activeSessionId, convertedMessages);
-    
-    // 最初のユーザーメッセージの場合、タイトルを自動生成
-    if (updatedMessages.length === 1 && updatedMessages[0].role === 'user' && activeSession) {
-      const firstMessage = updatedMessages[0].content;
-      if (firstMessage.trim() && activeSession.title.startsWith('新しいチャット')) {
-        // タイトル自動生成（generateSmartTitleは既にtime-format.tsに実装済み）
-        import('../../utils/time-format').then(({ generateSmartTitle }) => {
-          const newTitle = generateSmartTitle(firstMessage);
-          console.log('[useChat] Auto-generating title:', newTitle);
-          // updateChatTitle関数を取得して実行（一時的に無効化）
-          // if (updateChatTitle) {
-          //   updateChatTitle(activeSessionId, newTitle);
-          // }
-        });
-      }
+    // 最初のユーザーメッセージの場合、タイトルを自動生成（一時的に無効化）
+    if (updatedMessages.length === 1 && updatedMessages[0].role === 'user') {
+      console.log('[useChat] Title generation temporarily disabled');
     }
-  }, [activeSessionId, messages, updateSessionMessages, activeSession]);
+  }, [localMessages, activeSessionId, activeSession]);  // 現在使用している変数のみに依存
 
   // 送信モードの初期化
   useEffect(() => {
@@ -172,7 +159,7 @@ export const useChat = () => {
     setLoading(true);
     setInput("");
 
-    console.log(`[useChat] ユーザーメッセージ送信前のメッセージ数: ${messages.length}`);
+    console.log(`[useChat] ユーザーメッセージ送信前のメッセージ数: ${localMessages.length}`);
     
     // 「サンプル出力」ならCardListを表示する特殊メッセージを追加
     if (input.trim() === "サンプル出力") {
@@ -315,7 +302,7 @@ export const useChat = () => {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, recaptchaReady, messages.length, setMessages]);
+  }, [input, loading, recaptchaReady, localMessages.length, setMessages]);
 
   // チャット履歴をクリアする関数（現在のセッションのメッセージをクリア）
   const clearHistory = useCallback(() => {
@@ -347,18 +334,23 @@ export const useChat = () => {
   // チャットセッションを切り替え
   const switchToChatAndClear = useCallback((sessionId: string) => {
     console.log('[useChat] Switching to chat session:', sessionId);
+    console.log('[useChat] Current activeSessionId:', activeSessionId);
+    console.log('[useChat] Target sessionId:', sessionId);
     
     // セッションを切り替え
     switchToChat(sessionId);
+    
+    // 切り替え先のセッションを検索（一時的に無効化）
+    console.log('[useChat] Session switching temporarily disabled');
     
     // 入力フィールドをクリア
     setInput("");
     
     console.log('[useChat] Chat session switch completed');
-  }, [switchToChat]);
+  }, [switchToChat, activeSessionId]);
 
   return {
-    messages,
+    messages: localMessages,  // ローカル状態のメッセージを返す
     input,
     setInput,
     loading,
