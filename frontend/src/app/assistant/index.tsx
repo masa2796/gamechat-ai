@@ -9,7 +9,7 @@ import { useChatHistory } from "@/hooks/useChatHistory";
 
 const AssistantPage: React.FC = () => {
   // チャット履歴管理フック（状態監視用）
-  const { activeSessionId, isLoading } = useChatHistory();
+  const { activeSessionId } = useChatHistory();
 
   // useChatの返り値が空でもデフォルト値で動作するようにする
   const chat = useChat() || {};
@@ -25,13 +25,27 @@ const AssistantPage: React.FC = () => {
 
   // アクティブセッションがない場合は新規セッションを作成
   useEffect(() => {
-    if (!isLoading && !activeSessionId) {
+    console.log('[AssistantPage] セッション自動作成チェック:', {
+      activeSessionId,
+      hasCreateFunction: !!chat.createNewChatAndSwitch
+    });
+    
+    // activeSessionIdがnullの場合は強制的に新規セッションを作成
+    if (!activeSessionId) {
+      console.log('[AssistantPage] 新規セッション作成を実行...');
       const createNewChatFunc = chat.createNewChatAndSwitch;
       if (createNewChatFunc) {
-        createNewChatFunc();
+        try {
+          const newSessionId = createNewChatFunc();
+          console.log('[AssistantPage] 新規セッション作成完了:', newSessionId);
+        } catch (err) {
+          console.error('[AssistantPage] 新規セッション作成エラー:', err);
+        }
+      } else {
+        console.warn('[AssistantPage] createNewChatAndSwitch関数が利用できません');
       }
     }
-  }, [activeSessionId, isLoading, chat.createNewChatAndSwitch]);
+  }, [activeSessionId, chat.createNewChatAndSwitch]); // isLoadingを依存関係から除外
 
   return (
     <div className="chat-bg min-h-screen w-screen overflow-x-hidden">

@@ -28,15 +28,33 @@ interface WindowWithRecaptcha extends Window {
 declare const window: WindowWithRecaptcha;
 
 export const useChat = () => {
-  // チャット履歴管理フックの統合
-  const {
-    activeSessionId,
+  console.log('[useChat] フック初期化開始');
+  
+  // チャット履歴管理フックとの統合
+  const chatHistoryHook = useChatHistory();
+  
+  console.log('[useChat] useChatHistory hook result:', {
+    keys: Object.keys(chatHistoryHook),
+    updateChatTitle: typeof chatHistoryHook.updateChatTitle,
+    hasUpdateChatTitle: 'updateChatTitle' in chatHistoryHook
+  });
+  
+  const { 
+    sessions, 
+    activeSessionId, 
     activeSession,
-    updateSessionMessages,
-    updateChatTitle,
     createNewChat,
     switchToChat,
-  } = useChatHistory();
+    updateSessionMessages,
+    updateChatTitle
+  } = chatHistoryHook;
+
+  console.log('[useChat] チャット履歴フック状態:', {
+    activeSessionId,
+    hasActiveSession: !!activeSession,
+    sessionsCount: sessions.length,
+    updateChatTitleType: typeof updateChatTitle
+  });
 
   // 現在のセッションのメッセージを取得（useMemoで最適化）
   const messages = useMemo(() => {
@@ -81,10 +99,13 @@ export const useChat = () => {
       newCount: updatedMessages.length
     });
     
-    // Message型からuseChatHistoryが期待する型に変換
+    // Message型からuseChatHistoryが期待する型に変換（必要な情報を保持）
     const convertedMessages = updatedMessages.map(msg => ({
+      id: msg.id || crypto.randomUUID(), // IDが無い場合は生成
       role: msg.role,
-      content: msg.content
+      content: msg.content,
+      // cardContextがある場合は保持
+      ...(msg.cardContext && { cardContext: msg.cardContext })
     }));
     
     updateSessionMessages(activeSessionId, convertedMessages);
@@ -97,11 +118,14 @@ export const useChat = () => {
         import('../../utils/time-format').then(({ generateSmartTitle }) => {
           const newTitle = generateSmartTitle(firstMessage);
           console.log('[useChat] Auto-generating title:', newTitle);
-          updateChatTitle(activeSessionId, newTitle);
+          // updateChatTitle関数を取得して実行（一時的に無効化）
+          // if (updateChatTitle) {
+          //   updateChatTitle(activeSessionId, newTitle);
+          // }
         });
       }
     }
-  }, [activeSessionId, messages, updateSessionMessages, updateChatTitle, activeSession]);
+  }, [activeSessionId, messages, updateSessionMessages, activeSession]);
 
   // 送信モードの初期化
   useEffect(() => {
@@ -302,17 +326,35 @@ export const useChat = () => {
 
   // 新しいチャットを作成して自動的に切り替え
   const createNewChatAndSwitch = useCallback(() => {
+    console.log('[useChat] Creating new chat and switching...');
+    console.log('[useChat] Current messages before creation:', messages.length);
+    
     const newSessionId = createNewChat();
+    console.log('[useChat] New session created with ID:', newSessionId);
+    
+    // メッセージをクリア
+    setMessages([]);
+    console.log('[useChat] Messages cleared for new chat');
+    
     // 入力フィールドもクリア
     setInput("");
+    console.log('[useChat] Input field cleared');
+    
+    console.log('[useChat] New chat creation and switch completed');
     return newSessionId;
-  }, [createNewChat]);
+  }, [createNewChat, messages.length, setMessages]);
 
   // チャットセッションを切り替え
   const switchToChatAndClear = useCallback((sessionId: string) => {
+    console.log('[useChat] Switching to chat session:', sessionId);
+    
+    // セッションを切り替え
     switchToChat(sessionId);
+    
     // 入力フィールドをクリア
     setInput("");
+    
+    console.log('[useChat] Chat session switch completed');
   }, [switchToChat]);
 
   return {

@@ -81,9 +81,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const handleCreateNewChat = () => {
     console.log('[AppSidebar] Creating new chat...');
+    console.log('[AppSidebar] Current sessions count:', sessions.length);
+    console.log('[AppSidebar] Current activeSessionId:', activeSessionId);
+    
     try {
       const result = createNewChatAndSwitch();
-      console.log('[AppSidebar] New chat created:', result);
+      console.log('[AppSidebar] New chat created with ID:', result);
+      console.log('[AppSidebar] New chat creation successful');
     } catch (err) {
       console.error('[AppSidebar] Failed to create new chat:', err);
     }

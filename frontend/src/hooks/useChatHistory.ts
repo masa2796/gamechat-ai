@@ -32,7 +32,7 @@ export function useChatHistory(): UseChatHistoryReturn {
   // SSRセーフな初期化
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // 初期状態をfalseに変更
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -54,24 +54,48 @@ export function useChatHistory(): UseChatHistoryReturn {
   // クライアントサイドマウント後の初期化
   useEffect(() => {
     console.log('[useChatHistory] Client-side initialization starting...');
+    console.log('[useChatHistory] Window check:', typeof window !== 'undefined');
+    
     setIsClient(true);
     
     try {
+      console.log('[useChatHistory] Loading chat history state...');
       const state = loadChatHistoryState();
       console.log('[useChatHistory] Loaded state:', {
         sessionsCount: state.sessions.length,
-        activeSessionId: state.activeSessionId
+        activeSessionId: state.activeSessionId,
+        state: state
       });
       
-      setSessions(state.sessions);
-      setActiveSessionId(state.activeSessionId);
+      // セッションが空の場合は新規作成
+      if (state.sessions.length === 0) {
+        console.log('[useChatHistory] No sessions found, creating initial session...');
+        const newSession: ChatSession = {
+          id: crypto.randomUUID(),
+          title: '新しいチャット',
+          messages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: false
+        };
+        
+        setSessions([newSession]);
+        setActiveSessionId(newSession.id);
+        console.log('[useChatHistory] Initial session created:', newSession.id);
+      } else {
+        setSessions(state.sessions);
+        setActiveSessionId(state.activeSessionId);
+      }
+      
+      console.log('[useChatHistory] State updated successfully');
     } catch (err) {
       console.error('[useChatHistory] Initialization error:', err);
       setError(err instanceof Error ? err.message : 'Initialization failed');
     } finally {
+      console.log('[useChatHistory] Setting isLoading to false');
       setIsLoading(false);
     }
-  }, []);
+  }, []); // 空の依存関係配列で1回だけ実行
 
   // セッションが変更されたときの保存処理
   useEffect(() => {
@@ -97,6 +121,8 @@ export function useChatHistory(): UseChatHistoryReturn {
   // 新しいチャットを作成
   const createNewChat = useCallback((): string => {
     console.log('[useChatHistory] Creating new chat...');
+    console.log('[useChatHistory] Current sessions before creation:', sessions.length);
+    console.log('[useChatHistory] Current activeSessionId before creation:', activeSessionId);
     
     const newSession: ChatSession = {
       id: crypto.randomUUID(),
@@ -112,11 +138,17 @@ export function useChatHistory(): UseChatHistoryReturn {
       title: newSession.title
     });
 
-    setSessions(prev => [newSession, ...prev]);
+    setSessions(prev => {
+      const updatedSessions = [newSession, ...prev];
+      console.log('[useChatHistory] Sessions after adding new chat:', updatedSessions.length);
+      return updatedSessions;
+    });
+    
     setActiveSessionId(newSession.id);
+    console.log('[useChatHistory] Setting activeSessionId to:', newSession.id);
     
     return newSession.id;
-  }, []);
+  }, [sessions.length, activeSessionId]);
 
   // チャットを切り替え
   const switchToChat = useCallback((sessionId: string) => {
@@ -124,9 +156,15 @@ export function useChatHistory(): UseChatHistoryReturn {
     
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
+      console.log('[useChatHistory] Found session:', {
+        id: session.id,
+        title: session.title,
+        messageCount: session.messages.length
+      });
       setActiveSessionId(sessionId);
     } else {
       console.warn('[useChatHistory] Session not found:', sessionId);
+      console.log('[useChatHistory] Available sessions:', sessions.map(s => s.id));
       setError(`セッション ${sessionId} が見つかりません`);
     }
   }, [sessions]);
@@ -183,7 +221,7 @@ export function useChatHistory(): UseChatHistoryReturn {
   }, []);
 
   // セッションのメッセージを一括更新
-  const updateSessionMessages = useCallback((sessionId: string, messages: { role: 'user' | 'assistant', content: string }[]) => {
+  const updateSessionMessages = useCallback((sessionId: string, messages: Array<{ id?: string; role: 'user' | 'assistant'; content: string; cardContext?: import("../types/rag").RagContextItem[] }>) => {
     console.log('[useChatHistory] Updating session messages:', { sessionId, messageCount: messages.length });
     
     setSessions(prev => 
@@ -191,7 +229,10 @@ export function useChatHistory(): UseChatHistoryReturn {
         session.id === sessionId 
           ? { 
               ...session, 
-              messages: messages.map(msg => ({ ...msg, id: crypto.randomUUID() })),
+              messages: messages.map(msg => ({ 
+                ...msg, 
+                id: msg.id || crypto.randomUUID() // 既存のIDを保持、無い場合は生成
+              })),
               updatedAt: new Date()
             }
           : session
