@@ -15,6 +15,7 @@ import {
 import { useChat } from "@/app/assistant/useChat"
 import { formatRelativeTime } from "@/utils/time-format"
 import { cn } from "@/lib/utils"
+import type { ChatSession } from "@/types/chat"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // const {
@@ -25,8 +26,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   //   error
   // } = useChatHistory() // 一時的に無効化
   
-  // 一時的にダミーデータ
-  const sessions: never[] = [];
+  // 一時的にダミーデータ（型を明示してビルドエラー回避）
+  const sessions: ChatSession[] = [];
   const activeSessionId: string | null = null;
   const deleteChat = (sessionId: string) => {
     console.log('deleteChat called with:', sessionId);

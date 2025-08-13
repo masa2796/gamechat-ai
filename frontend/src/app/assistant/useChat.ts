@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Message } from "../../types/chat";
+import type { ChatSession } from "../../types/chat";
 import type { RagResponse } from "../../types/rag";
 // import { useChatHistory } from "../../hooks/useChatHistory"; // 一時的に無効化
 
@@ -33,14 +34,22 @@ export const useChat = () => {
   // チャット履歴管理フックとの統合 - 一時的に無効化
   // const chatHistoryHook = useChatHistory();
   
-  // 一時的にダミーデータ
-  const chatHistoryHook = {
-    sessions: [] as never[],
-    activeSessionId: null as string | null,
-    activeSession: null as never,
+  // 一時的にダミーデータ（型を明示してビルドエラーを回避）
+  const chatHistoryHook: {
+    sessions: ChatSession[];
+    activeSessionId: string | null;
+    activeSession: ChatSession | null;
+    createNewChat: () => string;
+    switchToChat: (id: string) => void;
+    updateSessionMessages: (id: string, messages: Message[]) => void;
+    updateChatTitle: (id: string, title: string) => void;
+  } = {
+    sessions: [],
+    activeSessionId: null,
+    activeSession: null,
     createNewChat: () => crypto.randomUUID(),
     switchToChat: (id: string) => console.log('switchToChat:', id),
-    updateSessionMessages: (id: string, messages: unknown[]) => console.log('updateSessionMessages:', id, messages.length),
+    updateSessionMessages: (id: string, messages: Message[]) => console.log('updateSessionMessages:', id, messages.length),
     updateChatTitle: (id: string, title: string) => console.log('updateChatTitle:', id, title)
   };
   
