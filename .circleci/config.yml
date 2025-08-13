@@ -179,38 +179,58 @@ jobs:
       - run:
           name: Set up venv and install dependencies
           command: |
-            python -m venv .venv
-            . .venv/bin/activate
+            # Use full path for venv creation
+            python3 -m venv /home/circleci/project/.venv
+            # Activate virtual environment using full path
+            source /home/circleci/project/.venv/bin/activate
+            # Verify Python and pip are working
+            which python
+            which pip
+            python --version
+            pip --version
+            # Upgrade pip
             pip install --upgrade pip
+            # Install dependencies with retry logic
             pip install -r backend/requirements.txt --timeout 300 --retries 3
             # Install test dependencies
             pip install pytest-cov pytest-html
-            which python
+            # Verify pytest is installed
             which pytest
+            pytest --version
       - save_cache:
           key: v2-python-dependencies-{{ checksum "backend/requirements.txt" }}
           paths:
-            - .venv
+            - /home/circleci/project/.venv
       - run:
           name: Run backend tests
           command: |
-            . .venv/bin/activate
+            # Activate virtual environment using full path
+            source /home/circleci/project/.venv/bin/activate
+            # Verify Python is accessible
+            which python
+            python --version
+            # Set up environment
             cd backend
             export PYTHONPATH=$(pwd)
             export TESTING=true
             export LOG_LEVEL=CRITICAL
-            # Run only existing tests that should pass
-            python -m pytest app/tests/services/test_classification_consolidated.py -v --tb=short || true
-            python -m pytest app/tests/services/test_embedding_consolidated.py -v --tb=short || true
-            python -m pytest app/tests/services/test_database_service.py -v --tb=short || true
-            # If the above tests exist and pass, run all tests
-            python -m pytest app/tests/ -v --tb=short -x --maxfail=5
+            export LOG_DIR=./logs
+            # Create logs directory if it doesn't exist
+            mkdir -p logs
+            # Run tests with explicit python path
+            echo "Running backend tests..."
+            python -m pytest app/tests/ -v --tb=short -x --maxfail=5 --disable-warnings
             echo "✅ All backend tests passed successfully!"
       - run:
           name: Run type check
           command: |
-            . .venv/bin/activate
-            mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests' || echo "Type check completed with warnings"
+            # Activate virtual environment using full path
+            source /home/circleci/project/.venv/bin/activate
+            # Verify mypy is available
+            pip install mypy || echo "mypy already installed"
+            # Run type check
+            cd backend
+            mypy app --config-file mypy.ini --exclude 'app/tests' || echo "Type check completed with warnings"
             echo "✅ Backend type checking completed!"
 
   notify-success:
