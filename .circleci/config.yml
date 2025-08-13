@@ -179,58 +179,126 @@ jobs:
       - run:
           name: Set up venv and install dependencies
           command: |
-            # Use full path for venv creation
-            python3 -m venv /home/circleci/project/.venv
-            # Activate virtual environment using full path
+            # Debug: Check Python availability
+            echo "=== Python Environment Debug ==="
+            which python3 || echo "python3 not found"
+            which python || echo "python not found"
+            python3 --version || echo "python3 version failed"
+            python --version || echo "python version failed"
+            
+            # Set Python executable
+            PYTHON_CMD=$(which python3 || which python)
+            echo "Using Python: $PYTHON_CMD"
+            
+            # Create virtual environment with explicit Python
+            echo "Creating virtual environment..."
+            $PYTHON_CMD -m venv /home/circleci/project/.venv
+            
+            # Verify venv creation
+            echo "Verifying virtual environment creation..."
+            ls -la /home/circleci/project/.venv/
+            ls -la /home/circleci/project/.venv/bin/
+            
+            # Activate virtual environment
+            echo "Activating virtual environment..."
             source /home/circleci/project/.venv/bin/activate
-            # Verify Python and pip are working
+            
+            # Verify Python and pip in venv
+            echo "=== Virtual Environment Verification ==="
             which python
             which pip
             python --version
             pip --version
+            
             # Upgrade pip
             pip install --upgrade pip
+            
             # Install dependencies with retry logic
+            echo "Installing dependencies..."
             pip install -r backend/requirements.txt --timeout 300 --retries 3
+            
             # Install test dependencies
             pip install pytest-cov pytest-html
+            
             # Verify pytest is installed
             which pytest
             pytest --version
+      - run:
+          name: Fallback - Install dependencies without venv
+          when: on_fail
+          command: |
+            echo "=== Fallback: Using system Python ==="
+            PYTHON_CMD=$(which python3 || which python)
+            echo "Using Python: $PYTHON_CMD"
+            
+            # Install pip if needed
+            $PYTHON_CMD -m pip install --upgrade pip --user
+            
+            # Install dependencies to user directory
+            $PYTHON_CMD -m pip install -r backend/requirements.txt --user --timeout 300 --retries 3
+            $PYTHON_CMD -m pip install pytest-cov pytest-html --user
+            
+            # Verify installation
+            $PYTHON_CMD -m pytest --version
       - save_cache:
           key: v2-python-dependencies-{{ checksum "backend/requirements.txt" }}
           paths:
             - /home/circleci/project/.venv
+            - ~/.local
       - run:
           name: Run backend tests
           command: |
-            # Activate virtual environment using full path
-            source /home/circleci/project/.venv/bin/activate
-            # Verify Python is accessible
-            which python
-            python --version
+            # Try to use virtual environment first
+            if [ -f "/home/circleci/project/.venv/bin/activate" ]; then
+              echo "=== Using Virtual Environment ==="
+              source /home/circleci/project/.venv/bin/activate
+              which python
+              python --version
+              PYTHON_CMD="python"
+            else
+              echo "=== Using System Python ==="
+              PYTHON_CMD=$(which python3 || which python)
+              echo "Using Python: $PYTHON_CMD"
+            fi
+            
             # Set up environment
             cd backend
             export PYTHONPATH=$(pwd)
             export TESTING=true
             export LOG_LEVEL=CRITICAL
             export LOG_DIR=./logs
+            
             # Create logs directory if it doesn't exist
             mkdir -p logs
-            # Run tests with explicit python path
+            
+            # Run tests
             echo "Running backend tests..."
-            python -m pytest app/tests/ -v --tb=short -x --maxfail=5 --disable-warnings
+            $PYTHON_CMD -m pytest app/tests/ -v --tb=short -x --maxfail=5 --disable-warnings
             echo "✅ All backend tests passed successfully!"
       - run:
           name: Run type check
           command: |
-            # Activate virtual environment using full path
-            source /home/circleci/project/.venv/bin/activate
-            # Verify mypy is available
-            pip install mypy || echo "mypy already installed"
+            # Try to use virtual environment first
+            if [ -f "/home/circleci/project/.venv/bin/activate" ]; then
+              echo "=== Using Virtual Environment for Type Check ==="
+              source /home/circleci/project/.venv/bin/activate
+              which python
+              python --version
+              PYTHON_CMD="python"
+              PIP_CMD="pip"
+            else
+              echo "=== Using System Python for Type Check ==="
+              PYTHON_CMD=$(which python3 || which python)
+              PIP_CMD="$PYTHON_CMD -m pip"
+              echo "Using Python: $PYTHON_CMD"
+            fi
+            
+            # Install mypy if needed
+            $PIP_CMD install mypy || echo "mypy already installed"
+            
             # Run type check
             cd backend
-            mypy app --config-file mypy.ini --exclude 'app/tests' || echo "Type check completed with warnings"
+            $PYTHON_CMD -m mypy app --config-file mypy.ini --exclude 'app/tests' || echo "Type check completed with warnings"
             echo "✅ Backend type checking completed!"
 
   notify-success:
