@@ -192,66 +192,78 @@ jobs:
             
             # Create virtual environment with explicit Python
             echo "Creating virtual environment..."
-            $PYTHON_CMD -m venv /home/circleci/project/.venv
+            VENV_DIR="/home/circleci/project/.venv"
+            FALLBACK=0
             
-            # Check if venv creation was successful
-            if [ $? -ne 0 ]; then
-              echo "Virtual environment creation failed, exiting..."
-              exit 1
-            fi
-            
-            # Verify venv creation and show all contents
-            echo "Verifying virtual environment creation..."
-            if [ -d "/home/circleci/project/.venv" ]; then
-              echo "Virtual environment directory exists"
-              ls -la /home/circleci/project/.venv/
-              if [ -d "/home/circleci/project/.venv/bin" ]; then
-                echo "bin directory exists"
-                ls -la /home/circleci/project/.venv/bin/
-                echo "Looking for Python executables..."
-                ls -la /home/circleci/project/.venv/bin/python* || echo "No python executables found"
+            if $PYTHON_CMD -m venv "$VENV_DIR"; then
+              echo "Verifying virtual environment creation..."
+              if [ -d "$VENV_DIR" ] && [ -d "$VENV_DIR/bin" ]; then
+                ls -la "$VENV_DIR/"
+                ls -la "$VENV_DIR/bin/"
+                echo "Activating virtual environment..."
+                # Avoid failing the whole step on activation issues
+                set +e
+                source "$VENV_DIR/bin/activate"
+                ACT_RC=$?
+                set -e
+                if [ $ACT_RC -eq 0 ]; then
+                  echo "=== Virtual Environment Verification ==="
+                  which python || true
+                  which pip || true
+                  python --version || true
+                  pip --version || true
+                  
+                  echo "Upgrading pip..."
+                  pip install --upgrade pip || true
+                  
+                  echo "Installing dependencies into venv..."
+                  pip install -r backend/requirements.txt --timeout 300 --retries 3
+                  pip install pytest-cov pytest-html
+                  
+                  echo "Verifying pytest in venv..."
+                  which pytest || true
+                  pytest --version || true
+                else
+                  echo "Virtual environment activation failed, will fallback to direct install"
+                  FALLBACK=1
+                fi
               else
-                echo "bin directory does not exist"
-                exit 1
+                echo "Virtual environment directory or bin missing, will fallback to direct install"
+                FALLBACK=1
               fi
             else
-              echo "Virtual environment directory does not exist"
-              exit 1
+              echo "Virtual environment creation failed, will fallback to direct install"
+              FALLBACK=1
             fi
             
-            # Try to activate virtual environment
-            echo "Activating virtual environment..."
-            source /home/circleci/project/.venv/bin/activate
-            
-            # Check activation success
-            if [ $? -ne 0 ]; then
-              echo "Virtual environment activation failed"
-              exit 1
+            if [ "$FALLBACK" -eq 1 ]; then
+              echo "=== Alternative Setup: Direct Python Installation (fallback) ==="
+              PYTHON_CMD=$(which python3 || which python)
+              echo "Using Python: $PYTHON_CMD"
+              $PYTHON_CMD --version || true
+              
+              echo "Upgrading pip (user)..."
+              $PYTHON_CMD -m pip install --upgrade pip --user || true
+              
+              echo "Installing backend requirements (user)..."
+              $PYTHON_CMD -m pip install -r backend/requirements.txt --user --timeout 300 --retries 3
+              echo "Installing test dependencies (user)..."
+              $PYTHON_CMD -m pip install pytest-cov pytest-html --user
+              
+              echo "Verifying pytest (user)..."
+              $PYTHON_CMD -m pytest --version || true
+              
+              # Flag so downstream steps know which path was used
+              touch /home/circleci/project/.no-venv-flag
             fi
-            
-            # Verify Python and pip in venv
-            echo "=== Virtual Environment Verification ==="
-            which python
-            which pip
-            python --version
-            pip --version
-            
-            # Upgrade pip
-            pip install --upgrade pip
-            
-            # Install dependencies with retry logic
-            echo "Installing dependencies..."
-            pip install -r backend/requirements.txt --timeout 300 --retries 3
-            
-            # Install test dependencies
-            pip install pytest-cov pytest-html
-            
-            # Verify pytest is installed
-            which pytest
-            pytest --version
       - run:
           name: Alternative - Setup without venv
           command: |
+            # Skip if venv succeeded in the previous step
+            if [ ! -f "/home/circleci/project/.no-venv-flag" ]; then
+              echo "Venv setup succeeded earlier; skipping alternative setup."
+              exit 0
+            fi
             echo "=== Alternative Setup: Direct Python Installation ==="
             PYTHON_CMD=$(which python3 || which python)
             echo "Using Python: $PYTHON_CMD"
