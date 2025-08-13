@@ -194,14 +194,40 @@ jobs:
             echo "Creating virtual environment..."
             $PYTHON_CMD -m venv /home/circleci/project/.venv
             
-            # Verify venv creation
-            echo "Verifying virtual environment creation..."
-            ls -la /home/circleci/project/.venv/
-            ls -la /home/circleci/project/.venv/bin/
+            # Check if venv creation was successful
+            if [ $? -ne 0 ]; then
+              echo "Virtual environment creation failed, exiting..."
+              exit 1
+            fi
             
-            # Activate virtual environment
+            # Verify venv creation and show all contents
+            echo "Verifying virtual environment creation..."
+            if [ -d "/home/circleci/project/.venv" ]; then
+              echo "Virtual environment directory exists"
+              ls -la /home/circleci/project/.venv/
+              if [ -d "/home/circleci/project/.venv/bin" ]; then
+                echo "bin directory exists"
+                ls -la /home/circleci/project/.venv/bin/
+                echo "Looking for Python executables..."
+                ls -la /home/circleci/project/.venv/bin/python* || echo "No python executables found"
+              else
+                echo "bin directory does not exist"
+                exit 1
+              fi
+            else
+              echo "Virtual environment directory does not exist"
+              exit 1
+            fi
+            
+            # Try to activate virtual environment
             echo "Activating virtual environment..."
             source /home/circleci/project/.venv/bin/activate
+            
+            # Check activation success
+            if [ $? -ne 0 ]; then
+              echo "Virtual environment activation failed"
+              exit 1
+            fi
             
             # Verify Python and pip in venv
             echo "=== Virtual Environment Verification ==="
@@ -224,22 +250,31 @@ jobs:
             which pytest
             pytest --version
       - run:
-          name: Fallback - Install dependencies without venv
-          when: on_fail
+          name: Alternative - Setup without venv
           command: |
-            echo "=== Fallback: Using system Python ==="
+            echo "=== Alternative Setup: Direct Python Installation ==="
             PYTHON_CMD=$(which python3 || which python)
             echo "Using Python: $PYTHON_CMD"
+            
+            # Verify Python works
+            $PYTHON_CMD --version
             
             # Install pip if needed
             $PYTHON_CMD -m pip install --upgrade pip --user
             
             # Install dependencies to user directory
+            echo "Installing backend requirements..."
             $PYTHON_CMD -m pip install -r backend/requirements.txt --user --timeout 300 --retries 3
+            echo "Installing test dependencies..."
             $PYTHON_CMD -m pip install pytest-cov pytest-html --user
             
             # Verify installation
+            echo "Verifying pytest installation..."
             $PYTHON_CMD -m pytest --version
+            echo "Direct installation completed successfully"
+            
+            # Create a flag file to indicate this method was used
+            touch /home/circleci/project/.no-venv-flag
       - save_cache:
           key: v2-python-dependencies-{{ checksum "backend/requirements.txt" }}
           paths:
@@ -248,18 +283,30 @@ jobs:
       - run:
           name: Run backend tests
           command: |
-            # Try to use virtual environment first
-            if [ -f "/home/circleci/project/.venv/bin/activate" ]; then
+            # Check which installation method was used
+            if [ -f "/home/circleci/project/.no-venv-flag" ]; then
+              echo "=== Using Direct Python Installation ==="
+              PYTHON_CMD=$(which python3 || which python)
+              echo "Using Python: $PYTHON_CMD"
+            elif [ -f "/home/circleci/project/.venv/bin/activate" ]; then
               echo "=== Using Virtual Environment ==="
               source /home/circleci/project/.venv/bin/activate
-              which python
-              python --version
-              PYTHON_CMD="python"
+              if [ $? -eq 0 ]; then
+                which python
+                python --version
+                PYTHON_CMD="python"
+              else
+                echo "Virtual environment activation failed, falling back to system Python"
+                PYTHON_CMD=$(which python3 || which python)
+              fi
             else
-              echo "=== Using System Python ==="
+              echo "=== Using System Python (no venv found) ==="
               PYTHON_CMD=$(which python3 || which python)
               echo "Using Python: $PYTHON_CMD"
             fi
+            
+            # Verify Python command works
+            $PYTHON_CMD --version
             
             # Set up environment
             cd backend
@@ -278,14 +325,25 @@ jobs:
       - run:
           name: Run type check
           command: |
-            # Try to use virtual environment first
-            if [ -f "/home/circleci/project/.venv/bin/activate" ]; then
+            # Check which installation method was used
+            if [ -f "/home/circleci/project/.no-venv-flag" ]; then
+              echo "=== Using Direct Python Installation for Type Check ==="
+              PYTHON_CMD=$(which python3 || which python)
+              PIP_CMD="$PYTHON_CMD -m pip"
+              echo "Using Python: $PYTHON_CMD"
+            elif [ -f "/home/circleci/project/.venv/bin/activate" ]; then
               echo "=== Using Virtual Environment for Type Check ==="
               source /home/circleci/project/.venv/bin/activate
-              which python
-              python --version
-              PYTHON_CMD="python"
-              PIP_CMD="pip"
+              if [ $? -eq 0 ]; then
+                which python
+                python --version
+                PYTHON_CMD="python"
+                PIP_CMD="pip"
+              else
+                echo "Virtual environment activation failed, falling back to system Python"
+                PYTHON_CMD=$(which python3 || which python)
+                PIP_CMD="$PYTHON_CMD -m pip"
+              fi
             else
               echo "=== Using System Python for Type Check ==="
               PYTHON_CMD=$(which python3 || which python)
@@ -293,8 +351,11 @@ jobs:
               echo "Using Python: $PYTHON_CMD"
             fi
             
+            # Verify Python command works
+            $PYTHON_CMD --version
+            
             # Install mypy if needed
-            $PIP_CMD install mypy || echo "mypy already installed"
+            $PIP_CMD install mypy --user || echo "mypy already installed"
             
             # Run type check
             cd backend
