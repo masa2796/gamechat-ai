@@ -29,6 +29,15 @@ export interface UseChatHistoryReturn {
  * チャット履歴管理のカスタムフック
  */
 export function useChatHistory(): UseChatHistoryReturn {
+  const safeRandomId = useCallback((): string => {
+    try {
+      if (typeof crypto !== 'undefined' && crypto && typeof (crypto as { randomUUID?: () => string }).randomUUID === 'function') {
+        return (crypto as { randomUUID: () => string }).randomUUID();
+      }
+    } catch {}
+    // フォールバック
+    return `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }, []);
   // SSRセーフな初期化
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -173,7 +182,7 @@ export function useChatHistory(): UseChatHistoryReturn {
     console.log('[useChatHistory] Current activeSessionId before creation:', activeSessionId);
     
     const newSession: ChatSession = {
-      id: crypto.randomUUID(),
+      id: safeRandomId(),
       title: '新しいチャット',
       messages: [],
       createdAt: new Date(),
@@ -201,7 +210,7 @@ export function useChatHistory(): UseChatHistoryReturn {
     setError(null);
     
     return newSession.id;
-  }, [sessions.length, activeSessionId]);
+  }, [sessions.length, activeSessionId, safeRandomId]);
 
   // チャットを切り替え
   const switchToChat = useCallback((sessionId: string) => {
@@ -272,13 +281,13 @@ export function useChatHistory(): UseChatHistoryReturn {
         session.id === sessionId 
           ? { 
               ...session, 
-              messages: [...session.messages, { ...message, id: crypto.randomUUID() }],
+              messages: [...session.messages, { ...message, id: safeRandomId() }],
               updatedAt: new Date()
             }
           : session
       )
     );
-  }, []);
+  }, [safeRandomId]);
 
   // セッションのメッセージを一括更新
   const updateSessionMessages = useCallback((sessionId: string, messages: Array<{ id?: string; role: 'user' | 'assistant'; content: string; cardContext?: import("../types/rag").RagContextItem[] }>) => {
@@ -291,14 +300,14 @@ export function useChatHistory(): UseChatHistoryReturn {
               ...session, 
               messages: messages.map(msg => ({ 
                 ...msg, 
-                id: msg.id || crypto.randomUUID() // 既存のIDを保持、無い場合は生成
+                id: msg.id || safeRandomId() // 既存のIDを保持、無い場合は生成
               })),
               updatedAt: new Date()
             }
           : session
       )
     );
-  }, []);
+  }, [safeRandomId]);
 
   return {
     sessions,
