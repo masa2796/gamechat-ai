@@ -12,16 +12,16 @@ const AssistantPage: React.FC = () => {
   // const { activeSessionId } = useChatHistory(); // 一時的に無効化
   const activeSessionId = null; // 一時的にnullで固定
 
-  // useChatの返り値が空でもデフォルト値で動作するようにする
-  const chat = useChat() || {};
-  const messages = chat.messages || [];
-  const input = chat.input ?? "";
-  const setInput = chat.setInput || (() => {});
-  const loading = chat.loading ?? false;
-  const sendMode = chat.sendMode || "enter";
-  const setSendMode = chat.setSendMode || (() => {});
-  const sendMessage = chat.sendMessage || (() => {});
-  const clearHistory = chat.clearHistory || (() => {});
+  // useChatの返り値をそのまま利用（型安全）
+  const chat = useChat();
+  const messages = chat.messages;
+  const input = chat.input;
+  const setInput = chat.setInput;
+  const loading = chat.loading;
+  const sendMode = chat.sendMode;
+  const setSendMode = chat.setSendMode;
+  const sendMessage = chat.sendMessage;
+  const clearHistory = chat.clearHistory;
   const activeSession = chat.activeSession;
 
   // アクティブセッションがない場合は新規セッションを作成（現在は無効化）

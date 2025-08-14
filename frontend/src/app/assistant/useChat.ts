@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Message } from "../../types/chat";
+import type { UseChatReturn } from "../../types/chat";
 import type { ChatSession } from "../../types/chat";
 import type { RagResponse } from "../../types/rag";
 // import { useChatHistory } from "../../hooks/useChatHistory"; // 一時的に無効化
@@ -28,7 +29,7 @@ interface WindowWithRecaptcha extends Window {
 
 declare const window: WindowWithRecaptcha;
 
-export const useChat = () => {
+export const useChat = (): UseChatReturn => {
   console.log('[useChat] フック初期化開始');
   
   // チャット履歴管理フックとの統合 - 一時的に無効化
