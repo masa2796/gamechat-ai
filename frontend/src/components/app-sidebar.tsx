@@ -1,5 +1,6 @@
+"use client"
 import * as React from "react"
-import { MessagesSquare, Trash2 } from "lucide-react"
+import { MessagesSquare, Trash2, Plus } from "lucide-react"
 import Link from "next/link"
 import {
   Sidebar,
@@ -11,29 +12,20 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-// import { useChatHistory } from "@/hooks/useChatHistory" // 一時的に無効化
-import { useChat } from "@/app/assistant/useChat"
+import { useChatHistory } from "@/hooks/useChatHistory"
 import { formatRelativeTime } from "@/utils/time-format"
 import { cn } from "@/lib/utils"
-import type { ChatSession } from "@/types/chat"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // const {
-  //   sessions,
-  //   activeSessionId,
-  //   deleteChat,
-  //   isLoading,
-  //   error
-  // } = useChatHistory() // 一時的に無効化
-  
-  // 一時的にダミーデータ（型を明示してビルドエラー回避）
-  const sessions: ChatSession[] = [];
-  const activeSessionId: string | null = null;
-  const deleteChat = (sessionId: string) => {
-    console.log('deleteChat called with:', sessionId);
-  };
-  const isLoading = false;
-  const error: string | null = null;
+  const {
+    sessions,
+    activeSessionId,
+  createNewChat,
+    deleteChat,
+    switchToChat,
+    isLoading,
+    error
+  } = useChatHistory()
 
   // デバッグ情報
   console.log('[AppSidebar] Debug Info:', {
@@ -44,15 +36,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     sessions: sessions.map(s => ({ id: s.id, title: s.title, messagesCount: s.messages.length }))
   });
 
-  // チャット機能（入力フィールドクリア付きのセッション操作用）
-  const { switchToChatAndClear } = useChat()
-
   // デバッグ用のwindow関数は削除（テスト容易性と型安全性向上のため）
 
   // 新規チャット生成ハンドラは未使用のため一時的に削除
 
   const handleSwitchToChat = (sessionId: string) => {
-    switchToChatAndClear(sessionId)
+  switchToChat(sessionId)
   }
 
   const handleDeleteChat = (sessionId: string, event: React.MouseEvent) => {
@@ -60,6 +49,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (confirm('このチャットを削除してもよろしいですか？')) {
       deleteChat(sessionId)
     }
+  }
+
+  const handleCreateNewChat = () => {
+    const newId = createNewChat()
+    // createNewChat内でactiveSessionIdは更新されるが、明示的に切替も呼んでおく（冪等）
+    switchToChat(newId)
   }
 
   return (
@@ -192,6 +187,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       
       <SidebarRail />
       <SidebarFooter>
+        {/* 新規チャット作成ボタン（フッター配置で既存テストの要素数と干渉しない） */}
+        <div className="px-2 py-2">
+          <button
+            type="button"
+            onClick={handleCreateNewChat}
+            disabled={isLoading}
+            className={cn(
+              "w-full inline-flex items-center justify-center gap-2 rounded-md border text-sm py-2 px-3",
+              "bg-white hover:bg-gray-50 border-gray-300 text-gray-700",
+              isLoading && "opacity-60 cursor-not-allowed"
+            )}
+            data-testid="new-chat-button"
+            title="新しいチャットを作成"
+          >
+            <Plus className="size-4" />
+            新規チャット
+          </button>
+        </div>
+
         {/* ストレージ使用状況（将来拡張用） */}
         {sessions.length >= 40 && (
           <div className="px-2 py-1 text-xs text-sidebar-foreground/50">

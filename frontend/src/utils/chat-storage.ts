@@ -267,6 +267,21 @@ export function loadChatHistoryState(): ChatHistoryState {
 export function saveChatHistoryState(state: ChatHistoryState): void {
   saveChatSessions(state.sessions);
   saveActiveSessionId(state.activeSessionId);
+  // 同一タブ内の他コンポーネントへ更新を通知
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      const event = new CustomEvent('chat-history:updated', {
+        detail: {
+          ts: Date.now(),
+          sessionCount: state.sessions.length,
+          activeSessionId: state.activeSessionId,
+        }
+      });
+      window.dispatchEvent(event);
+    }
+  } catch {
+    // 失敗しても致命的ではないので黙って続行
+  }
 }
 
 /**

@@ -1,10 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Message } from "../../types/chat";
 import type { UseChatReturn } from "../../types/chat";
-import type { ChatSession } from "../../types/chat";
 import type { RagResponse } from "../../types/rag";
-// import { useChatHistory } from "../../hooks/useChatHistory"; // 一時的に無効化
+import { useChatHistory } from "../../hooks/useChatHistory";
 
 // reCAPTCHAが無効かどうかを判定するヘルパー関数
 const isRecaptchaDisabled = () => {
@@ -32,27 +31,8 @@ declare const window: WindowWithRecaptcha;
 export const useChat = (): UseChatReturn => {
   console.log('[useChat] フック初期化開始');
   
-  // チャット履歴管理フックとの統合 - 一時的に無効化
-  // const chatHistoryHook = useChatHistory();
-  
-  // 一時的にダミーデータ（型を明示してビルドエラーを回避）
-  const chatHistoryHook: {
-    sessions: ChatSession[];
-    activeSessionId: string | null;
-    activeSession: ChatSession | null;
-    createNewChat: () => string;
-    switchToChat: (id: string) => void;
-    updateSessionMessages: (id: string, messages: Message[]) => void;
-    updateChatTitle: (id: string, title: string) => void;
-  } = {
-    sessions: [],
-    activeSessionId: null,
-    activeSession: null,
-    createNewChat: () => crypto.randomUUID(),
-    switchToChat: (id: string) => console.log('switchToChat:', id),
-    updateSessionMessages: (id: string, messages: Message[]) => console.log('updateSessionMessages:', id, messages.length),
-    updateChatTitle: (id: string, title: string) => console.log('updateChatTitle:', id, title)
-  };
+  // チャット履歴管理フック
+  const chatHistoryHook = useChatHistory();
   
   console.log('[useChat] useChatHistory hook result:', {
     keys: Object.keys(chatHistoryHook),
@@ -66,7 +46,8 @@ export const useChat = (): UseChatReturn => {
     activeSession,
     createNewChat,
     switchToChat,
-    updateChatTitle
+    updateChatTitle,
+    updateSessionMessages
   } = chatHistoryHook;
 
   console.log('[useChat] チャット履歴フック状態:', {
@@ -76,8 +57,23 @@ export const useChat = (): UseChatReturn => {
     updateChatTitleType: typeof updateChatTitle
   });
 
-  // 現在のセッションのメッセージを取得（一時的にローカル状態で管理）
+  // 現在のセッションのメッセージを取得（ローカル状態で管理しつつ履歴と双方向同期）
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  // 直近の更新元: 'local' | 'session' | null
+  const lastUpdateSource = useRef<"local" | "session" | null>(null);
+
+  const areMessagesEqual = useCallback((a: Message[], b: Message[]) => {
+    if (a === b) return true;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      const am = a[i];
+      const bm = b[i];
+      if (am.id !== bm.id || am.role !== bm.role || am.content !== bm.content) {
+        return false;
+      }
+    }
+    return true;
+  }, []);
   
   const messages = useMemo(() => {
     console.log('[useChat] Messages computed:', {
@@ -98,18 +94,64 @@ export const useChat = (): UseChatReturn => {
     setInput("");
   }, [activeSessionId]);
 
-  // メッセージ更新時にローカル状態を更新（一時的にセッション同期は無効化）
+  // メッセージ更新時にローカル状態を更新
   const setMessages = useCallback((updater: Message[] | ((prev: Message[]) => Message[])) => {
     setLocalMessages((prev) => {
-      const next = typeof updater === 'function' ? (updater as (p: Message[]) => Message[])(prev) : updater;
+  const next = typeof updater === 'function' ? (updater as (p: Message[]) => Message[])(prev) : updater;
+  // ローカル起点の更新であることを記録
+  lastUpdateSource.current = 'local';
       return next;
     });
   }, []);
 
-  // LocalStorage: 初期読み込み
+  // セッション切替や初期化時に、アクティブセッションのメッセージをローカルへ反映
+  useEffect(() => {
+    if (activeSession) {
+      const next = activeSession.messages ?? [];
+      console.log('[useChat] アクティブセッションのメッセージをロード:', {
+        sessionId: activeSession.id,
+        count: next.length
+      });
+      setLocalMessages((prev) => {
+        if (areMessagesEqual(prev, next)) return prev;
+        // セッション起点のコピーであることを記録
+        lastUpdateSource.current = 'session';
+        return next;
+      });
+    }
+  }, [activeSession, areMessagesEqual]);
+
+  // ローカルメッセージが変わったら履歴へ同期（アクティブセッションがある場合）
+  useEffect(() => {
+    if (!activeSessionId) return;
+    // セッションからコピーしてきた更新の場合は同期しない（ループ防止）
+    if (lastUpdateSource.current !== 'local') return;
+    // セッション側と差分がない場合は同期しない
+    const sessionMessages = activeSession?.messages ?? [];
+    if (areMessagesEqual(localMessages, sessionMessages)) return;
+    try {
+      updateSessionMessages(activeSessionId, localMessages);
+      console.log('[useChat] 履歴へメッセージ同期完了:', {
+        sessionId: activeSessionId,
+        count: localMessages.length
+      });
+    } catch (e) {
+      console.warn('[useChat] 履歴同期に失敗:', e);
+    } finally {
+      // 同期後はフラグをリセット
+      lastUpdateSource.current = null;
+    }
+  }, [localMessages, activeSessionId, updateSessionMessages, activeSession, areMessagesEqual]);
+
+  // LocalStorage: 初期読み込み（後方互換: 旧キー 'chat-history' を読み取る）
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
+      // 既にセッションがあり、そのメッセージがロードされる場合は旧キーからの上書きを避ける
+      if (activeSession) {
+        console.log('[useChat] 旧キー読み込みをスキップ（アクティブセッションあり）');
+        return;
+      }
       const raw = localStorage.getItem('chat-history');
       if (!raw) return;
       const parsed = JSON.parse(raw);
@@ -119,9 +161,9 @@ export const useChat = (): UseChatReturn => {
     } catch (err) {
       console.warn('Failed to parse chat history:', err);
     }
-  }, []);
+  }, [activeSession]);
 
-  // LocalStorage: 変更保存
+  // LocalStorage: 変更保存（後方互換のため旧キーにも保存）
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -177,6 +219,13 @@ export const useChat = (): UseChatReturn => {
     setInput("");
 
     console.log(`[useChat] ユーザーメッセージ送信前のメッセージ数: ${localMessages.length}`);
+
+    // 最初の送信時にセッションがなければ作成
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      sessionId = createNewChat();
+      console.log('[useChat] セッション未作成のため新規作成:', sessionId);
+    }
     
     // 「サンプル出力」ならCardListを表示する特殊メッセージを追加
     if (input.trim() === "サンプル出力") {
@@ -199,6 +248,13 @@ export const useChat = (): UseChatReturn => {
     setMessages(prev => {
       const newMessages = [...prev, userMessage];
       console.log(`[useChat] ユーザーメッセージ追加後: ${newMessages.length}件`);
+      // セッションタイトルの自動設定（最初のユーザーメッセージから切り出し）
+      try {
+        if (sessionId && prev.length === 0) {
+          const title = userMessage.content.slice(0, 30);
+          updateChatTitle(sessionId, title);
+        }
+      } catch {}
       return newMessages;
     });
 
@@ -270,7 +326,7 @@ export const useChat = (): UseChatReturn => {
         throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
       }
       
-      const data: RagResponse = await res.json();
+  const data: RagResponse = await res.json();
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
@@ -319,7 +375,7 @@ export const useChat = (): UseChatReturn => {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, recaptchaReady, localMessages.length, setMessages]);
+  }, [input, loading, recaptchaReady, localMessages.length, setMessages, activeSessionId, createNewChat, updateChatTitle]);
 
   // チャット履歴をクリアする関数（現在のセッションのメッセージをクリア）
   const clearHistory = useCallback(() => {
@@ -358,14 +414,15 @@ export const useChat = (): UseChatReturn => {
     // セッションを切り替え
     switchToChat(sessionId);
     
-    // 切り替え先のセッションを検索（一時的に無効化）
-    console.log('[useChat] Session switching temporarily disabled');
+    // 切り替え先のセッションを検索してローカルメッセージを反映
+    const target = sessions.find(s => s.id === sessionId);
+    setLocalMessages(target?.messages ?? []);
     
     // 入力フィールドをクリア
     setInput("");
     
     console.log('[useChat] Chat session switch completed');
-  }, [switchToChat, activeSessionId]);
+  }, [switchToChat, activeSessionId, sessions]);
 
   return {
     messages: localMessages,  // ローカル状態のメッセージを返す

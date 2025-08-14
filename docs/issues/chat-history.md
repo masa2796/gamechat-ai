@@ -1,3 +1,54 @@
+# 不具合調査レポート: chat-history 機能が正常に動かない件（2025-08-15）
+
+本セクションは feature/chat-history-management-113 ブランチの現状コードを確認し、chat-history が動作しない原因を整理したものです。
+
+## 現象
+- サイドバー履歴にセッションが表示されない（常に「No chat sessions found」）。
+- メッセージ送受信後も LocalStorage に `chat-sessions`/`active-session-id` が保存されない。
+- セッション切替/削除/タイトル更新など履歴操作が実行されない。
+
+## 再現手順（最小）
+1. ブラウザでフロントを開き、メッセージを送信。
+2. DevTools → Application → Local Storage を確認。
+3. `chat-sessions`/`active-session-id` が作成・更新されていないことを確認。
+4. サイドバーに履歴が表示されない。
+
+## 原因まとめ（コード起点）
+1) サイドバーが履歴フック未接続
+  - ファイル: `frontend/src/components/app-sidebar.tsx`
+  - 事実: `useChatHistory` の import/使用がコメントアウトされ、代わりに空のダミー配列を使用。
+    - コメント: `// import { useChatHistory } from "@/hooks/useChatHistory" // 一時的に無効化`
+  - 影響: UI がストレージ状態にバインドされず、履歴一覧が常に空表示。
+
+2) チャット本体と履歴の未統合
+  - ファイル: `frontend/src/hooks/useChat.ts`
+  - 事実: 内部 `messages` のみを管理し、`useChatHistory` の `createNewChat`/`updateSessionMessages` 等を呼ばない。
+  - 影響: 送受信してもセッションへ反映されず、LocalStorage に永続化されない。
+
+3) 型と実装の齟齬
+  - ファイル: `frontend/src/types/chat.ts` vs `frontend/src/hooks/useChatHistory.ts`
+  - 事実: `UseChatHistoryReturn` の項目差異（例: `storageUsage`/`clearAllHistory` など未実装）。
+  - 影響: 実装時に参照ミスや未配線が発生しやすい。
+
+4) 軽微事項（補足）
+  - `useChatHistory` の `isLoading` 初期値が `false` のためロード中表示が機能しにくい。
+  - 旧形式マイグレーション（`detectOldChatHistory`/`migrateOldChatHistory`）を初期化で呼んでいない。
+
+## 推奨アクション（復旧優先の最小）
+- サイドバーで `useChatHistory` を再有効化し、`sessions`/`activeSessionId`/`deleteChat` を実データに接続。
+- `useChat.ts` に `useChatHistory` を統合：
+  - アクティブセッションがなければ `createNewChat()` で作成。
+  - `messages` 変更時に `updateSessionMessages(activeSessionId, messages)` を呼び同期。
+  - セッション切替 API を用意し、`activeSessionId` と表示中 `messages` を連動。
+- 中期対応として、型の一本化とマイグレーション呼出し、`isLoading` の見直しを実施。
+
+## 確認観点（修正後）
+- LocalStorage に `chat-sessions`/`active-session-id` が作成・更新される。
+- サイドバーにセッションが表示/切替でき、件数や更新時刻が反映される。
+- リロードしても履歴が復元され、`Date` が正しく復元される。
+
+---
+
 # チャット履歴管理機能
 
 ## 概要

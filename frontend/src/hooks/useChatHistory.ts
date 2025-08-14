@@ -3,7 +3,7 @@
  * 複数のチャットセッションを管理し、LocalStorageと同期する
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { 
   saveChatHistoryState,
   loadChatHistoryState
@@ -35,6 +35,28 @@ export function useChatHistory(): UseChatHistoryReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  // 初回ロード完了フラグ（保存副作用の暴発防止）
+  const hasLoadedRef = useRef(false);
+  // 直近保存スナップショット（無変化保存を回避）
+  const lastSavedSnapshotRef = useRef<string | null>(null);
+
+  const buildSnapshot = useCallback((s: ChatSession[], activeId: string | null) => {
+    try {
+      return JSON.stringify({
+        activeId,
+        sessions: s.map(sess => ({
+          id: sess.id,
+          title: sess.title,
+          updatedAt: sess.updatedAt instanceof Date ? sess.updatedAt.toISOString() : String(sess.updatedAt),
+          createdAt: sess.createdAt instanceof Date ? sess.createdAt.toISOString() : String(sess.createdAt),
+          isActive: sess.isActive,
+          messages: sess.messages.map(m => ({ id: m.id, role: m.role, content: m.content }))
+        }))
+      });
+    } catch {
+      return '';
+    }
+  }, []);
 
   // 現在のアクティブセッションを計算
   const activeSession = useMemo(() => {
@@ -67,9 +89,13 @@ export function useChatHistory(): UseChatHistoryReturn {
         state: state
       });
       
-      // ロードした状態をそのまま設定（空でも自動作成はしない）
+  // ロードした状態をそのまま設定（空でも自動作成はしない）
       setSessions(state.sessions);
       setActiveSessionId(state.activeSessionId);
+  // 初期ロード完了をマーク
+  hasLoadedRef.current = true;
+  // 現在のスナップショットを記録（初回保存の重複を避ける）
+  lastSavedSnapshotRef.current = buildSnapshot(state.sessions, state.activeSessionId);
       
       console.log('[useChatHistory] State updated successfully');
       console.log('[useChatHistory] Final state after initialization:', {
@@ -83,11 +109,44 @@ export function useChatHistory(): UseChatHistoryReturn {
       console.log('[useChatHistory] Setting isLoading to false');
       setIsLoading(false);
     }
-  }, []); // 空の依存関係配列で1回だけ実行
+  }, [buildSnapshot]); // 初期化時に一度（buildSnapshotは安定）
+
+  // 他インスタンスからの更新を購読して状態を再読み込み
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => {
+      try {
+        const state = loadChatHistoryState();
+        const incomingSnapshot = buildSnapshot(state.sessions, state.activeSessionId);
+        const currentSnapshot = buildSnapshot(sessions, activeSessionId);
+        if (incomingSnapshot === currentSnapshot) {
+          // 変化なしなら無視
+          return;
+        }
+        // 再読み込み時も保存副作用を走らせたいので hasLoadedRef を維持
+        setSessions(state.sessions);
+        setActiveSessionId(state.activeSessionId);
+      } catch (e) {
+        console.warn('[useChatHistory] Failed to refresh on external update', e);
+      }
+    };
+    window.addEventListener('chat-history:updated', handler as EventListener);
+    return () => window.removeEventListener('chat-history:updated', handler as EventListener);
+  }, [sessions, activeSessionId, buildSnapshot]);
 
   // セッションが変更されたときの保存処理
   useEffect(() => {
+    // 初回ロードが完了するまで保存はスキップ（空配列で上書きしない）
+    if (!hasLoadedRef.current) {
+      console.log('[useChatHistory] Skip saving before initial load completes');
+      return;
+    }
     if (typeof window !== 'undefined' && sessions.length >= 0) {
+      const currentSnapshot = buildSnapshot(sessions, activeSessionId);
+      if (lastSavedSnapshotRef.current === currentSnapshot) {
+        // 無変化なら保存しない
+        return;
+      }
       console.log('[useChatHistory] Saving sessions to localStorage:', {
         sessionsCount: sessions.length,
         activeSessionId
@@ -99,12 +158,13 @@ export function useChatHistory(): UseChatHistoryReturn {
           activeSessionId,
           maxSessions: 50 // STORAGE_LIMITS.MAX_SESSIONSの値
         });
+        lastSavedSnapshotRef.current = currentSnapshot;
       } catch (err) {
         console.error('[useChatHistory] Failed to save state:', err);
         setError(err instanceof Error ? err.message : 'Failed to save state');
       }
     }
-  }, [sessions, activeSessionId]);
+  }, [sessions, activeSessionId, buildSnapshot]);
 
   // 新しいチャットを作成
   const createNewChat = useCallback((): string => {
