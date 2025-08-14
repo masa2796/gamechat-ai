@@ -99,30 +99,37 @@ export const useChat = (): UseChatReturn => {
   }, [activeSessionId]);
 
   // メッセージ更新時にローカル状態を更新（一時的にセッション同期は無効化）
-  const setMessages = useCallback((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
-    console.log('[useChat] setMessages called:', {
-      activeSessionId,
-      hasActiveSession: !!activeSession,
-      messagesType: typeof newMessages
+  const setMessages = useCallback((updater: Message[] | ((prev: Message[]) => Message[])) => {
+    setLocalMessages((prev) => {
+      const next = typeof updater === 'function' ? (updater as (p: Message[]) => Message[])(prev) : updater;
+      return next;
     });
-    
-    const updatedMessages = typeof newMessages === 'function' 
-      ? newMessages(localMessages) 
-      : newMessages;
-    
-    console.log('[useChat] Updating messages:', {
-      previousCount: localMessages.length,
-      newCount: updatedMessages.length
-    });
-    
-    // ローカル状態を直接更新
-    setLocalMessages(updatedMessages);
-    
-    // 最初のユーザーメッセージの場合、タイトルを自動生成（一時的に無効化）
-    if (updatedMessages.length === 1 && updatedMessages[0].role === 'user') {
-      console.log('[useChat] Title generation temporarily disabled');
+  }, []);
+
+  // LocalStorage: 初期読み込み
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('chat-history');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setLocalMessages(parsed);
+      }
+    } catch (err) {
+      console.warn('Failed to parse chat history:', err);
     }
-  }, [localMessages, activeSessionId, activeSession]);  // 現在使用している変数のみに依存
+  }, []);
+
+  // LocalStorage: 変更保存
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('chat-history', JSON.stringify(localMessages));
+    } catch {
+      // 保存失敗時は黙ってスキップ
+    }
+  }, [localMessages]);
 
   // 送信モードの初期化
   useEffect(() => {
@@ -316,10 +323,11 @@ export const useChat = (): UseChatReturn => {
 
   // チャット履歴をクリアする関数（現在のセッションのメッセージをクリア）
   const clearHistory = useCallback(() => {
-    if (activeSessionId) {
-      setMessages([]);
+    setMessages([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('chat-history');
     }
-  }, [activeSessionId, setMessages]);
+  }, [setMessages]);
 
   // 新しいチャットを作成して自動的に切り替え
   const createNewChatAndSwitch = useCallback(() => {

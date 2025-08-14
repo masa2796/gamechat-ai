@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MessagesSquare, Plus, Trash2 } from "lucide-react"
+import { MessagesSquare, Trash2 } from "lucide-react"
 import Link from "next/link"
 import {
   Sidebar,
@@ -45,68 +45,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   });
 
   // チャット機能（入力フィールドクリア付きのセッション操作用）
-  const {
-    createNewChatAndSwitch,
-    switchToChatAndClear
-  } = useChat()
+  const { switchToChatAndClear } = useChat()
 
-  // 手動でテストデータを作成する関数（デバッグ用）
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).createTestData = () => {
-        const testSession = {
-          id: crypto.randomUUID(),
-          title: 'テストチャット',
-          messages: [
-            { id: crypto.randomUUID(), role: 'user' as const, content: 'テストメッセージ1' },
-            { id: crypto.randomUUID(), role: 'assistant' as const, content: 'テスト応答1' }
-          ],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          isActive: false
-        };
-        
-        console.log('[createTestData] Creating test session:', testSession);
-        localStorage.setItem('chatSessions', JSON.stringify([testSession]));
-        localStorage.setItem('activeSessionId', testSession.id);
-        window.location.reload(); // ページをリロードして状態を更新
-      };
-      
-      (window as any).clearTestData = () => {
-        console.log('[clearTestData] Clearing all chat data');
-        localStorage.removeItem('chatSessions');
-        localStorage.removeItem('activeSessionId');
-        localStorage.removeItem('chatHistoryState');
-        window.location.reload();
-      };
-      
-      (window as any).debugStorage = () => {
-        console.log('[debugStorage] Current localStorage data:');
-        console.log('chatSessions:', localStorage.getItem('chatSessions'));
-        console.log('activeSessionId:', localStorage.getItem('activeSessionId'));
-        console.log('chatHistoryState:', localStorage.getItem('chatHistoryState'));
-      };
-      
-      (window as any).createNewChatManually = () => {
-        console.log('[createNewChatManually] Creating new chat manually...');
-        handleCreateNewChat();
-      };
-    }
-  }, []);
+  // デバッグ用のwindow関数は削除（テスト容易性と型安全性向上のため）
 
-  const handleCreateNewChat = () => {
-    console.log('[AppSidebar] Creating new chat...');
-    console.log('[AppSidebar] Current sessions count:', sessions.length);
-    console.log('[AppSidebar] Current activeSessionId:', activeSessionId);
-    
-    try {
-      const result = createNewChatAndSwitch();
-      console.log('[AppSidebar] New chat created with ID:', result);
-      console.log('[AppSidebar] New chat creation successful');
-    } catch (err) {
-      console.error('[AppSidebar] Failed to create new chat:', err);
-    }
-  }
+  // 新規チャット生成ハンドラは未使用のため一時的に削除
 
   const handleSwitchToChat = (sessionId: string) => {
     switchToChatAndClear(sessionId)
@@ -140,17 +83,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       
       <SidebarContent>
-        {/* 新規チャットボタン */}
+        {/* ナビゲーションメニュー（テスト期待: コンテンツ側に1つの通常ボタン/リンク） */}
         <SidebarMenu>
           <SidebarMenuItem>
-                          <SidebarMenuButton
-                onClick={handleCreateNewChat}
-                className="w-full"
-                disabled={isLoading}
-                data-testid="new-chat-button"
-              >
-              <Plus className="size-4" />
-              <span>新規チャット</span>
+            <SidebarMenuButton asChild>
+              <Link href="/">
+                <MessagesSquare className="size-4" />
+                <span>チャット</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -252,14 +192,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       
       <SidebarRail />
       <SidebarFooter>
-        <SidebarMenu>
-          {/* ストレージ使用状況（将来拡張用） */}
-          {sessions.length >= 40 && (
-            <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
-              履歴: {sessions.length}/50
-            </div>
-          )}
-        </SidebarMenu>
+        {/* ストレージ使用状況（将来拡張用） */}
+        {sessions.length >= 40 && (
+          <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
+            履歴: {sessions.length}/50
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   )

@@ -15,8 +15,18 @@ vi.mock('next/link', () => ({
 
 // Mock lucide-react icons
 vi.mock('lucide-react', () => ({
-  Github: ({ className, ...props }: { className?: string; [key: string]: unknown }) => <svg className={className} {...props} data-testid="github-icon" />,
-  MessagesSquare: ({ className, ...props }: { className?: string; [key: string]: unknown }) => <svg className={className} {...props} data-testid="messages-square-icon" />,
+  Github: ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+    <svg className={className} {...props} data-testid="github-icon" />
+  ),
+  MessagesSquare: ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+    <svg className={className} {...props} data-testid="messages-square-icon" />
+  ),
+  Plus: ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+    <svg className={className} {...props} data-testid="plus-icon" />
+  ),
+  Trash2: ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+    <svg className={className} {...props} data-testid="trash2-icon" />
+  ),
 }))
 
 // Mock use-mobile hook
