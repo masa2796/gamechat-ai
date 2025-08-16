@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "types": [
-      "node"
+      "node",
+      "vitest/globals"
     ],
     "baseUrl": ".",
     "paths": {
@@ -16,7 +17,7 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "noEmit": false,
     "incremental": true,
     "module": "esnext",
@@ -36,7 +37,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "instrumentation-client.ts",
     "instrumentation.ts",
     "next-env.d.ts",
     "out/types/**/*.ts"

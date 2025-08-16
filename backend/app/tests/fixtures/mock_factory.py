@@ -22,14 +22,14 @@ class TestDataFactory:
         ]
     
     @staticmethod
-    def create_game_card_context_items() -> list[ContextItem]:
-        """ゲームカード関連のContextItemを生成"""
+    def create_game_card_context_items() -> list[dict]:
+        """ゲームカード関連の詳細json(dict)リストを生成"""
         return [
-            ContextItem(title="ピカチュウ", text="電気タイプのマスコットカード", score=0.95),
-            ContextItem(title="リザードン", text="炎/飛行タイプの最終進化", score=0.92),
-            ContextItem(title="フシギダネ", text="草タイプのたねカード", score=0.90),
-            ContextItem(title="カメックス", text="水タイプの最終進化", score=0.89),
-            ContextItem(title="フシギバナ", text="草/毒タイプの最終進化", score=0.88)
+            {"name": "ピカチュウ", "type": "電気", "hp": 60, "species": "マスコットカード", "stage": "たね", "attacks": [{"name": "でんきショック", "damage": 30}], "weakness": "闘"},
+            {"name": "リザードン", "type": "炎", "hp": 120, "species": "最終進化", "stage": "2進化", "attacks": [{"name": "かえんほうしゃ", "damage": 90}], "weakness": "水"},
+            {"name": "フシギダネ", "type": "草", "hp": 45, "species": "たねカード", "stage": "たね", "attacks": [{"name": "つるのムチ", "damage": 20}], "weakness": "炎"},
+            {"name": "カメックス", "type": "水", "hp": 100, "species": "最終進化", "stage": "2進化", "attacks": [{"name": "ハイドロポンプ", "damage": 60}], "weakness": "草"},
+            {"name": "フシギバナ", "type": "草", "hp": 100, "species": "最終進化", "stage": "2進化", "attacks": [{"name": "ソーラービーム", "damage": 80}], "weakness": "炎"}
         ]
     
     @staticmethod
@@ -127,6 +127,11 @@ class TestDataFactory:
             filter_keywords=[],
             reasoning="信頼度が低いセマンティック検索として分類されました"
         )
+
+    @staticmethod
+    def create_game_card_titles() -> list[str]:
+        """ゲームカード名リストを返す"""
+        return ["ピカチュウ", "リザードン", "フシギダネ", "カメックス", "フシギバナ"]
 
 
 class MockResponseFactory:

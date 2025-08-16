@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+// window.grecaptcha型定義を追加
+interface WindowWithRecaptcha extends Window {
+  grecaptcha?: {
+    execute(siteKey: string, options: { action: string }): Promise<string>;
+  };
+}
+
 export default function APITestPage() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<Record<string, unknown> | null>(null);
@@ -27,12 +34,15 @@ export default function APITestPage() {
       if (process.env.NEXT_PUBLIC_SKIP_RECAPTCHA === "true") {
         recaptchaToken = "test"; // バックエンドでテストトークンとして認識される
         console.log("reCAPTCHA verification skipped due to NEXT_PUBLIC_SKIP_RECAPTCHA=true");
-      } else if (window.grecaptcha && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-        recaptchaToken = await window.grecaptcha.execute(
-          process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, 
-          { action: "submit" }
-        );
-        console.log("reCAPTCHA Token:", recaptchaToken ? `${recaptchaToken.substring(0, 20)}***` : "Failed to generate");
+      } else {
+        const w = window as WindowWithRecaptcha;
+        if (w.grecaptcha && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+          recaptchaToken = await w.grecaptcha.execute(
+            process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, 
+            { action: "submit" }
+          );
+          console.log("reCAPTCHA Token:", recaptchaToken ? `${recaptchaToken.substring(0, 20)}***` : "Failed to generate");
+        }
       }
 
       const requestHeaders = {

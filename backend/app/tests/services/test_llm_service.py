@@ -47,7 +47,13 @@ async def test_generate_answer_greeting(mock_openai_client):
     llm.client = mock_client
 
     answer = await llm.generate_answer("おはようございます", [])
-    assert "テスト環境" in answer or "具体的な質問" in answer
+    # 挨拶応答テンプレートに合わせて期待値を修正
+    assert (
+        "GameChatへようこそ" in answer
+        or "カードやゲームについて" in answer
+        or "何でも聞いて" in answer
+        or "こんにちは" in answer
+    )
 
 @pytest.mark.asyncio
 async def test_generate_answer_with_classification(monkeypatch):

@@ -56,8 +56,12 @@ export function usePWA() {
             }
           });
 
-        } catch (error) {
-          console.error('Service Worker registration failed:', error);
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error('Service Worker registration failed:', error);
+          } else {
+            console.error('Service Worker registration failed:', String(error));
+          }
         }
       };
 

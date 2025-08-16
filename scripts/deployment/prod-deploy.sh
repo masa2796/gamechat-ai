@@ -118,14 +118,8 @@ run_health_checks() {
         return 1
     fi
     
-    # フロントエンドのヘルスチェック
-    FRONTEND_HEALTH=$(curl -f -s http://localhost:3000/api/health || echo "failed")
-    if echo "$FRONTEND_HEALTH" | grep -q "healthy"; then
-        log_success "フロントエンド: 正常"
-    else
-        log_error "フロントエンド: 異常"
-        return 1
-    fi
+    # フロントエンドのヘルスチェック（prod環境ではFirebase Hosting運用のためスキップ）
+    log_info "フロントエンド: prod環境ではDockerコンテナを使用しないためヘルスチェックをスキップします"
     
     # Nginxのヘルスチェック
     NGINX_HEALTH=$(curl -f -s http://localhost/ || echo "failed")

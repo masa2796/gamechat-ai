@@ -16,6 +16,7 @@ services:
       - ./backend/requirements.txt:/app/requirements.txt:ro
       # .env.productionがなくても開発・CIでエラーにならないようにする
       - ./backend/.env.ci:/app/backend/.env.production:ro
+      - ./data:/data:ro
     env_file:
       - backend/.env
     networks:
@@ -53,5 +54,4 @@ networks:
   gamechat-network:
     driver: bridge
 
-volumes:
-  backend_data:
+volumes: {}

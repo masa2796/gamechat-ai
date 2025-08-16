@@ -5,7 +5,6 @@ from .vector_service import VectorService
 from .llm_service import LLMService
 from .hybrid_search_service import HybridSearchService
 from ..config.ng_words import NG_WORDS
-from ..core.performance import bottleneck_detector
 from ..core.cache import prewarmed_query_cache as query_cache
 import logging
 import time
@@ -25,13 +24,16 @@ class RagService:
         RAGクエリを処理してレスポンスを生成
         パフォーマンス監視とキャッシュ機能付き
         """
+        import sys
         start_time = time.perf_counter()
+        print(f"[RAG] process_query called: question='{rag_req.question}', top_k={rag_req.top_k}", file=sys.stderr)
         
         try:
             # NGワードチェック
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
+                print("[RAG] NGワード検出: abort", file=sys.stderr)
                 return {
-                    "answer": "申し訳ありませんが、そのような内容にはお答えできません。"
+                    "message": "申し訳ありませんが、そのような内容にはお答えできません。"
                 }
 
             # キャッシュから応答をチェック（高速化）
@@ -42,91 +44,48 @@ class RagService:
             cache_check_duration = time.perf_counter() - cache_check_start
             
             if cached_response:
-                total_duration = time.perf_counter() - start_time
-                logger.info(f"🚀 Cache hit: {rag_req.question[:50]}... ({total_duration:.3f}s)")
-                
-                # キャッシュヒット時の最小パフォーマンス情報
-                cached_response["performance"]["total_duration"] = total_duration
-                cached_response["performance"]["cache_check_duration"] = cache_check_duration
+                print(f"[RAG] キャッシュヒット: {cache_check_duration:.3f}s", file=sys.stderr)
                 return cached_response
 
-            # ハイブリッド検索の実行（最適化版）
+            # 検索実行
             search_start = time.perf_counter()
-            
-            # 動的なtop_k調整（パフォーマンス最適化）
             optimized_top_k = rag_req.top_k or 50
-            if optimized_top_k > 30:
-                optimized_top_k = min(30, optimized_top_k)  # 最大30に制限
-            
-            search_result = await self.hybrid_search_service.search(
-                rag_req.question, optimized_top_k
-            )
+            search_result = await self.hybrid_search_service.search(rag_req.question, optimized_top_k)
             search_duration = time.perf_counter() - search_start
             
-            # 5秒以上の場合は警告（Vector検索最適化のため）
-            if search_duration > 4.0:
-                logger.warning(f"⚠️ Slow search detected: {search_duration:.3f}s for '{rag_req.question[:50]}...'")
-                bottleneck_detector.check_operation(
-                    "hybrid_search",
-                    search_duration,
-                    {"question": rag_req.question[:100], "top_k": optimized_top_k}
-                )
-            
-            context_items = search_result["merged_results"]
-            
-            # LLM応答生成（パフォーマンス監視付き）
+            # LLM処理（今回は空文字）
             llm_start = time.perf_counter()
-            answer = await self.llm_service.generate_answer(
-                query=rag_req.question,
-                context_items=context_items,
-                classification=search_result["classification"],
-                search_info=search_result.get("search_quality", {})
-            )
-            llm_duration = time.perf_counter() - llm_start
+            llm_duration = time.perf_counter() - llm_start  # 0秒
             
-            # ボトルネック検出
-            if llm_duration > 3.0:
-                bottleneck_detector.check_operation(
-                    "llm_generation",
-                    llm_duration,
-                    {"question": rag_req.question[:100], "context_count": len(context_items)}
-                )
-            
-            # 全体の処理時間を記録
             total_duration = time.perf_counter() - start_time
-            logger.info(
-                f"⏱️ RAG処理完了: total={total_duration:.3f}s, "
-                f"search={search_duration:.3f}s, llm={llm_duration:.3f}s"
-            )
             
+            logger.info(f"⏱️ RAG処理完了: total={total_duration:.3f}s, search={search_duration:.3f}s, llm={llm_duration:.3f}s")
+            
+            # デバッグ情報出力
+            classification = search_result.get("classification")
+            query_type = getattr(classification, "query_type", None) if classification else None
+            
+            print(f"[RAG][DEBUG] query_type={query_type}", file=sys.stderr)
+            logger.info(f"[RAG][DEBUG] query_type={query_type}")
+
+
             # レスポンス構築
             if rag_req.with_context:
+                # HybridSearchServiceから受け取ったcontextをそのまま使用（重複回避）
+                context_data = search_result.get("context", [])
+                classification = search_result.get("classification")
+                
                 response = {
-                    "answer": answer,
-                    "context": [c.model_dump() for c in context_items],
-                    "classification": search_result["classification"].model_dump(),
-                    "search_info": {
-                        "query_type": search_result["classification"].query_type,
-                        "confidence": search_result["classification"].confidence,
-                        "db_results_count": len(search_result["db_results"]),
-                        "vector_results_count": len(search_result["vector_results"])
-                    },
-                    "performance": {
-                        "total_duration": total_duration,
-                        "search_duration": search_duration,
-                        "llm_duration": llm_duration,
-                        "cache_hit": False
-                    }
+                    "context": context_data,  # HybridSearchServiceで処理済みのカード詳細JSONリスト
+                    "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
+                    "search_info": search_result.get("search_info", {})
                 }
+                print("[RAG][DEBUG] Using context from HybridSearchService directly to avoid duplication", file=sys.stderr)
+                logger.info("[RAG][DEBUG] Using context from HybridSearchService directly to avoid duplication")
             else:
+                # with_context=Falseの場合（最小限のレスポンス）
                 response = {
-                    "answer": answer,
-                    "performance": {
-                        "total_duration": total_duration,
-                        "search_duration": search_duration,
-                        "llm_duration": llm_duration,
-                        "cache_hit": False
-                    }
+                    "message": "検索完了"
                 }
             
             # レスポンスをキャッシュ（非同期で実行、レスポンス時間に影響しない）
@@ -138,14 +97,14 @@ class RagService:
                     ttl=1200 if total_duration < 3.0 else 600  # 高速レスポンスは長期キャッシュ
                 )
             )
-            
+            print("[RAG] process_query done", file=sys.stderr)
             return response
-                
         except Exception as e:
             # エラーログを出力（raiseしないのでlogger.errorのみでOK）
+            print(f"[RAG] ERROR: {str(e)}", file=sys.stderr)
             logger.error(f"RAGクエリ処理中にエラーが発生: {str(e)}", exc_info=True)
             return {
-                "answer": f"申し訳ありませんが、「{rag_req.question}」に関する回答の処理中にエラーが発生しました。"
+                "error": f"申し訳ありませんが、「{rag_req.question}」に関する回答の処理中にエラーが発生しました。"
             }
     
     async def process_query_optimized(self, rag_req: RagRequest) -> Dict[str, Any]:
@@ -156,12 +115,11 @@ class RagService:
         - タイムアウト対策
         """
         start_time = time.perf_counter()
-        
         try:
             # NGワードチェック
             if any(ng_word in rag_req.question for ng_word in NG_WORDS):
                 return {
-                    "answer": "申し訳ありませんが、そのような内容にはお答えできません。"
+                    "message": "申し訳ありませんが、そのような内容にはお答えできません。"
                 }
 
             # 1. マルチレベルキャッシュチェック
@@ -169,13 +127,12 @@ class RagService:
             if cached_response:
                 cache_duration = time.perf_counter() - start_time
                 logger.info(f"🚀 Multi-level cache hit: {rag_req.question[:50]}... ({cache_duration:.3f}s)")
-                cached_response["performance"]["cache_hit"] = True
                 return cached_response
 
             # 2. 並列検索実行（タイムアウト付き）
             search_result = await self._execute_parallel_search(rag_req)
             search_duration = search_result.get("_search_duration", 0)
-            
+
             # 3. ストリーミング対応LLM応答生成
             llm_start = time.perf_counter()
             answer = await asyncio.wait_for(
@@ -188,28 +145,18 @@ class RagService:
             response = await self._build_and_cache_response(
                 rag_req, answer, search_result, start_time, search_duration, llm_duration
             )
-            
             return response
-                
+
         except asyncio.TimeoutError:
             # タイムアウト時のフォールバック
             logger.warning(f"⏰ Query timeout: {rag_req.question[:50]}...")
             return {
-                "answer": "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。",
-                "performance": {
-                    "total_duration": time.perf_counter() - start_time,
-                    "timeout": True
-                }
+                "error": "申し訳ありませんが、回答の生成に時間がかかりすぎています。もう少し具体的な質問をお試しください。"
             }
         except Exception as e:
             logger.error(f"RAG処理エラー: {e}")
             return {
-                "answer": "申し訳ありませんが、エラーが発生しました。しばらく後に再試行してください。",
-                "error": str(e),
-                "performance": {
-                    "total_duration": time.perf_counter() - start_time,
-                    "error": True
-                }
+                "error": "申し訳ありませんが、エラーが発生しました。しばらく後に再試行してください。"
             }
     
     async def _check_multilevel_cache(self, rag_req: RagRequest) -> Optional[Dict[str, Any]]:
@@ -267,7 +214,7 @@ class RagService:
             logger.warning(f"⏰ Search timeout: {rag_req.question[:50]}...")
             # フォールバック: 軽量な検索結果を返す
             return {
-                "merged_results": [],
+                "context": [],
                 "classification": None,
                 "_search_duration": time.perf_counter() - search_start,
                 "_timeout": True
@@ -275,7 +222,7 @@ class RagService:
     
     async def _generate_answer_with_timeout(self, rag_req: RagRequest, search_result: Dict[str, Any]) -> str:
         """タイムアウト対応LLM応答生成"""
-        context_items = search_result.get("merged_results", [])
+        context_items = search_result.get("context", [])  # 詳細jsonリスト
         
         if not context_items or search_result.get("_timeout"):
             # 検索結果が無い、またはタイムアウトした場合のフォールバック
@@ -284,7 +231,7 @@ class RagService:
         # LLM応答生成（バックグラウンドタスクとしても実行可能）
         answer = await self.llm_service.generate_answer(
             query=rag_req.question,
-            context_items=context_items[:5],  # 上位5件のみ使用（パフォーマンス向上）
+            context_items=context_items[:5],  # 上位5件のみ使用
             classification=search_result.get("classification")
         )
         
@@ -308,35 +255,19 @@ class RagService:
         )
         
         # レスポンス構築
-        context_items = search_result.get("merged_results", [])
-        
         if rag_req.with_context:
+            # HybridSearchServiceから受け取ったcontextをそのまま使用（重複回避）
+            context_data = search_result.get("context", [])
+            classification = search_result.get("classification")
+            
             response = {
-                "answer": answer,
-                "context": [c.model_dump() for c in context_items[:10]],  # 上位10件
-                "classification": search_result.get("classification", {}).model_dump() if search_result.get("classification") else {},
-                "search_info": {
-                    "query_type": search_result.get("classification", {}).query_type if search_result.get("classification") else "unknown",
-                    "confidence": search_result.get("classification", {}).confidence if search_result.get("classification") else 0.0,
-                    "db_results_count": len(search_result.get("db_results", [])),
-                    "vector_results_count": len(search_result.get("vector_results", []))
-                },
-                "performance": {
-                    "total_duration": total_duration,
-                    "search_duration": search_duration,
-                    "llm_duration": llm_duration,
-                    "cache_hit": False
-                }
+                "context": context_data,  # メインデータ：カード詳細JSONリスト
+                "classification": classification.model_dump() if classification and hasattr(classification, "model_dump") else ({} if classification is None else dict(classification)),
+                "search_info": search_result.get("search_info", {})
             }
         else:
             response = {
-                "answer": answer,
-                "performance": {
-                    "total_duration": total_duration,
-                    "search_duration": search_duration,
-                    "llm_duration": llm_duration,
-                    "cache_hit": False
-                }
+                "message": "検索完了"
             }
         
         # 高速レスポンスは長期キャッシュ、遅いレスポンスは短期キャッシュ

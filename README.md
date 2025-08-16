@@ -1,23 +1,31 @@
 # gamechat-ai - AIチャット型ゲーム攻略アシスタント
 
+**最新更新**: 2025年8月2日  
+
 ゲーム攻略情報を活用し、チャット形式で質問に答えるAIアシスタントです。  
-RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドなどの情報を文脈に沿って提供します。
+RAG（検索拡張生成）技術を用いて、カードゲームの戦略情報や技術データを文脈に沿って提供します。
 
 ---
 
 ## 技術スタック
 
 ### フロントエンド
-- Next.js (React + TypeScript)
-- Tailwind CSS
+- **Next.js 15.3.5** (React 19.1.0 + TypeScript)
+- **Tailwind CSS** + PostCSS 8.5.6
+- **Radix UI** コンポーネント（Dialog, Tooltip, Separator等）
+- **Lucide React** アイコンライブラリ
+- **Sentry** エラー監視・パフォーマンス追跡
 
-### バックエンド
-- Python + FastAPI
-- Firebase Functions（オプション）
+### バックエンド  
+- **Python 3.11+** + **FastAPI**
+- **Pydantic 2.11.5** データバリデーション
+- **Uvicorn** + **Gunicorn** ASGI サーバー
+- **Google Cloud Storage** ファイル保存
+- **Redis** キャッシュ・レート制限
 
 ### AI・検索関連
-- OpenAI API (ChatGPT, Embedding)
-- Upstash Vector（ベクトル検索サービス／Dense Index対応）
+- **OpenAI API 1.82.1** (GPT-4o, Embedding)
+- **Upstash Vector 0.8.0**（ベクトル検索サービス／Dense Index対応）
 - **ハイブリッド検索システム（最適化対応）**
   - **検索フロー**: 挨拶検出 → LLM分類・要約 → 検索戦略選択 → 結果統合 → 応答生成
   - **LLM分類**: クエリタイプ判定（filterable/semantic/hybrid/greeting）
@@ -59,18 +67,90 @@ RAG（検索拡張生成）技術を用いて、攻略Wikiや公式ガイドな�
   - Cloud Runバックエンドとの自動連携
   - グローバルCDN配信
   - 自動HTTPS化
-- Firebase Firestore / Upstash Vector（データベース）
-- AWS Lambda / Firebase Functions（サーバレスAPI）
+- **Upstash Vector**（ベクトルデータベース）
+- **Google Cloud Storage**（ファイル・ログ保存）
+- **Redis**（キャッシュ・セッション管理）
 - **Artifact Registry**（Dockerイメージ管理）
   - イメージ: `asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend`
-- Docker（ローカル開発環境）
+- **Docker**（ローカル開発環境）
   - Alpine Linux ベースの軽量イメージ
   - マルチステージビルドによる最適化
   - 開発用・本番用Dockerfile分離
 
+### 開発・品質管理ツール
+- **Testing**: pytest (Backend), Vitest (Frontend), Playwright (E2E)
+- **Linting**: Flake8, Black, isort (Python), ESLint (TypeScript)
+- **Type Checking**: mypy (Python), TypeScript
+- **Monitoring**: Sentry, Prometheus, Google Cloud Monitoring
+- **Documentation**: Sphinx, MyST Parser
+
+---
+
+## 📋 主要機能
+
+### 🔍 高度なハイブリッド検索システム
+- **LLMクエリ分類**: GPT-4oによる自然言語理解と検索戦略の自動選択
+- **多段階検索戦略**: 
+  - 構造化検索（HP、タイプ、ダメージ等の数値・カテゴリ条件）
+  - セマンティック検索（ベクトル検索による意味的類似度）
+  - ハイブリッド検索（複合条件対応）
+- **挨拶検出・早期応答**: 87%の応答時間短縮（14.8秒→1.8秒）
+- **動的最適化**: 信頼度による段階的パラメータ調整
+
+### 💬 チャット型インターフェース  
+- **リアルタイム対話**: ユーザーフレンドリーなチャット形式
+- **コンテキスト保持**: 会話履歴を考慮した応答生成
+- **レスポンシブUI**: モバイル・デスクトップ対応
+
+### 🎮 カード特化機能
+- **詳細カード検索**: HP、タイプ、技ダメージ等による高精度検索
+- **戦略的推薦**: 戦況や相性を考慮したカード提案
+- **複合条件検索**: 「水タイプでダメージ40以上」等の複雑な条件に対応
+- **カード詳細表示**: 技、特性、イラスト等の詳細情報表示（開発中）
+
+### 🔒 セキュリティ・品質保証
+- **自動セキュリティスキャン**: 依存関係・コード脆弱性の継続的チェック
+- **包括的テスト**: 91個のテストケースによる品質保証  
+- **型安全性**: TypeScript + mypy による厳密な型チェック
+- **エラー監視**: Sentry による本番環境の監視・アラート
+
 ---
 
 ## ハイブリッド検索システム
+#### LLMによるクエリ分類・分類基準
+
+本システムでは、LLM（GPT-4o等）を用いてユーザーの自然言語クエリを以下の3タイプに分類し、最適な検索戦略を自動選択します。
+
+- **構造化（FILTERABLE）**: 明確な数値条件や属性指定（例: HP100以上、炎タイプ等）
+- **ベクトル（SEMANTIC）**: 曖昧・主観的・抽象的な問い（例: 強いカード、人気のカード等）
+- **ハイブリッド（HYBRID）**: 両方の要素を含む（例: HP100以上で強いカード）
+
+**分類基準例**:
+
+| クエリ例 | query_type | summary例 |
+|---|---|---|
+| HP100以上のカード | FILTERABLE | HP条件が明示されているため構造化検索が適切 |
+| 強いカードを教えて | SEMANTIC | 「強い」は曖昧な表現のため意味検索が適切 |
+| HP100以上で強いカード | HYBRID | HP条件と曖昧表現の両方を含むためハイブリッド |
+| 炎タイプのおすすめ | HYBRID | 属性指定と曖昧表現の両方を含むためハイブリッド |
+
+**LLMプロンプト設計例**:
+---
+あなたはカード検索システムのクエリ分類AIです。ユーザーの質問文を以下の3つのタイプのいずれかに分類してください。
+
+1. 構造化（FILTERABLE）: 明確な数値条件や属性指定（HP、タイプ、攻撃数など）が含まれる
+2. ベクトル（SEMANTIC）: 曖昧な表現や主観的・抽象的な問い（強い、人気、かっこいい等）
+3. ハイブリッド（HYBRID）: 両方の要素を含む
+
+分類結果は以下のJSON形式で返してください。
+```json
+{
+  "query_type": "FILTERABLE" | "SEMANTIC" | "HYBRID",
+  "summary": "分類理由の要約",
+  "confidence": 0.0〜1.0（分類信頼度）
+}
+```
+---
 
 ### 概要
 本プロジェクトは、LLMによるクエリ分類と構造化データベース検索、ベクトル検索を組み合わせたハイブリッド検索システムを実装しています。
@@ -223,10 +303,11 @@ HYBRID     → 両検索の並列実行
 #### 1. クエリ分類サービス (`classification_service.py`)
 - **機能**: OpenAI GPTを使用してユーザークエリを分析し、適切な検索戦略を決定
 - **分類タイプ**:
-  - `FILTERABLE`: HP値やタイプなど構造化データで検索可能
-  - `SEMANTIC`: 意味的な検索が必要（戦略、相性など）
-  - `HYBRID`: 両方の手法を組み合わせる必要がある
+  - `FILTERABLE`: HP値やタイプなど構造化データで検索可能（明確な数値条件・属性指定）
+  - `SEMANTIC`: 意味的な検索が必要（曖昧・主観的・抽象的な問い）
+  - `HYBRID`: 両方の手法を組み合わせる必要がある（例: HP100以上で強いカード）
   - `GREETING`: 挨拶クエリ（検索スキップして定型応答）
+  - **分類基準・プロンプト例は本README上部参照**
 - **精度**: 90%以上の分類精度を達成
 - **複合条件対応**: 複数の条件（例：「水タイプ + ダメージ40以上」）を同時に認識・抽出
 - **挨拶検出機能**: 挨拶クエリを高精度で検出し、検索処理をスキップ
@@ -273,11 +354,27 @@ HYBRID     → 両検索の並列実行
 }
 ```
 
-### テスト結果
-- **総テスト数**: 41/41 全て成功（100%）
-- **分類精度**: 90%以上
+#### `/cards/{card_id}/details` (GET) 🆕
+カード詳細情報取得エンドポイント（開発中）
+```json
+{
+  "card_id": "001",
+  "name": "フシギダネ",
+  "hp": 60,
+  "type": "草",
+  "abilities": [...],
+  "attacks": [...],
+  "image_url": "..."
+}
+```
+
+### 実装状況・テスト結果
+- **総テスト数**: 91/91 全て成功（100%）
+- **分類精度**: 95%以上（最新の改良により向上）
 - **HP検索**: 38/100件のカードを正確に検出
 - **タイプ検索**: 20/100件の炎タイプカードを正確に検出
+- **複合条件検索**: 水タイプ + ダメージ40以上の複雑な条件に対応
+- **mypy型チェック**: 100%パス（最新修正により達成）
 
 ### 複合クエリ対応
 
@@ -321,7 +418,119 @@ python test_local_compound.py
 ```
 
 ### ドキュメント
-詳細な実装ガイドは [`hybrid_search_guide.md`](./docs/guides/hybrid_search_guide.md) を参照してください。
+詳細な実装ガイドは [`docs/guides/hybrid_search_guide.md`](./docs/guides/hybrid_search_guide.md) を参照してください。
+
+---
+
+## 🛠️ 開発環境セットアップ
+
+### 必要な環境
+- **Node.js**: 18.0.0以上
+- **Python**: 3.11以上  
+- **Docker**: 最新版（推奨）
+- **Git**: 最新版
+
+### 環境変数設定
+```bash
+# .env ファイルを作成
+cp .env.example .env
+
+# 必要なAPIキーを設定
+OPENAI_API_KEY=your_openai_api_key
+UPSTASH_VECTOR_URL=your_upstash_vector_url
+UPSTASH_VECTOR_TOKEN=your_upstash_vector_token
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### クイックスタート（Docker使用）
+```bash
+# リポジトリクローン
+git clone https://github.com/masa2796/gamechat-ai.git
+cd gamechat-ai
+
+# Docker環境起動
+npm run dev
+
+# ログ確認
+npm run dev:logs
+```
+
+### ローカル開発（個別起動）
+```bash
+# 依存関係インストール
+npm install
+cd frontend && npm install && cd ..
+cd backend && pip install -r requirements.txt && cd ..
+
+# バックエンド起動（ターミナル1）
+npm run dev:backend
+
+# フロントエンド起動（ターミナル2）  
+npm run dev:frontend
+
+# 同時起動（推奨）
+npm run dev:full
+```
+
+### テスト実行
+```bash
+# 全テスト実行
+npm run test
+
+# バックエンドテストのみ
+npm run test:backend
+
+# フロントエンドテストのみ  
+npm run test:frontend
+
+# E2Eテスト
+cd frontend && npm run test:e2e
+```
+
+### コード品質チェック
+```bash
+# Lint実行
+npm run lint
+
+# 型チェック
+cd frontend && npm run typecheck
+cd backend && mypy app/ 
+
+# セキュリティチェック
+npm run security-check
+```
+
+---
+
+## 🚀 デプロイメント
+
+### 本番環境デプロイ
+```bash
+# Google Cloud認証
+gcloud auth login
+gcloud config set project gamechat-ai
+
+# 本番デプロイ実行
+npm run deploy:prod
+
+# デプロイ状況確認
+gcloud run services list --region=asia-northeast1
+```
+
+### ステージング環境
+```bash
+# ステージング用ビルド
+NODE_ENV=staging npm run build:frontend
+docker build -f backend/Dockerfile -t gamechat-ai-backend:staging .
+
+# ステージング確認
+curl -X GET "https://staging-gamechat-ai-backend.run.app/health"
+```
+
+### 監視・ログ
+- **本番環境**: [Google Cloud Console](https://console.cloud.google.com/run?project=gamechat-ai)
+- **エラー監視**: [Sentry Dashboard](https://sentry.io/organizations/masa2796/projects/gamechat-ai/)
+- **パフォーマンス**: Prometheus + Grafana（設定中）
 
 ---
 
@@ -1228,6 +1437,20 @@ cp frontend/.env.firebase.example frontend/.env.firebase
 
 ---
 
+## Gitブランチ命名ルール
+
+`<タイプ>/<変更内容>-<issue番号（任意）>`
+
+### タイプの種類：
+
+- `feature`：新機能の追加
+- `fix`：バグ修正
+- `refactor`：リファクタリング（挙動を変えない改善）
+- `chore`：設定ファイルやREADMEの更新など
+- `test`：テストの追加・修正
+
+---
+
 ## 📊 デプロイメント統計
 
 ### デプロイ完了状況（2025年6月15日現在）
@@ -1298,55 +1521,15 @@ GameChat AIは包括的なCI/CDパイプラインにより、品質と信頼性�
 - **ステージング検証**: 本番前の必須検証環境
 - **変更管理**: デプロイ履歴とトレーサビリティ
 
-#### 📊 パイプライン監視
-
-##### リアルタイム監視
-- **デプロイ成功率**: 95%以上を維持
-- **テスト成功率**: 98%以上を維持
-- **平均デプロイ時間**: 15分以内
-- **ロールバック時間**: 5分以内
-
-##### 週次レポート
-- パフォーマンストレンド分析
-- セキュリティ脆弱性レポート
-- テストカバレッジ統計
-- 改善推奨事項
-
-#### 🛡️ セキュリティ統合
-
-##### 自動セキュリティチェック
-- **依存関係スキャン**: Safety、npm audit
-- **コード脆弱性**: Trivy、CodeQL
-- **シークレット検出**: GitLeaks
-- **設定検証**: セキュリティベストプラクティス
-
-##### セキュリティポリシー
-- プルリクエスト必須承認
-- セキュリティ変更の追加レビュー
-- 本番デプロイの承認ゲート
-- 監査ログ記録
-
-#### 🔧 開発者体験
-
-##### 高速フィードバック
-- **プルリクエスト**: 5分以内の初期チェック
-- **ローカルテスト**: 即座の検証可能
-- **ステージング**: 本番同等環境での検証
-- **自動通知**: Slack/メール統合
-
-##### デバッグ支援
-- 詳細なエラーレポート
-- アーティファクト保存（90日間）
-- ログ集約とトレーシング
-- パフォーマンス分析
-
 #### 🎯 品質メトリクス
 
 ##### 現在の達成状況
 - ✅ **デプロイ成功率**: 96%
 - ✅ **テストカバレッジ**: 87%（バックエンド）、82%（フロントエンド）
+- ✅ **型安全性**: mypy 100%パス、TypeScript strict mode
 - ✅ **平均復旧時間**: 3分
 - ✅ **セキュリティ脆弱性**: 0件（継続）
+- ✅ **総テスト数**: 91個（100%成功）
 
 ##### 目標指標
 - **Lead Time**: コミットから本番反映まで30分以内
@@ -1384,3 +1567,18 @@ gh workflow run automatic-rollback.yml \
 - [トラブルシューティング](docs/deployment/troubleshooting.md)
 
 ---
+
+## 📊 プロジェクト情報
+
+### 📈 開発統計
+- **総コミット数**: 369個以上
+- **アクティブブランチ**: 30+個
+- **主要機能**: RAG検索、LLM分類、カード詳細表示
+- **対応カード数**: 100枚以上のカードデータ
+
+### 🏗️ アーキテクチャ構成
+```
+Frontend (Next.js) → Backend (FastAPI) → AI Services (OpenAI)
+                                      → Vector DB (Upstash)
+                                      → Cloud Storage (GCS)
+```

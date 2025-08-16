@@ -8,6 +8,66 @@ from .vector_service import VectorService
 from .embedding_service import EmbeddingService
 
 class HybridSearchService:
+    def _merge_results_weighted(
+        self,
+        db_titles: list[str],
+        vector_titles: list[str],
+        db_scores: dict,
+        vector_scores: dict,
+        classification: ClassificationResult,
+        top_k: int,
+        search_quality: dict,
+        quality_threshold: float = 0.0
+    ) -> list[str]:
+        """
+        スコア加重型のマージロジック（カード名リスト）
+        - DB/ベクトル両方のスコアを活用し、重複除去・加重平均・スコア順ソート
+        - 設計方針（重複除去・優先順位・重み付け・クエリタイプ分岐）に準拠
+        """
+        if not db_titles and not vector_titles:
+            return self._handle_no_results_optimized(classification)
+
+        query_type = getattr(classification, "query_type", None)
+        # スコア辞書を構築
+        db_weight = 0.7
+        vector_weight = 0.3
+        merged_scores = {}
+        all_titles = list(dict.fromkeys(db_titles + vector_titles))
+        for title in all_titles:
+            db_score = db_scores.get(title)
+            vec_score = vector_scores.get(title)
+            if db_score is not None and vec_score is not None:
+                merged_scores[title] = db_score * db_weight + vec_score * vector_weight
+            elif db_score is not None:
+                merged_scores[title] = db_score
+            elif vec_score is not None:
+                merged_scores[title] = vec_score
+            else:
+                merged_scores[title] = 0.0
+
+        # クエリタイプごとに優先度を調整
+        if query_type == "filterable":
+            # DBスコアを優先
+            sorted_titles = sorted(all_titles, key=lambda t: (t in db_titles, merged_scores[t]), reverse=True)
+        elif query_type == "semantic":
+            # ベクトルスコアを優先
+            sorted_titles = sorted(all_titles, key=lambda t: (t in vector_titles, merged_scores[t]), reverse=True)
+        else:
+            # 加重スコア順
+            sorted_titles = sorted(all_titles, key=lambda t: merged_scores[t], reverse=True)
+
+        # 品質スコアによるフィルタリング
+        if quality_threshold > 0.0:
+            filtered_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
+        else:
+            filtered_titles = sorted_titles
+
+        # 上位N件抽出
+        result_titles = filtered_titles[:top_k]
+
+        # 不足時の補完・提案メッセージ生成（但し、提案は別途処理）
+        # result_titlesはカード名のみとし、提案メッセージは含めない
+        return result_titles
     """分類に基づく統合検索サービス（最適化対応）"""
     
     def __init__(self) -> None:
@@ -18,7 +78,7 @@ class HybridSearchService:
     
     async def search(self, query: str, top_k: int = 3) -> Dict[str, Any]:
         """
-        クエリを分類し、最適化された検索戦略で結果を取得します。
+        クエリを分類し、最適化された検索戦略でカード名リストを返却
         
         このメソッドはハイブリッド検索システムの中核となる機能で、
         LLMによる分類結果に基づいて最適な検索戦略を選択し、
@@ -75,31 +135,74 @@ class HybridSearchService:
         print(f"最適化限界: {optimized_limits}")
         
         # Step 3: 各検索の実行
-        db_results, vector_results = await self._execute_searches(
+        db_titles, vector_titles = await self._execute_searches(
             classification, search_strategy, optimized_limits, query
         )
         
+        print(f"[DEBUG] After _execute_searches: db_titles type={type(db_titles)}, first_item_type={type(db_titles[0]) if db_titles else 'empty'}")
+        if db_titles:
+            print(f"[DEBUG] db_titles sample: {db_titles[:3]}")
+        
         # Step 4: 結果の品質評価
         search_quality = self._evaluate_search_quality(
-            db_results, vector_results, classification
+            db_titles, vector_titles, classification
         )
         
         # Step 5: 最適化されたマージ・選択
-        merged_results = self._merge_results_optimized(
-            db_results, vector_results, classification, top_k, search_quality
+        # DB/ベクトルのスコアを取得
+        db_scores = getattr(self.database_service, "last_scores", {}) if hasattr(self.database_service, "last_scores") else {}
+        vector_scores = getattr(self.vector_service, "last_scores", {}) if hasattr(self.vector_service, "last_scores") else {}
+        # 品質スコア閾値（例: 0.3未満は除外）
+        quality_threshold = 0.3
+        merged_titles = self._merge_results_weighted(
+            db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
         )
-        
-        print(f"最終結果: {len(merged_results)}件")
+
+        query_type_str = str(classification.query_type).lower()
+        if query_type_str == "filterable" or query_type_str == "querytype.filterable" or classification.query_type == QueryType.FILTERABLE:
+            # DB検索結果全件をcontextに返す（カード詳細JSON）
+            # デバッグ: db_titlesの型と内容を確認
+            print(f"[DEBUG] FILTERABLE branch entered: db_titles type: {type(db_titles)}, content: {db_titles}")
+            # db_titlesが文字列リストであることを確認し、必要に応じて修正
+            if db_titles and isinstance(db_titles[0], str):
+                title_strings = db_titles  # 既に文字列リスト
+            else:
+                title_strings = [str(item) for item in db_titles]  # 文字列に変換
+            print(f"[DEBUG] title_strings: {title_strings}")
+            
+            card_details = self.database_service.get_card_details_by_titles(title_strings)
+            context = card_details
+            
+            # 結果が全くない場合のみ提案を追加
+            if len(card_details) == 0:
+                suggestion_message = self._generate_search_suggestion(classification)
+                context.append({"name": "検索のご提案", "suggestion": suggestion_message})
+            
+            print(f"最終結果: {len(context)}件（FILTERABLE: DB検索結果全件）")
+        else:
+            # それ以外はmerged_titlesで詳細取得＋提案
+            details = self.database_service.get_card_details_by_titles(merged_titles)
+            context = []
+            context.extend(details)
+            
+            # 結果が全くない場合のみ提案を追加
+            if len(details) == 0:
+                suggestion_message = self._generate_search_suggestion(classification)
+                context.append({"name": "検索のご提案", "suggestion": suggestion_message})
+            
+            print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
-        
+
         return {
+            "context": context,  # contextにカード詳細jsonリスト（これがメインのデータ）
             "classification": classification,
-            "search_strategy": search_strategy,
-            "db_results": db_results,
-            "vector_results": vector_results,
-            "merged_results": merged_results,
             "search_quality": search_quality,
-            "optimization_applied": True
+            "search_info": {
+                "query_type": classification.query_type.value if hasattr(classification, "query_type") and hasattr(classification.query_type, "value") else str(getattr(classification, "query_type", QueryType.SEMANTIC)),
+                "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
+                "db_results_count": len(db_titles),
+                "vector_results_count": len(vector_titles)
+            }
         }
 
     async def _classify_query(self, query: str) -> ClassificationResult:
@@ -125,20 +228,18 @@ class HybridSearchService:
         """挨拶用のレスポンスを作成"""
         print("=== 挨拶検出: 検索をスキップ ===")
         return {
+            "context": [],  # 空のcontext
             "classification": classification,
-            "search_strategy": {
-                "use_database": False,
-                "use_vector": False,
-                "skip_search": True,
-                "reason": "greeting_detected"
-            },
-            "db_results": [],
-            "vector_results": [],
-            "merged_results": [],
             "search_quality": {
                 "overall_score": 1.0,
                 "greeting_detected": True,
                 "search_needed": False
+            },
+            "search_info": {
+                "query_type": classification.query_type.value if hasattr(classification.query_type, "value") else str(classification.query_type),
+                "confidence": classification.confidence,
+                "db_results_count": 0,
+                "vector_results_count": 0
             }
         }
 
@@ -148,18 +249,19 @@ class HybridSearchService:
         search_strategy: Any, 
         optimized_limits: Dict[str, int],
         query: str
-    ) -> tuple[List[ContextItem], List[ContextItem]]:
-        """各検索を実行する"""
-        db_results = []
-        vector_results = []
+    ) -> tuple[list[str], list[str]]:
+        """各検索を実行しカード名リストを返却"""
+        db_titles = []
+        vector_titles = []
         
         if search_strategy.use_db_filter and classification.filter_keywords:
             print("--- 最適化データベースフィルター検索実行 ---")
+            print(f"[DBフィルタ条件] filter_keywords: {classification.filter_keywords}")
             db_limit = optimized_limits["db_limit"]
-            db_results = await self.database_service.filter_search(
+            db_titles = await self.database_service.filter_search_titles_async(
                 classification.filter_keywords, db_limit
             )
-            print(f"DB検索結果: {len(db_results)}件")
+            print(f"DB検索結果: {len(db_titles)}件")
         
         if search_strategy.use_vector_search:
             print("--- 最適化ベクトル意味検索実行 ---")
@@ -170,14 +272,14 @@ class HybridSearchService:
             
             # 最適化されたベクトル検索
             vector_limit = optimized_limits["vector_limit"]
-            vector_results = await self.vector_service.search(
+            vector_titles = await self.vector_service.search(
                 query_embedding, 
                 top_k=vector_limit,
                 classification=classification
             )
-            print(f"ベクトル検索結果: {len(vector_results)}件")
+            print(f"ベクトル検索結果: {len(vector_titles)}件")
         
-        return db_results, vector_results
+        return db_titles, vector_titles
     
     def _get_optimized_limits(self, classification: ClassificationResult, top_k: int) -> Dict[str, int]:
         """分類結果に基づいて検索限界を最適化（パフォーマンス改善版）"""
@@ -224,219 +326,74 @@ class HybridSearchService:
     
     def _evaluate_search_quality(
         self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
+        db_titles: list[str], 
+        vector_titles: list[str],
         classification: ClassificationResult
-    ) -> Dict[str, Any]:
-        """検索結果の品質を評価"""
-        
+    ) -> dict:
+        """
+        検索結果の品質を評価（カード名リスト用）
+        """
         quality = {
-            "overall_score": 0.0,
-            "db_quality": 0.0,
-            "vector_quality": 0.0,
-            "result_count": len(db_results) + len(vector_results),
-            "has_high_confidence_results": False,
-            "avg_score": 0.0
+            "overall_score": 1.0 if db_titles or vector_titles else 0.0,
+            "db_quality": 1.0 if db_titles else 0.0,
+            "vector_quality": 1.0 if vector_titles else 0.0,
+            "result_count": len(db_titles) + len(vector_titles),
+            "has_high_confidence_results": bool(db_titles or vector_titles),
+            "avg_score": 1.0 if db_titles or vector_titles else 0.0
         }
-        
-        all_scores = []
-        
-        # DB結果の品質評価
-        if db_results:
-            db_scores = [result.score for result in db_results if result.score > 0]
-            if db_scores:
-                quality["db_quality"] = sum(db_scores) / len(db_scores)
-                all_scores.extend(db_scores)
-        
-        # ベクトル結果の品質評価
-        if vector_results:
-            vector_scores = [result.score for result in vector_results if result.score > 0]
-            if vector_scores:
-                quality["vector_quality"] = sum(vector_scores) / len(vector_scores)
-                all_scores.extend(vector_scores)
-        
-        # 全体評価
-        if all_scores:
-            quality["avg_score"] = sum(all_scores) / len(all_scores)
-            quality["has_high_confidence_results"] = any(score > 0.8 for score in all_scores)
-            
-            # 総合スコア計算（分類信頼度も考慮）
-            base_score = quality["avg_score"]
-            confidence_bonus = classification.confidence * 0.1
-            result_count_factor = min(1.0, len(all_scores) / 5)  # 5件以上で満点
-            
-            quality["overall_score"] = (base_score + confidence_bonus) * result_count_factor
-        
         return quality
     
     def _merge_results_optimized(
         self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
+        db_titles: list[str], 
+        vector_titles: list[str],
         classification: ClassificationResult,
         top_k: int,
-        search_quality: Dict[str, Any]
-    ) -> List[ContextItem]:
-        """最適化されたマージロジック"""
+        search_quality: dict
+    ) -> list[str]:
+        """最適化されたマージロジック（カード名リスト）"""
         
         # 結果がない場合の処理
-        if not db_results and not vector_results:
+        if not db_titles and not vector_titles:
             return self._handle_no_results_optimized(classification)
-        
-        # 単一ソースの場合
-        if not db_results:
-            return self._filter_by_quality(vector_results, search_quality, top_k)
-        
-        if not vector_results:
-            return self._filter_by_quality(db_results, search_quality, top_k)
-        
-        # 品質に基づくマージ戦略の調整
-        if search_quality["overall_score"] < 0.5:
-            print("🔍 低品質検出: より多くの結果を含めます")
-            # 低品質の場合、より多くの結果を含める
-            return self._merge_results_inclusive(db_results, vector_results, classification, top_k)
-        
-        # 通常のマージ処理
-        return self._merge_results_standard(db_results, vector_results, classification, top_k)
-    
-    def _merge_results_standard(
-        self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
-        classification: ClassificationResult,
-        top_k: int
-    ) -> List[ContextItem]:
-        """標準的なマージ処理"""
-        
-        if classification.query_type == QueryType.HYBRID:
-            # ハイブリッドの場合は重み付けマージ
-            return self._weighted_merge_optimized(db_results, vector_results, top_k)
-        elif classification.query_type == QueryType.FILTERABLE:
-            # フィルター優先の場合はDBの結果を優先し、不足分をベクトルで補完
-            merged = db_results[:top_k]
+
+        query_type = getattr(classification, "query_type", None)
+        # FILTERABLE: DB優先、足りなければベクトルで補完
+        if query_type == "filterable":
+            merged = db_titles[:top_k]
             if len(merged) < top_k:
                 remaining = top_k - len(merged)
-                merged.extend(vector_results[:remaining])
+                # ベクトル結果からDBにないものを追加
+                supplement = [t for t in vector_titles if t not in merged][:remaining]
+                merged.extend(supplement)
             return merged
-        else:  # SEMANTIC
-            # 意味検索優先の場合はベクトルの結果を優先し、不足分をDBで補完
-            merged = vector_results[:top_k]
+        # SEMANTIC: ベクトル優先、足りなければDBで補完
+        elif query_type == "semantic":
+            merged = vector_titles[:top_k]
             if len(merged) < top_k:
                 remaining = top_k - len(merged)
-                merged.extend(db_results[:remaining])
+                supplement = [t for t in db_titles if t not in merged][:remaining]
+                merged.extend(supplement)
             return merged
-    
-    def _merge_results_inclusive(
-        self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
-        classification: ClassificationResult,
-        top_k: int
-    ) -> List[ContextItem]:
-        """包括的マージ（低品質時）"""
-        
-        all_results = []
-        
-        # すべての結果を含めて、スコアで並び替え
-        all_results.extend(db_results)
-        all_results.extend(vector_results)
-        
-        # 重複除去（同一タイトルをチェック）
-        seen_titles = set()
-        unique_results = []
-        
-        for result in all_results:
-            if result.title not in seen_titles:
-                seen_titles.add(result.title)
-                unique_results.append(result)
-        
-        # スコアで並び替え
-        unique_results.sort(key=lambda x: x.score, reverse=True)
-        
-        return unique_results[:top_k]
-    
-    def _weighted_merge_optimized(
-        self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
-        top_k: int
-    ) -> List[ContextItem]:
-        """最適化された重み付きマージ"""
-        
-        config_merge = settings.VECTOR_SEARCH_CONFIG.get("merge_weights", {})
-        if isinstance(config_merge, dict):
-            db_weight = config_merge.get("db_weight", 0.4)
-            vector_weight = config_merge.get("vector_weight", 0.6)
+        # HYBRIDまたはその他: DB→ベクトルの順で重複除去しつつ結合
         else:
-            db_weight = 0.4
-            vector_weight = 0.6
-        
-        all_results = []
-        
-        # DBの結果に重み付け
-        for item in db_results:
-            weighted_item = ContextItem(
-                title=f"[DB] {item.title}",
-                text=item.text,
-                score=item.score * db_weight
-            )
-            all_results.append(weighted_item)
-        
-        # ベクトルの結果に重み付け
-        for item in vector_results:
-            weighted_item = ContextItem(
-                title=f"[Vec] {item.title}",
-                text=item.text,
-                score=item.score * vector_weight
-            )
-            all_results.append(weighted_item)
-        
-        # スコアでソートして上位を返す
-        all_results.sort(key=lambda x: x.score, reverse=True)
-        return all_results[:top_k]
+            all_titles = db_titles + [t for t in vector_titles if t not in db_titles]
+            return all_titles[:top_k]
     
     def _filter_by_quality(
         self, 
-        results: List[ContextItem], 
-        search_quality: Dict[str, Any], 
+        titles: list[str], 
+        search_quality: dict, 
         top_k: int
-    ) -> List[ContextItem]:
-        """品質に基づく結果フィルタリング"""
+    ) -> list[str]:
+        """品質に基づく結果フィルタリング（カード名リスト）"""
         
-        config_min_score = settings.VECTOR_SEARCH_CONFIG.get("minimum_score", 0.5)
-        if isinstance(config_min_score, (int, float)):
-            min_score = float(config_min_score)
-        else:
-            min_score = 0.5
-        
-        # 最小スコア以上の結果のみ保持
-        filtered_results = [
-            result for result in results 
-            if result.score >= min_score
-        ]
-        
-        if not filtered_results and results:
-            # すべてが最小スコア未満の場合、上位1件は保持
-            print("⚠️ 全結果が最小スコア未満のため、上位1件を保持")
-            return [results[0]]
-        
-        return filtered_results[:top_k]
+        return titles[:top_k]
     
-    def _handle_no_results_optimized(self, classification: ClassificationResult) -> List[ContextItem]:
-        """最適化された結果なし時の処理"""
-        
-        print("🔍 検索結果最適化: 該当なし時の処理")
-        
-        # 分類に基づく有用な提案を生成
-        suggestion_text = self._generate_search_suggestion(classification)
-        
-        return [
-            ContextItem(
-                title="検索のご提案",
-                text=suggestion_text,
-                score=0.1
-            )
-        ]
+    def _handle_no_results_optimized(self, classification: ClassificationResult) -> list[str]:
+        """最適化された結果なし時の処理（カード名リスト）"""
+        # 空のリストを返す（提案は後で別途処理）
+        return []
     
     def _generate_search_suggestion(self, classification: ClassificationResult) -> str:
         """検索提案を生成"""
@@ -446,8 +403,8 @@ class HybridSearchService:
         if classification.query_type == QueryType.SEMANTIC:
             suggestions = [
                 "• より具体的なカード名やキャラクター名で検索",
-                "• 「技」「HP」「タイプ」などの具体的な属性を含めた検索",
-                "• 「強い草タイプのカード」のように条件を明確化"
+                "• 「効果」「HP」「攻撃力」などの具体的な属性を含めた検索",
+                "• 「フェアリーのカード」のように条件を明確化"
             ]
         
         elif classification.query_type == QueryType.FILTERABLE:
@@ -473,64 +430,18 @@ class HybridSearchService:
         vector_results: List[ContextItem],
         classification: ClassificationResult,
         top_k: int
-    ) -> List[ContextItem]:
+    ) -> List[str]:
         """検索結果をマージして最適な結果を選択（レガシー）"""
         
+        # レガシー用途: ContextItem型のままの時のみ利用
         if not db_results and not vector_results:
             return []
-        
         if not db_results:
-            return vector_results[:top_k]
-        
+            return [item.title for item in vector_results[:top_k]]
         if not vector_results:
-            return db_results[:top_k]
-        
-        # 両方の結果がある場合のマージ戦略
-        if classification.query_type == "hybrid":
-            # ハイブリッドの場合は重み付けマージ
-            return self._weighted_merge(db_results, vector_results, top_k)
-        elif classification.query_type == "filterable":
-            # フィルター優先の場合はDBの結果を優先し、不足分をベクトルで補完
-            merged = db_results[:top_k]
-            if len(merged) < top_k:
-                remaining = top_k - len(merged)
-                merged.extend(vector_results[:remaining])
-            return merged
-        else:  # semantic
-            # 意味検索優先の場合はベクトルの結果を優先し、不足分をDBで補完
-            merged = vector_results[:top_k]
-            if len(merged) < top_k:
-                remaining = top_k - len(merged)
-                merged.extend(db_results[:remaining])
-            return merged
+            return [item.title for item in db_results[:top_k]]
+        # HYBRID/その他: DB→ベクトルの順で重複除去しつつ結合
+        all_titles = [item.title for item in db_results]
+        all_titles += [item.title for item in vector_results if item.title not in all_titles]
+        return all_titles[:top_k]
     
-    def _weighted_merge(
-        self, 
-        db_results: List[ContextItem], 
-        vector_results: List[ContextItem],
-        top_k: int
-    ) -> List[ContextItem]:
-        """重み付きマージ - スコアを正規化して統合（レガシー）"""
-        all_results = []
-        
-        # DBの結果に重み付け（0.4）
-        for item in db_results:
-            weighted_item = ContextItem(
-                title=f"[DB] {item.title}",
-                text=item.text,
-                score=item.score * 0.4
-            )
-            all_results.append(weighted_item)
-        
-        # ベクトルの結果に重み付け（0.6）
-        for item in vector_results:
-            weighted_item = ContextItem(
-                title=f"[Vec] {item.title}",
-                text=item.text,
-                score=item.score * 0.6
-            )
-            all_results.append(weighted_item)
-        
-        # スコアでソートして上位を返す
-        all_results.sort(key=lambda x: x.score, reverse=True)
-        return all_results[:top_k]
