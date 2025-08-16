@@ -179,38 +179,199 @@ jobs:
       - run:
           name: Set up venv and install dependencies
           command: |
-            python -m venv .venv
-            . .venv/bin/activate
-            pip install --upgrade pip
-            pip install -r backend/requirements.txt --timeout 300 --retries 3
-            # Install test dependencies
-            pip install pytest-cov pytest-html
-            which python
-            which pytest
+            # Debug: Check Python availability
+            echo "=== Python Environment Debug ==="
+            which python3 || echo "python3 not found"
+            which python || echo "python not found"
+            python3 --version || echo "python3 version failed"
+            python --version || echo "python version failed"
+            
+            # Set Python executable
+            PYTHON_CMD=$(which python3 || which python)
+            echo "Using Python: $PYTHON_CMD"
+            
+            # Create virtual environment with explicit Python
+            echo "Creating virtual environment..."
+            VENV_DIR="/home/circleci/project/.venv"
+            FALLBACK=0
+            
+            if $PYTHON_CMD -m venv "$VENV_DIR"; then
+              echo "Verifying virtual environment creation..."
+              if [ -d "$VENV_DIR" ] && [ -d "$VENV_DIR/bin" ]; then
+                ls -la "$VENV_DIR/"
+                ls -la "$VENV_DIR/bin/"
+                echo "Activating virtual environment..."
+                # Avoid failing the whole step on activation issues
+                set +e
+                source "$VENV_DIR/bin/activate"
+                ACT_RC=$?
+                set -e
+                if [ $ACT_RC -eq 0 ]; then
+                  echo "=== Virtual Environment Verification ==="
+                  which python || true
+                  which pip || true
+                  python --version || true
+                  pip --version || true
+                  
+                  echo "Upgrading pip..."
+                  pip install --upgrade pip || true
+                  
+                  echo "Installing dependencies into venv..."
+                  pip install -r backend/requirements.txt --timeout 300 --retries 3
+                  pip install pytest-cov pytest-html
+                  
+                  echo "Verifying pytest in venv..."
+                  which pytest || true
+                  pytest --version || true
+                else
+                  echo "Virtual environment activation failed, will fallback to direct install"
+                  FALLBACK=1
+                fi
+              else
+                echo "Virtual environment directory or bin missing, will fallback to direct install"
+                FALLBACK=1
+              fi
+            else
+              echo "Virtual environment creation failed, will fallback to direct install"
+              FALLBACK=1
+            fi
+            
+            if [ "$FALLBACK" -eq 1 ]; then
+              echo "=== Alternative Setup: Direct Python Installation (fallback) ==="
+              PYTHON_CMD=$(which python3 || which python)
+              echo "Using Python: $PYTHON_CMD"
+              $PYTHON_CMD --version || true
+              
+              echo "Upgrading pip (user)..."
+              $PYTHON_CMD -m pip install --upgrade pip --user || true
+              
+              echo "Installing backend requirements (user)..."
+              $PYTHON_CMD -m pip install -r backend/requirements.txt --user --timeout 300 --retries 3
+              echo "Installing test dependencies (user)..."
+              $PYTHON_CMD -m pip install pytest-cov pytest-html --user
+              
+              echo "Verifying pytest (user)..."
+              $PYTHON_CMD -m pytest --version || true
+              
+              # Flag so downstream steps know which path was used
+              touch /home/circleci/project/.no-venv-flag
+            fi
+      - run:
+          name: Alternative - Setup without venv
+          command: |
+            # Skip if venv succeeded in the previous step
+            if [ ! -f "/home/circleci/project/.no-venv-flag" ]; then
+              echo "Venv setup succeeded earlier; skipping alternative setup."
+              exit 0
+            fi
+            echo "=== Alternative Setup: Direct Python Installation ==="
+            PYTHON_CMD=$(which python3 || which python)
+            echo "Using Python: $PYTHON_CMD"
+            
+            # Verify Python works
+            $PYTHON_CMD --version
+            
+            # Install pip if needed
+            $PYTHON_CMD -m pip install --upgrade pip --user
+            
+            # Install dependencies to user directory
+            echo "Installing backend requirements..."
+            $PYTHON_CMD -m pip install -r backend/requirements.txt --user --timeout 300 --retries 3
+            echo "Installing test dependencies..."
+            $PYTHON_CMD -m pip install pytest-cov pytest-html --user
+            
+            # Verify installation
+            echo "Verifying pytest installation..."
+            $PYTHON_CMD -m pytest --version
+            echo "Direct installation completed successfully"
+            
+            # Create a flag file to indicate this method was used
+            touch /home/circleci/project/.no-venv-flag
       - save_cache:
           key: v2-python-dependencies-{{ checksum "backend/requirements.txt" }}
           paths:
-            - .venv
+            - /home/circleci/project/.venv
+            - ~/.local
       - run:
           name: Run backend tests
           command: |
-            . .venv/bin/activate
+            # Check which installation method was used
+            if [ -f "/home/circleci/project/.no-venv-flag" ]; then
+              echo "=== Using Direct Python Installation ==="
+              PYTHON_CMD=$(which python3 || which python)
+              echo "Using Python: $PYTHON_CMD"
+            elif [ -f "/home/circleci/project/.venv/bin/activate" ]; then
+              echo "=== Using Virtual Environment ==="
+              source /home/circleci/project/.venv/bin/activate
+              if [ $? -eq 0 ]; then
+                which python
+                python --version
+                PYTHON_CMD="python"
+              else
+                echo "Virtual environment activation failed, falling back to system Python"
+                PYTHON_CMD=$(which python3 || which python)
+              fi
+            else
+              echo "=== Using System Python (no venv found) ==="
+              PYTHON_CMD=$(which python3 || which python)
+              echo "Using Python: $PYTHON_CMD"
+            fi
+            
+            # Verify Python command works
+            $PYTHON_CMD --version
+            
+            # Set up environment
             cd backend
             export PYTHONPATH=$(pwd)
             export TESTING=true
             export LOG_LEVEL=CRITICAL
-            # Run only existing tests that should pass
-            python -m pytest app/tests/services/test_classification_consolidated.py -v --tb=short || true
-            python -m pytest app/tests/services/test_embedding_consolidated.py -v --tb=short || true
-            python -m pytest app/tests/services/test_database_service.py -v --tb=short || true
-            # If the above tests exist and pass, run all tests
-            python -m pytest app/tests/ -v --tb=short -x --maxfail=5
+            export LOG_DIR=./logs
+            
+            # Create logs directory if it doesn't exist
+            mkdir -p logs
+            
+            # Run tests
+            echo "Running backend tests..."
+            $PYTHON_CMD -m pytest app/tests/ -v --tb=short -x --maxfail=5 --disable-warnings
             echo "✅ All backend tests passed successfully!"
       - run:
           name: Run type check
           command: |
-            . .venv/bin/activate
-            mypy backend/app --config-file backend/mypy.ini --exclude 'backend/app/tests' || echo "Type check completed with warnings"
+            # Check which installation method was used
+            if [ -f "/home/circleci/project/.no-venv-flag" ]; then
+              echo "=== Using Direct Python Installation for Type Check ==="
+              PYTHON_CMD=$(which python3 || which python)
+              PIP_CMD="$PYTHON_CMD -m pip"
+              echo "Using Python: $PYTHON_CMD"
+            elif [ -f "/home/circleci/project/.venv/bin/activate" ]; then
+              echo "=== Using Virtual Environment for Type Check ==="
+              source /home/circleci/project/.venv/bin/activate
+              if [ $? -eq 0 ]; then
+                which python
+                python --version
+                PYTHON_CMD="python"
+                PIP_CMD="pip"
+              else
+                echo "Virtual environment activation failed, falling back to system Python"
+                PYTHON_CMD=$(which python3 || which python)
+                PIP_CMD="$PYTHON_CMD -m pip"
+              fi
+            else
+              echo "=== Using System Python for Type Check ==="
+              PYTHON_CMD=$(which python3 || which python)
+              PIP_CMD="$PYTHON_CMD -m pip"
+              echo "Using Python: $PYTHON_CMD"
+            fi
+            
+            # Verify Python command works
+            $PYTHON_CMD --version
+            
+            # Install mypy if needed
+            $PIP_CMD install mypy --user || echo "mypy already installed"
+            
+            # Run type check
+            cd backend
+            $PYTHON_CMD -m mypy app --config-file mypy.ini --exclude 'app/tests' || echo "Type check completed with warnings"
             echo "✅ Backend type checking completed!"
 
   notify-success:

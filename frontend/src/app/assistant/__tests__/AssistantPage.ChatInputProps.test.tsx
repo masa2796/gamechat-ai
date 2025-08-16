@@ -34,7 +34,12 @@ describe("AssistantPage", () => {
       sendMessage,
       recaptchaReady: true,
       setRecaptchaReady: vi.fn(),
-      clearHistory: vi.fn(),
+  clearHistory: vi.fn(),
+  // 新しい必須プロパティ
+  activeSessionId: null,
+  activeSession: null,
+  createNewChatAndSwitch: vi.fn(() => "session-id"),
+  switchToChatAndClear: vi.fn(),
     });
     render(<AssistantPage />);
     expect(ChatInputMock).toHaveBeenCalledWith(
@@ -68,7 +73,11 @@ describe("AssistantPage", () => {
       sendMessage,
       recaptchaReady: true,
       setRecaptchaReady: vi.fn(),
-      clearHistory: vi.fn(),
+  clearHistory: vi.fn(),
+  activeSessionId: null,
+  activeSession: null,
+  createNewChatAndSwitch: vi.fn(() => "session-id"),
+  switchToChatAndClear: vi.fn(),
     });
     render(<AssistantPage />);
     // onSendを呼び出してsendMessageが呼ばれることを検証
@@ -95,7 +104,11 @@ describe("AssistantPage", () => {
       sendMessage,
       recaptchaReady: true,
       setRecaptchaReady: vi.fn(),
-      clearHistory: vi.fn(),
+  clearHistory: vi.fn(),
+  activeSessionId: null,
+  activeSession: null,
+  createNewChatAndSwitch: vi.fn(() => "session-id"),
+  switchToChatAndClear: vi.fn(),
     });
     render(<AssistantPage />);
     expect(capturedProps).toBeDefined();
@@ -121,7 +134,11 @@ describe("AssistantPage", () => {
       sendMessage,
       recaptchaReady: true,
       setRecaptchaReady: vi.fn(),
-      clearHistory: vi.fn(),
+  clearHistory: vi.fn(),
+  activeSessionId: null,
+  activeSession: null,
+  createNewChatAndSwitch: vi.fn(() => "session-id"),
+  switchToChatAndClear: vi.fn(),
     });
     render(<AssistantPage />);
     expect(capturedProps).toBeDefined();
