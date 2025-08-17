@@ -17,7 +17,7 @@ class HybridSearchService:
         classification: ClassificationResult,
         top_k: int,
         search_quality: dict,
-        quality_threshold: float = 0.0
+    quality_threshold: float = 0.0
     ) -> list[str]:
         """
         スコア加重型のマージロジック（カード名リスト）
@@ -27,10 +27,38 @@ class HybridSearchService:
         if not db_titles and not vector_titles:
             return self._handle_no_results_optimized(classification)
 
-        query_type = getattr(classification, "query_type", None)
-        # スコア辞書を構築
-        db_weight = 0.7
-        vector_weight = 0.3
+        # クエリタイプを正規化
+        qtype = getattr(classification, "query_type", None)
+        try:
+            # Enumなら値に変換
+            qtype_value = qtype.value  # type: ignore[attr-defined]
+        except Exception:
+            qtype_value = str(qtype).lower() if qtype is not None else "semantic"
+
+        # 重み初期値（デフォルトはバランス）
+        db_weight = 0.5
+        vector_weight = 0.5
+
+        # 種別に応じた重みチューニング
+        if qtype_value in ("filterable", "querytype.filterable"):
+            db_weight, vector_weight = 0.8, 0.2
+        elif qtype_value in ("semantic", "querytype.semantic"):
+            db_weight, vector_weight = 0.3, 0.7
+        else:  # hybrid 他
+            db_weight, vector_weight = 0.4, 0.6
+
+        # 信頼度が高い場合は優勢側を微増
+        try:
+            conf = float(getattr(classification, "confidence", 0.0))
+        except Exception:
+            conf = 0.0
+        if conf >= 0.85:
+            if vector_weight > db_weight:
+                vector_weight = min(0.8, vector_weight + 0.1)
+                db_weight = 1.0 - vector_weight
+            else:
+                db_weight = min(0.9, db_weight + 0.05)
+                vector_weight = 1.0 - db_weight
         merged_scores = {}
         all_titles = list(dict.fromkeys(db_titles + vector_titles))
         for title in all_titles:
@@ -46,10 +74,10 @@ class HybridSearchService:
                 merged_scores[title] = 0.0
 
         # クエリタイプごとに優先度を調整
-        if query_type == "filterable":
+        if qtype_value in ("filterable", "querytype.filterable"):
             # DBスコアを優先
             sorted_titles = sorted(all_titles, key=lambda t: (t in db_titles, merged_scores[t]), reverse=True)
-        elif query_type == "semantic":
+        elif qtype_value in ("semantic", "querytype.semantic"):
             # ベクトルスコアを優先
             sorted_titles = sorted(all_titles, key=lambda t: (t in vector_titles, merged_scores[t]), reverse=True)
         else:
@@ -152,8 +180,24 @@ class HybridSearchService:
         # DB/ベクトルのスコアを取得
         db_scores = getattr(self.database_service, "last_scores", {}) if hasattr(self.database_service, "last_scores") else {}
         vector_scores = getattr(self.vector_service, "last_scores", {}) if hasattr(self.vector_service, "last_scores") else {}
-        # 品質スコア閾値（例: 0.3未満は除外）
-        quality_threshold = 0.3
+        # 品質スコア閾値を動的に設定（効果検索はやや厳しめ）
+        try:
+            qtype_value = classification.query_type.value  # Enum -> str
+        except Exception:
+            qtype_value = str(getattr(classification, "query_type", "semantic")).lower()
+
+        base_threshold_map = {
+            "filterable": 0.20,   # DB基準で幅広く許容
+            "semantic": 0.35,     # 効果検索（意味検索）はやや高め
+            "hybrid": 0.30        # 混在は中間
+        }
+        quality_threshold = base_threshold_map.get(qtype_value, 0.30)
+        # 高信頼度は少し引き上げ、低信頼度は少し引き下げ
+        conf = getattr(classification, "confidence", 0.0) or 0.0
+        if conf >= 0.85:
+            quality_threshold = min(0.5, quality_threshold + 0.05)
+        elif conf < 0.5:
+            quality_threshold = max(0.15, quality_threshold - 0.05)
         merged_titles = self._merge_results_weighted(
             db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
         )
