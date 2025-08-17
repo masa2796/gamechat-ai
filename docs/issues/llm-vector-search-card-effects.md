@@ -92,10 +92,45 @@
     - effect_n は存在する鍵のみ収集（n 上限は現状 5 まで観測、柔軟に 9 まで許容）
 
 ### Phase 1: データ抽出・インデクシング（1-2日）
-- [ ] インデクサ（スクリプト）作成: `scripts/data-processing/index_effects_to_vector.py`
-  - [ ] `extract_embedding_text()` と同等の抽出で `text` を構築。
+- [x] インデクサ（スクリプト）作成: `scripts/data-processing/index_effects_to_vector.py`
+  - [x] `extract_embedding_text()` と同等の抽出で `text` を構築。
   - [ ] Upstash Vector へ upsert（id: 安定キー、metadata: {title, text, namespace}）。
 - [ ] 既存データのフル/増分インデクシング運用を README に追記。
+
+出力仕様（index_effects_to_vector.py）
+- アウトプット先
+  - Primary: Upstash Vector インデックス（REST 経由で upsert）
+  - Secondary: 監査用JSONL（ローカル）`data/vector_index_effects.jsonl`（任意、dry-run/差分確認に利用）
+
+- Upsertレコード仕様（1行=1レコード）
+  - id: `{card_id}:{source_key}`（例: `10122110:effect_1`, `10012110:qa_answer_1`, `10001120:flavorText`）
+  - vector: 埋め込みベクトル（EmbeddingServiceで生成）
+  - metadata:
+    - title: カード名（`data.json.name`）
+    - text: 埋め込み対象テキスト（下記ルールで構築）
+    - namespace: `effect_1|effect_2|effect_3|...|qa_question|qa_answer|flavorText`
+    - card_id: `data.json.id`
+    - source: `effect|qa|flavor|combined` の別（任意、デバッグ用）
+
+- テキスト構築ルール
+  - 基本: `EmbeddingService.extract_embedding_text(card)` と同等（effect_1..n, qa.question/qa.answer, flavorText を連結）
+  - グラニュラリティ: convert_data.json の namespace と整合させるため、以下の2系統を生成
+    1) フラグメント単位（effect_i / qa_question / qa_answer / flavorText）: 各フラグメントの原文を text に設定
+    2) 併せて「combined」1件（namespace=`effect_combined`）: 同カード内の全テキストを結合（Recall向上）。
+       - 既存の `VectorService._get_all_namespaces()` は convert_data.json を参照するため、combined を利用する場合は将来の最適化対象。
+  - テキスト正規化: 不要な全角/半角混在・重複空白・引用符の統一、改行で段落分割。
+
+- 監査用JSONLの1行例（抜粋）
+  - `{ "id": "10122110:effect_2", "namespace": "effect_2", "title": "統率のルミナスナイト", "text_len": 28, "upserted": true, "ts": "2025-08-17T09:00:00Z" }`
+
+- 増分更新ポリシー
+  - upsert id は安定キーを使用（同一 id は内容変化時のみ差し替え）
+  - `--dry-run` でUpstash送信せず監査用JSONLのみ出力
+  - 実行後に namespace/件数サマリを標準出力へ（差分の可視化）
+
+- 失敗時の扱い
+  - Upstash API 失敗: リトライ（指数バックオフ、最大3回）、最終失敗は監査JSONLに `upserted=false` 記録
+  - テキスト空/欠落: スキップし、監査JSONLに `skipped_reason` を記録
 
 ### Phase 2: 検索統合/最適化（1-2日）
 - [ ] `ClassificationService` のプロンプトに効果検索例を追加（「〜な効果」「〜できる」→ SEMANTIC/HYBRID）。
