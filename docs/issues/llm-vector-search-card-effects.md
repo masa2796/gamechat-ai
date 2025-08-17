@@ -133,7 +133,7 @@
   - テキスト空/欠落: スキップし、監査JSONLに `skipped_reason` を記録
 
 ### Phase 2: 検索統合/最適化（1-2日）
-- [ ] `ClassificationService` のプロンプトに効果検索例を追加（「〜な効果」「〜できる」→ SEMANTIC/HYBRID）。
+- [x] `ClassificationService` のプロンプトに効果検索例を追加（「〜な効果」「〜できる」→ SEMANTIC/HYBRID）。
 - [ ] `HybridSearchService` の重み/しきい値を効果検索に最適化（必要なら）。
 - [ ] `VectorService.search()` の `min_score` と `namespaces` 最適化確認。
 
