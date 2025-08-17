@@ -94,8 +94,8 @@
 ### Phase 1: データ抽出・インデクシング（1-2日）
 - [x] インデクサ（スクリプト）作成: `scripts/data-processing/index_effects_to_vector.py`
   - [x] `extract_embedding_text()` と同等の抽出で `text` を構築。
-  - [ ] Upstash Vector へ upsert（id: 安定キー、metadata: {title, text, namespace}）。
-- [ ] 既存データのフル/増分インデクシング運用を README に追記。
+  - [x] Upstash Vector へ upsert（id: 安定キー、metadata: {title, text, namespace}）。
+- [x] 既存データのフル/増分インデクシング運用を README に追記。
 
 出力仕様（index_effects_to_vector.py）
 - アウトプット先
