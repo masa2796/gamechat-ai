@@ -210,11 +210,16 @@ class VectorService:
     
     def _get_optimized_namespaces(self, classification: ClassificationResult) -> List[str]:
         """データファイルから存在するnamespace一覧を動的に取得"""
-        return self._get_all_namespaces()
+        all_namespaces = self._get_all_namespaces()
+        return self._filter_namespaces_by_query_type(all_namespaces, classification.query_type)
     
     def _get_default_namespaces(self, classification: Optional[ClassificationResult]) -> List[str]:
         """デフォルトのネームスペースリストを取得（データから動的に取得）"""
-        return self._get_all_namespaces()
+        all_namespaces = self._get_all_namespaces()
+        # 分類が無い場合は従来どおり全て。分類があれば種別に応じてフィルタ。
+        if classification is None:
+            return all_namespaces
+        return self._filter_namespaces_by_query_type(all_namespaces, classification.query_type)
 
     def _get_all_namespaces(self) -> List[str]:
         """convert_data.jsonからユニークなnamespace一覧を抽出"""
@@ -248,6 +253,35 @@ class VectorService:
             # ファイルが読めない場合は空リスト
             return []
         return sorted(list(namespaces))
+
+    def _filter_namespaces_by_query_type(self, all_namespaces: List[str], query_type: QueryType) -> List[str]:
+        """クエリ種別に応じたnamespaceフィルタ
+        - SEMANTIC/HYBRID: effect_* と effect_combined を優先/限定
+        - その他(FILTERABLE/GREETING): 既定（全namespace）
+        フォールバック: 該当がない場合は全namespaceを返す
+        """
+        try:
+            if query_type in (QueryType.SEMANTIC, QueryType.HYBRID):
+                effect_namespaces = [ns for ns in all_namespaces if ns.startswith("effect_")]
+                # effect_combined が存在する場合は先頭に配置
+                combined = [ns for ns in effect_namespaces if ns == "effect_combined"]
+                effect_others = [ns for ns in effect_namespaces if ns != "effect_combined"]
+                filtered = combined + sorted(effect_others)
+                if filtered:
+                    GameChatLogger.log_info("vector_service", "クエリ種別に応じてeffect系に限定", {
+                        "query_type": query_type.value,
+                        "selected_namespaces": filtered[:10],
+                        "total": len(filtered)
+                    })
+                    return filtered
+                # 該当が無い場合はフォールバック（全namespace）
+                GameChatLogger.log_warning("vector_service", "effect系namespaceが見つからず全namespaceを使用します")
+                return all_namespaces
+            # FILTERABLE/GREETING 等は既定のまま
+            return all_namespaces
+        except Exception as e:
+            GameChatLogger.log_error("vector_service", "namespaceフィルタ中にエラー", e)
+            return all_namespaces
     
     def _handle_no_results(self, classification: Optional[ClassificationResult]) -> List[str]:
         """

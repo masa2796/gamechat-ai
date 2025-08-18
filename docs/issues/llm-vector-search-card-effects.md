@@ -158,7 +158,7 @@
    - `effect_combined`（同カードの効果文結合）が未活用で、断片 recall が不足する可能性。
 
 #### 対策タスク（追加）
-- [ ] VectorService: クエリ種別に応じた namespace フィルタを実装
+- [x] VectorService: クエリ種別に応じた namespace フィルタを実装
   - SEMANTIC/HYBRID → `effect_*`（＋あれば `effect_combined`）を優先/限定
   - FILTERABLE → 既定のまま or Vectorを補助使用
 - [ ] VectorService: タイトル重複時は最大スコアを保持し、グローバルランキングで返却
