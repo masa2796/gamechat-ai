@@ -134,8 +134,46 @@
 
 ### Phase 2: 検索統合/最適化（1-2日）
 - [x] `ClassificationService` のプロンプトに効果検索例を追加（「〜な効果」「〜できる」→ SEMANTIC/HYBRID）。
-- [ ] `HybridSearchService` の重み/しきい値を効果検索に最適化（必要なら）。
+- [x] `HybridSearchService` の重み/しきい値を効果検索に最適化（必要なら）。
+  - クエリ種別・confidence に応じてマージ重み/品質しきい値を動的化（SEMANTICはVector重視）。
 - [ ] `VectorService.search()` の `min_score` と `namespaces` 最適化確認。
+
+#### 調査: ベクトル検索の精度低下の要因（現状）
+1) Namespace が広すぎてノイズが混入
+   - 現状は `convert_data.json` から全 namespace を列挙し検索（`effect_*`, `qa_question` 等）。
+   - 効果検索(SEMANTIC/HYBRID)でも QA 質問文が混ざり、意味空間がブレる可能性。
+
+2) min_score とスコア集約の挙動
+   - 類似度しきい値は `base_threshold * confidence_adjustment`（semantic 基準 0.75）。
+   - Namespace 跨ぎで同一タイトルのスコアは最後に上書き（最大化されない）ため、最良スコアが落ちるケースあり。
+
+3) 返却順の一貫性・ランキング品質
+   - 非並列の `search()` はタイトル配列を namespace 順に詰めて返却（内部的な最終マージではスコア字典を使用しているが、単独利用やログ可視化で誤解を招く）。
+
+4) クエリ埋め込みテキストの最適性
+   - モック環境では summary=原文のままになりがちで、効果語以外（クラス語・数値語）が過度に混ざる場合がある。
+
+5) インデックス側のノイズ
+   - `qa_question` のみ取り込みで `qa_answer` 未収録（効果意図と離れる文が増える）。
+   - `effect_combined`（同カードの効果文結合）が未活用で、断片 recall が不足する可能性。
+
+#### 対策タスク（追加）
+- [ ] VectorService: クエリ種別に応じた namespace フィルタを実装
+  - SEMANTIC/HYBRID → `effect_*`（＋あれば `effect_combined`）を優先/限定
+  - FILTERABLE → 既定のまま or Vectorを補助使用
+- [ ] VectorService: タイトル重複時は最大スコアを保持し、グローバルランキングで返却
+  - `scores[title] = max(scores.get(title, 0), score)` に変更
+  - 返却前にスコア降順で dedupe + sort（単体利用時の一貫性向上）
+- [ ] EmbeddingService: 効果中心の埋め込みテキスト生成を強化
+  - SEMANTIC/HYBRID 時は効果キーワードを強調し、不要な属性語/助詞を軽く正規化
+  - 日本語ストップワード/単純な表記ゆれ（例: 「〜できる」「可能」）の正規化を軽量で追加
+- [ ] Indexing: `qa_answer` を取り込み、`effect_combined` を追加生成（任意）
+  - combined の利用は設定で切替（効果 recall が要るときに限定）
+- [ ] Logging/可観測性: 検索毎に namespace 選択・上位スコア上位5件・しきい値を記録
+  - 調整ループを短縮し、誤設定の早期検知に活用
+- [ ] Config チューニング: `similarity_thresholds`/`confidence_adjustments` の再学習
+  - サンプルクエリで Precision@K/Recall@K を測って再設定
+
 
 ### Phase 3: API/挙動（0.5-1日）
 - [ ] 既存 RAG/検索エンドポイントの応答に「カード名上位N件」を含める整合性確認（後方互換）。
