@@ -2,7 +2,6 @@ import re
 import os
 import json
 import asyncio
-import openai
 from typing import List, Dict, Any, Optional
 from ..core.logging import GameChatLogger
 from ..core.config import settings
@@ -1473,6 +1472,23 @@ cardsテーブル
         """従来の正規表現ベースのフィルタリング（フォールバック用・拡張版）"""
         if self.debug:
             print(f"[DEBUG] _match_filterable_fallback: item={item.get('name', '')}, keyword={keyword}")
+        
+        # OR 記法の簡易対応: "A|B|C" はいずれかが一致すれば True
+        if "|" in keyword:
+            # 空要素を除去しつつ再帰的に判定（各サブキーワードには '|' は含まない想定）
+            alts = [part.strip() for part in keyword.split("|") if part.strip()]
+            for alt in alts:
+                try:
+                    if self._match_filterable_fallback(item, alt):
+                        if self.debug:
+                            print(f"[DEBUG] ORマッチ: '{alt}' matched within '{keyword}'")
+                        return True
+                except RecursionError:
+                    # 念のため再帰安全策
+                    if alt.lower() in str(item.get("name", "")).lower():
+                        return True
+            # どれも一致しない
+            return False
         
         # Phase 2: 複雑な数値パターンのチェック
         complex_conditions = self._parse_complex_numeric_conditions(keyword)
