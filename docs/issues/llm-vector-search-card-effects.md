@@ -195,7 +195,7 @@
    - 原文が「手札に戻す」でも、ユーザークエリ「バウンス」を拾えない等、語彙橋渡しが不足。
 
 解消タスク（優先度: 高）
-- [ ] クエリ正規化レイヤー（展開方式: Synonym/Typo拡張）を追加（HybridSearchService 直前 or EmbeddingService）
+- [☓] クエリ正規化レイヤー（展開方式: Synonym/Typo拡張）を追加（HybridSearchService 直前 or EmbeddingService）
   - 方針: 完全な置換ではなく「展開」。原語は残しつつ、同義語・表記ゆれ・タイポ候補を追加して網羅性を高める。
   - 二段構え:
     - Keyword検索（HybridSearchのキーワード側）: 正規化を強めに。各語を OR 展開して確実にヒット（例: フォロワー OR フォロー OR フォロワ）。
@@ -210,11 +210,11 @@
   - 実装例:
     - 入力: 「フォロー」 → 展開: 「フォロワー OR フォロー OR フォロワ」
   - 正規化前処理: 全角/半角、長音、余分な空白の正規化（語根は保持）。
-- [ ] Zero-hit リトライ戦略の実装
+- [△] Zero-hit リトライ戦略の実装
   - 1回目: namespaces = effect_*、threshold = 既定、top_k = 10
   - 0件時に再試行: namespaces += effect_combined、threshold を -0.05〜-0.1、top_k = 20
   - それでも0件の場合、同義語展開後に再埋め込みして再検索。
-- [ ] VectorService のタイトル重複スコアを最大値で集約し、降順ソートで返却（dedupe強化）
+- [x] VectorService のタイトル重複スコアを最大値で集約し、降順ソートで返却（dedupe強化）
 - [ ] EmbeddingService の要約強化（効果キーワード優先の抽出と助詞の軽正規化）
 - [ ] インデクサで語彙ブースト（任意）
   - 効果カテゴリ語（例: バウンス/直接ダメージ/ランダム）を `metadata.text` 末尾に付加（軽量タグ）

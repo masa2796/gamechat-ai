@@ -321,11 +321,30 @@ class EmbeddingService:
             3. 低信頼度（0.5未満）: 元質問をそのまま使用
         """
         
+        # 効果文らしさの簡易判定: 効果テキストに近い場合は原文を優先して保持
+        def _looks_like_effect_text(text: str) -> bool:
+            if not text:
+                return False
+            cues = [
+                "破壊", "選ぶ", "与える", "ダメージ", "手札", "戻す", "ランダム",
+                "フォロワー", "リーダー", "場", "盤面", "ボード", "フィールド",
+                "1枚", "すべて", "ランダムに", "このターン", "相手の", "自分の"
+            ]
+            hit = sum(1 for c in cues if c in text)
+            # 句点や命令調の文体もヒントに
+            punctuation_bonus = 1 if ("。" in text or "！" in text or "する" in text) else 0
+            return (hit + punctuation_bonus) >= 2
+
+        effect_like = _looks_like_effect_text(original_query)
+
         # 信頼度による戦略選択
         if classification.confidence >= 0.8:
             # 高信頼度: 要約を優先
             if classification.summary and len(classification.summary.strip()) > 5:
                 if self._is_summary_quality_good(classification.summary, original_query):
+                    # 効果文らしい場合は原文も併用して情報を保持
+                    if effect_like:
+                        return f"{original_query}\n{classification.summary}"
                     return classification.summary
                     
         elif classification.confidence >= 0.5:
@@ -333,7 +352,8 @@ class EmbeddingService:
             if classification.query_type == QueryType.SEMANTIC and classification.search_keywords:
                 # セマンティック検索の場合、検索キーワードを活用
                 keywords_text = " ".join(classification.search_keywords)
-                return f"{keywords_text} {original_query}"
+                # 効果文らしい場合は原文を先頭に
+                return f"{original_query} {keywords_text}" if effect_like else f"{keywords_text} {original_query}"
             elif classification.query_type == QueryType.HYBRID:
                 # ハイブリッドの場合、両方のキーワードを活用
                 all_keywords = []
@@ -343,9 +363,9 @@ class EmbeddingService:
                     all_keywords.extend(classification.filter_keywords)
                 if all_keywords:
                     keywords_text = " ".join(all_keywords)
-                    return f"{keywords_text} {original_query}"
+                    return f"{original_query} {keywords_text}" if effect_like else f"{keywords_text} {original_query}"
                     
-        # フォールバック: 元質問を使用
+        # フォールバック: 元質問を使用（効果文らしい場合はそのままが強い）
         GameChatLogger.log_info("embedding_service", "フォールバック: 元質問を使用", {
             "confidence": classification.confidence
         })
