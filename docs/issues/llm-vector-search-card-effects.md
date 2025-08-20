@@ -215,12 +215,12 @@
   - 0件時に再試行: namespaces += effect_combined、threshold を -0.05〜-0.1、top_k = 20
   - それでも0件の場合、同義語展開後に再埋め込みして再検索。
 - [x] VectorService のタイトル重複スコアを最大値で集約し、降順ソートで返却（dedupe強化）
-- [ ] EmbeddingService の要約強化（効果キーワード優先の抽出と助詞の軽正規化）
+- [x] EmbeddingService の要約強化（効果キーワード優先の抽出と助詞の軽正規化）
 - [ ] インデクサで語彙ブースト（任意）
   - 効果カテゴリ語（例: バウンス/直接ダメージ/ランダム）を `metadata.text` 末尾に付加（軽量タグ）
   - 既存原文は保持したまま、検索時の語彙橋渡しを強化
-- [ ] ロギングの拡充
-  - 正規化前後のクエリ、namespaces、threshold、top_k、上位5件のスコアをDEBUGで出力
+- [x] ロギングの拡充
+  - 正規化前後のクエリ、namespaces、threshold、top_k、上位5件のスコアをDEBUGで出力（`HybridSearchService` と `VectorService` に追加）
 - [ ] テスト追加（失敗再現→緑化）
   - `test_hybrid_search_consolidated.py` に以下3件を追加し、Top-10が非空になること:
     - 「フィールドのカードを手札に戻すカード」

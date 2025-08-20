@@ -108,6 +108,19 @@ class VectorService:
             "classification_type": classification.query_type if classification else None,
             "confidence": classification.confidence if classification else None
         })
+        # DEBUG: 検索パラメータを詳細に出力
+        try:
+            GameChatLogger.log_debug(
+                "vector_service",
+                "検索パラメータ（初期）",
+                {
+                    "namespaces": (namespaces or [])[:20],
+                    "threshold": float(min_score) if isinstance(min_score, (int, float)) else None,
+                    "top_k": int(top_k),
+                },
+            )
+        except Exception:
+            pass
         # タイトル重複時は最大スコアで集約
         scores: dict[str, float] = {}
 
@@ -177,6 +190,20 @@ class VectorService:
                 "namespaces_sample": (ns_list or [])[:10],
                 "inner_top_k": step_top_k
             })
+            # DEBUG: 各段階のパラメータ詳細
+            try:
+                GameChatLogger.log_debug(
+                    "vector_service",
+                    "フォールバック段階パラメータ",
+                    {
+                        "stage": i,
+                        "namespaces": ns_list[:20] if isinstance(ns_list, list) else [],
+                        "threshold": float(step_min_score) if isinstance(step_min_score, (int, float)) else None,
+                        "top_k": int(step_top_k),
+                    },
+                )
+            except Exception:
+                pass
             _query_namespaces(ns_list, step_min_score if isinstance(step_min_score, (int, float)) else None, int(step_top_k))
 
         # スコアで降順ソートし、カード名を返却
@@ -187,6 +214,15 @@ class VectorService:
             "total_results": len(sorted_titles),
             "top5": top5
         })
+        # DEBUG: 上位5件のスコアを明示的に出力
+        try:
+            GameChatLogger.log_debug(
+                "vector_service",
+                "上位スコア（top5）",
+                {"top5": top5},
+            )
+        except Exception:
+            pass
         self.last_scores = scores
         return [title for title, _ in sorted_titles[:top_k]]
     
@@ -463,6 +499,19 @@ class VectorService:
         # ネームスペースの確認
         if namespaces is None:
             namespaces = self._get_default_namespaces(classification)
+        # DEBUG: 並列検索の初期パラメータ
+        try:
+            GameChatLogger.log_debug(
+                "vector_service",
+                "検索パラメータ（並列）",
+                {
+                    "namespaces": (namespaces or [])[:20],
+                    "threshold": float(min_score) if isinstance(min_score, (int, float)) else None,
+                    "top_k": int(top_k),
+                },
+            )
+        except Exception:
+            pass
         
         # 並列検索タスクを作成
         tasks = []
@@ -507,6 +556,16 @@ class VectorService:
                 "score": best_score,
                 "title": best_title[:50]
             })
+            # DEBUG: top5を詳細表示
+            try:
+                top5 = [{"title": t, "score": s} for t, s in sorted_items[:5]]
+                GameChatLogger.log_debug(
+                    "vector_service",
+                    "上位スコア（top5, 並列）",
+                    {"top5": top5},
+                )
+            except Exception:
+                pass
         
         # カード名リストに変換
         return [title for title, _ in sorted(score_by_title.items(), key=lambda kv: kv[1], reverse=True)]

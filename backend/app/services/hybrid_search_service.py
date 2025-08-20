@@ -7,6 +7,7 @@ from .database_service import DatabaseService
 from .vector_service import VectorService
 from .embedding_service import EmbeddingService
 from .query_normalization_service import QueryNormalizationService
+from ..core.logging import GameChatLogger
 
 class HybridSearchService:
     def _merge_results_weighted(
@@ -127,6 +128,19 @@ class HybridSearchService:
         # Step 0: クエリ正規化（前処理）
         preprocessed_query = self.query_normalizer.preprocess(query)
         print(f"[Normalize] 原文→前処理: '{query}' -> '{preprocessed_query}'")
+        # DEBUG: 正規化前後のクエリを記録
+        try:
+            GameChatLogger.log_debug(
+                "hybrid_search",
+                "クエリ正規化",
+                {
+                    "raw_query": str(query)[:500],
+                    "preprocessed_query": str(preprocessed_query)[:500],
+                },
+            )
+        except Exception:
+            # ログで例外を起こさないため安全に無視
+            pass
 
         # Step 1: LLMによる分類・要約（前処理後のクエリを入力）
         classification = await self._classify_query(preprocessed_query)
@@ -281,6 +295,15 @@ class HybridSearchService:
             # Embedding向けは軽めに展開（代表同義語の少数追加）
             expanded_for_embed = self.query_normalizer.expand_text_for_embedding(query)
             print(f"[Embedding] expanded_text: {expanded_for_embed}")
+            # DEBUG: 埋め込み用正規化後テキストを記録
+            try:
+                GameChatLogger.log_debug(
+                    "hybrid_search",
+                    "埋め込み用テキスト（展開後）",
+                    {"expanded_for_embedding": str(expanded_for_embed)[:800]},
+                )
+            except Exception:
+                pass
             query_embedding = await self.embedding_service.get_embedding_from_classification(
                 expanded_for_embed, classification
             )
