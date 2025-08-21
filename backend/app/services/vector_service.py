@@ -297,34 +297,89 @@ class VectorService:
         """convert_data.jsonからユニークなnamespace一覧を抽出"""
         import os
         import json
-        data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "convert_data.json")
+
+        # NOTE: 既存実装は backend/data/convert_data.json を参照していたが、
+        # 実際のファイルはリポジトリルート直下 data/convert_data.json に存在する。
+        # そのため path が 1階層足りず namespace が常に空 -> ベクトル検索 0件 という不具合が発生。
+        # 以下では複数候補を順に探索し、最初に見つかったファイルを採用する。
+
+        service_dir = os.path.dirname(__file__)
+        candidates: List[str] = []
+        # 旧（誤りだった）パス: backend/data/convert_data.json
+        candidates.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(service_dir))), "data", "convert_data.json"))  # legacy (残して後方互換)
+        # 想定する正しいルート: プロジェクトルート/data/convert_data.json （services から4階層上）
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(service_dir))))
+        candidates.append(os.path.join(project_root, "data", "convert_data.json"))
+        # さらに環境変数 DATA_DIR があれば優先
+        data_dir_env = os.getenv("DATA_DIR")
+        if data_dir_env:
+            candidates.insert(0, os.path.join(data_dir_env, "convert_data.json"))
+
+        data_path = None
+        for path in candidates:
+            if os.path.exists(path):
+                data_path = path
+                break
+
+        if data_path is None:
+            GameChatLogger.log_warning(
+                "vector_service",
+                "convert_data.json が見つからず namespace を空集合として扱います",
+                {"tried": candidates[:3]}
+            )
+            return []
+
         namespaces = set()
         try:
             with open(data_path, "r", encoding="utf-8") as f:
-                for line in f:
+                first_chunk = f.read(2048)
+                f.seek(0)
+                if first_chunk.lstrip().startswith("["):
+                    # 配列形式
                     try:
-                        # JSON Lines形式 or 配列形式両対応
-                        if line.strip().startswith("["):
-                            # 配列形式
-                            f.seek(0)
-                            items = json.load(f)
+                        items = json.load(f)
+                        if isinstance(items, list):
                             for item in items:
-                                ns = item.get("namespace")
+                                if isinstance(item, dict):
+                                    ns = item.get("namespace")
+                                    if ns:
+                                        namespaces.add(ns)
+                    except Exception as e:  # フォールバックとして行単位再読込
+                        GameChatLogger.log_warning("vector_service", "convert_data.json の配列読込に失敗。行単位フォールバック", {"error": str(e)})
+                        f.seek(0)
+                        for line in f:
+                            try:
+                                obj = json.loads(line)
+                                if isinstance(obj, dict):
+                                    ns = obj.get("namespace")
+                                    if ns:
+                                        namespaces.add(ns)
+                            except Exception:
+                                continue
+                else:
+                    # JSON Lines 形式
+                    for line in f:
+                        try:
+                            obj = json.loads(line)
+                            if isinstance(obj, dict):
+                                ns = obj.get("namespace")
                                 if ns:
                                     namespaces.add(ns)
-                            break
-                        else:
-                            # JSON Lines形式
-                            item = json.loads(line)
-                            ns = item.get("namespace")
-                            if ns:
-                                namespaces.add(ns)
-                    except Exception:
-                        continue
-        except Exception:
-            # ファイルが読めない場合は空リスト
+                        except Exception:
+                            continue
+        except Exception as e:
+            GameChatLogger.log_error("vector_service", "convert_data.json 読込でエラー", e, {"path": data_path})
             return []
-        return sorted(list(namespaces))
+
+        ns_list = sorted(list(namespaces))
+        if not ns_list:
+            GameChatLogger.log_warning("vector_service", "convert_data.json に namespace が検出されませんでした", {"path": data_path})
+        else:
+            try:
+                GameChatLogger.log_debug("vector_service", "namespace 読込成功", {"count": len(ns_list), "sample": ns_list[:8]})
+            except Exception:
+                pass
+        return ns_list
 
     def _filter_namespaces_by_query_type(self, all_namespaces: List[str], query_type: QueryType) -> List[str]:
         """クエリ種別に応じたnamespaceフィルタ
