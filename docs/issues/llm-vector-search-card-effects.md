@@ -315,7 +315,7 @@
 ### 即時対処（実装済み / 実装中）
 - [x] 効果フィールド走査範囲を `effect_1..9` へ拡張。
 - [x] 拡張の回帰テスト（`effect_5` のみ保有カードがマッチすることを検証）追加。
-- [ ] min_score チューニング（暫定: 設定値を 0.35～0.4 へ再評価）
+- [x] min_score チューニング（暫定: 設定値を 0.4 に設定し再評価中 | 以前: 0.5）
 - [ ] 同義語軽展開（Normalization 層追加）
 - [ ] `effect_combined` namespace 活用フォールバックの有効化
 
@@ -325,6 +325,128 @@
 3. `effect_combined` の導入と適応的 namespace 戦略
 4. 埋め込みテキストへの最小メタ（クラス/タイプ）付加検討
 5. 評価スクリプトによるバッチ品質測定（Precision@K / Recall@K / MRR）
+
+---
+
+## 追加機能: ユーザー評価（Feedback）収集基盤
+検索品質改善に向け、実ユーザーが AI 回答に対して「良い/悪い（または中立）」評価を送信でき、特にマイナス評価時にクエリ・回答・内部メタ情報を蓄積する仕組みを導入する。
+
+### 目的 / ゴール
+- どのクエリ・回答ペアで不満足が発生しているか可視化し、検索/分類/埋め込みの改善優先度判断材料とする。
+- ネガティブ例を教師データ（失敗ケース集）として再プロンプト設計 / 同義語辞書 / 閾値チューニングに活用。
+- 将来的に Online Learning / Active Evaluation（人手確認キュー）への拡張を可能にする。
+
+### スコープ（初期）
+- 評価値: `+1` (良い) / `-1` (悪い) / （任意で `0` 中立）
+- マイナス評価時: 下記フィールドを保存
+  - query_text, answer_text, query_type, classification_summary
+  - vector_top_titles (上位N件), min_score, namespaces, top_scores(top5)
+  - embedding_version / index_version（将来差分分析用）
+  - user_id (任意/匿名化可), session_id, timestamp
+  - client_app_version / frontend_build_hash（回帰把握）
+  - optional: user_reason (自由記述最大 ~300字)
+- 保存先: アプリDB（RDB）新テーブル `search_feedback`
+- フロント: 回答表示領域に 👍 / 👎 ボタン（CLI / API クライアントからも送信可能）
+
+### 非スコープ（初期段階で除外）
+- 複数段階のラベル（"部分的に正しい" 等の細分類）
+- 自動再検索 / リライトの即時トリガー
+- 個別ユーザー嗜好学習
+
+### データモデル案
+`search_feedback` テーブル（PostgreSQL 想定）:
+| 列 | 型 | 説明 |
+|----|----|------|
+| id | BIGSERIAL PK | |
+| created_at | TIMESTAMP WITH TIME ZONE (default now) | |
+| user_id | TEXT NULL | 匿名ならNULL / ハッシュ化ID |
+| session_id | TEXT NULL | セッション突合せ |
+| rating | SMALLINT | -1 / 0 / 1 |
+| query_text | TEXT | 入力クエリ原文 |
+| answer_text | TEXT | 表示したAI最終回答（要約含む） |
+| query_type | TEXT | semantic / hybrid / filterable / greeting |
+| classification_summary | TEXT NULL | LLM分類サマリー |
+| vector_top_titles | JSONB | 上位タイトルリストとスコア [{t,s}] |
+| namespaces | JSONB | 使用 namespace 配列 |
+| min_score | REAL | 実際に用いた閾値 |
+| top_scores | JSONB | top5スコア詳細 |
+| embedding_version | TEXT NULL | 埋め込み/モデルバージョン |
+| index_version | TEXT NULL | ベクトルインデックス再構築バージョン |
+| user_reason | TEXT NULL | 追加フィードバック |
+| processed | BOOLEAN default false | 後続分析/エクスポート済みフラグ |
+| tags | JSONB NULL | 手動タグ付け ("synonym_miss", "low_recall" 等) |
+
+インデックス案:
+- `CREATE INDEX ON search_feedback (created_at);`
+- `CREATE INDEX ON search_feedback (rating);`
+- `CREATE INDEX ON search_feedback (query_type);`
+- `GIN` インデックス for JSONB (vector_top_titles, namespaces) 需要次第。
+
+### API エンドポイント案
+| メソッド | パス | 用途 | 認可 | リクエスト例 |
+|----------|------|------|------|--------------|
+| POST | `/api/feedback` | 評価送信 | public (CSRF/Rate Limit) | `{ "query_id": "uuid", "query_text": "回復効果...", "answer_text": "...", "rating": -1, "user_reason": "ヒールカードが出ない", "meta": { "vector_top_titles": [...], "namespaces": ["effect_1"], "min_score": 0.4, "top_scores": [...] } }` |
+
+バックエンド側で信頼できるフィールド（namespaces, top_scores 等）は **サーバ内部ログ/Context から再構築** し、クライアント送信の改ざんを避ける。（クライアントは最低限 query_id / rating / user_reason のみでも可）
+
+### 実装タスク
+1. モデル/マイグレーション
+  - [ ] Alembic などで `search_feedback` テーブル追加
+2. ドメイン層
+  - [ ] `FeedbackService` (create_feedback, list_recent, aggregate_metrics)
+3. ルーター
+  - [ ] `routers/feedback.py` POST `/api/feedback` （バリデーション + サーバ側メタ注入）
+4. フロントエンド
+  - [ ] 回答コンポーネントに 👍 / 👎 ボタン配置
+  - [ ] 送信後トースト表示（再投稿防止 state）
+  - [ ] ネガティブ時: 任意コメント入力モーダル
+5. メタ注入
+  - [ ] 検索完了時に QueryContext を一時保存（in-memory LRU / Redis）: key=query_id → スコア/namespace/分類サマリ
+6. ロギング/監査
+  - [ ] Feedback 保存時に success ログ + 要約（rating, query_type, top1_title）
+7. 可観測化 / ダッシュボード
+  - [ ] Prometheus カウンタ: `feedback_total{rating,query_type}`
+  - [ ] エラー率 / 保存失敗計数
+8. 分析補助スクリプト
+  - [ ] `scripts/data-processing/export_feedback_stats.py` (期間指定でCSV/集計 JSON 出力)
+9. セキュリティ / 品質
+  - [ ] Rate Limit (IP or user basis, 例: 1分10件 / 1時間100件)
+  - [ ] XSS防止: user_reason をサニタイズ / HTML エスケープ
+  - [ ] 個人情報禁止文言フィルタ（簡易正規表現）
+
+### メトリクス / KPI
+- ネガティブ率 (negative_feedback / total_feedback) の週次推移
+- クエリタイプ別ネガティブ率 (semantic が高い場合 → 同義語 / index 改善重点)
+- ネガティブ上位トークン抽出（TF-IDF / 形態素解析）→ 辞書拡張候補
+- 改善施策投入前後での ネガティブ率 / Recall 減少比較
+
+### ワークフロー（改善サイクル）
+1. ネガティブ収集 (日次)
+2. 集計 / 上位問題カテゴリ抽出
+3. 対策（辞書追加 / 閾値調整 / インデックス拡張）
+4. 再デプロイ・バージョンタグ記録 (embedding_version, index_version)
+5. 翌週比較（before/after）
+
+### リスクと緩和
+| リスク | 内容 | 緩和策 |
+|--------|------|--------|
+| スパム | ボット大量投稿 | Rate limit + reCAPTCHA(必要時) |
+| プライバシー | 自由記述に個人情報 | 簡易NGワードフィルタ + 後続監査 |
+| 改ざん | クライアント改変メタ | サーバ側でメタ再構築 |
+| 保存遅延 | 同期I/O によるレスポンス遅延 | 非同期タスクキュー (将来 Celery) / 先行 202 async commit |
+
+### 受け入れ基準（Feedback 機能）
+- 👎 を送信するとサーバに行が保存され、API 201 応答。
+- DB に rating=-1 行が生成され、`vector_top_titles[0].title` が存在。
+- 過剰投稿 (> 制限) で 429 が返る。
+- user_reason に危険な HTML を含んでもサニタイズされて保存（script タグ無効化）。
+
+### 将来拡張アイデア（後回し）
+- 学習用データ自動抽出（ネガティブ例を含む Hard Negative ペア生成）
+- A/B テスト: model_version / threshold バリエーションを query_id に紐づけ比較
+- オンライン自動再ランキング（ネガティブ学習: pairwise ranking loss）
+
+---
 
 ### リスクと回避
 - 走査範囲拡張によりマッチ件数が過剰になる懸念: スコア/重み付け、AND 条件分解で制御。

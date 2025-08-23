@@ -146,7 +146,7 @@ class Settings:
                 "vector_weight": 0.6
             },
             # 最小スコア閾値（これ以下は除外）
-            "minimum_score": 0.5,
+            "minimum_score": 0.4,  # lowered from 0.5 (2025-08-23 min_score tuning phase)
             # フォールバック設定
             "fallback_enabled": True,
             "fallback_limit": 3

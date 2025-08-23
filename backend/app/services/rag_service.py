@@ -4,6 +4,8 @@ from .embedding_service import EmbeddingService
 from .vector_service import VectorService
 from .llm_service import LLMService
 from .hybrid_search_service import HybridSearchService
+from .feedback_service import feedback_service
+from ..models.feedback_models import QueryContext
 from ..config.ng_words import NG_WORDS
 from ..core.cache import prewarmed_query_cache as query_cache
 import logging
@@ -84,9 +86,36 @@ class RagService:
                 logger.info("[RAG][DEBUG] Using context from HybridSearchService directly to avoid duplication")
             else:
                 # with_context=Falseの場合（最小限のレスポンス）
-                response = {
-                    "message": "検索完了"
-                }
+                response = {"message": "検索完了"}
+
+            # QueryContext 保存 (MVP) ※例外は握り潰し
+            try:
+                classification_obj = search_result.get("classification")
+                query_type = getattr(classification_obj, "query_type", None)
+                query_type_str = query_type.value if hasattr(query_type, "value") else (str(query_type) if query_type else None)
+                classification_summary = getattr(classification_obj, "summary", None)
+                vector_service = self.vector_service
+                last_scores = getattr(vector_service, 'last_scores', {}) or {}
+                top_scores = sorted([
+                    {"title": t, "score": s} for t, s in last_scores.items()
+                ], key=lambda kv: kv["score"], reverse=True)[:5]
+                vector_top_titles = top_scores
+                namespaces = []  # TODO: VectorService から取得できるよう拡張予定
+                min_score = None  # TODO: search_info から引き出す実装
+                ctx = QueryContext.new(
+                    query_text=rag_req.question,
+                    answer_text="",  # 生成回答は未導入
+                    query_type=query_type_str,
+                    classification_summary=classification_summary,
+                    vector_top_titles=vector_top_titles,
+                    namespaces=namespaces,
+                    min_score=min_score,
+                    top_scores=top_scores
+                )
+                feedback_service.store_query_context(ctx)
+                response["query_id"] = ctx.query_id
+            except Exception:
+                pass
             
             # レスポンスをキャッシュ（非同期で実行、レスポンス時間に影響しない）
             asyncio.create_task(
