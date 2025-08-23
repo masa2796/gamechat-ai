@@ -96,12 +96,13 @@ class RagService:
                 classification_summary = getattr(classification_obj, "summary", None)
                 vector_service = self.vector_service
                 last_scores = getattr(vector_service, 'last_scores', {}) or {}
+                last_params = getattr(vector_service, 'last_params', {}) or {}
                 top_scores = sorted([
                     {"title": t, "score": s} for t, s in last_scores.items()
                 ], key=lambda kv: kv["score"], reverse=True)[:5]
                 vector_top_titles = top_scores
-                namespaces = []  # TODO: VectorService から取得できるよう拡張予定
-                min_score = None  # TODO: search_info から引き出す実装
+                namespaces = last_params.get("used_namespaces", []) if isinstance(last_params, dict) else []
+                min_score = last_params.get("min_score") if isinstance(last_params, dict) else None
                 ctx = QueryContext.new(
                     query_text=rag_req.question,
                     answer_text="",  # 生成回答は未導入

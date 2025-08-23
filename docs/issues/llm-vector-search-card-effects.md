@@ -285,6 +285,68 @@
 
 ---
 
+### 優先タスク再整理（2025-08-23 更新）
+
+検索品質改善と計測基盤を段階的に進めるための最新優先度（依存関係 / 改善レバレッジ / 実装コストのバランス）再整理。
+
+#### Tier 0（計測とデータ蓄積の即時着手）
+1. Feedback基盤仕上げ（済）
+  - QueryContext に `namespaces` / `min_score` を注入（`search_info` から）
+  - フィードバック API の単体 / ルータテスト追加
+  - 簡易集計スクリプト（negative_rate, zero_hit_rate の CSV 出力）
+2. 構造化ログ統一
+  - JSON line: `{"ts", "query_id", "stage", "normalized_query", "namespaces", "min_score", "top5_scores"}`
+  - zero hit 時: `retry_stage`=0 を必ず出力
+3. Prometheus カウンタ雛形
+  - `feedback_total{rating,query_type}` / `zero_hit_total` のスタブ実装
+
+（理由）改善施策より先に“現状の土台”を観測しベースラインを固定するため。
+
+#### Tier 1（Recall 即効性：Zero-hit 削減）
+4. 同義語/表記ゆれ軽量展開レイヤー
+  - 固定マップ + 正規化（全角→半角 / 長音正規化 / 余剰空白）
+  - Embedding: 原語 + 代表1語のみ添付 / Keyword: OR 展開
+5. `effect_combined` インデックス & フォールバック
+  - index スクリプトで combined 生成
+  - 0件時 combined 追加 + `min_score -0.05` で再試行
+6. VectorService スコア集約の完全化（済）
+  - タイトル単位で max(score) 集約 → 降順ソート
+  - `search_info` に `used_namespaces`, `threshold`, `retry_stage`
+
+#### Tier 2（動的最適化 & 評価サイクル）
+7. 0件リトライポリシー段階化（stage1: combined追加 / stage2: 同義語再埋め込み）
+8. サンプル16クエリ用 精度バッチ（P@K / R@K / MRR）
+9. Feedback 集計スクリプト正式版（query_type 別 negative_rate, token 頻度）
+
+#### Tier 3（テキスト品質 & 運用性）
+10. EmbeddingService 強化（効果キーワード抽出 + 軽ストップワード除去）
+11. Feedback 自動タグ付け（synonym_miss / low_recall / low_score）
+12. ガイド更新（synonym 展開 / retry 戦略 / feedback 解析手順）
+
+#### Tier 4（高度化 / 後続）
+13. Hard Negative 再ランキング（keyword boost + negative feedback 利用）
+14. ネガティブ率移動平均監視とアラート
+
+#### 直近 “今日” 推奨 3 ステップ
+1. QueryContext enrich（namespaces / min_score 注入）（済）
+2. 構造化 JSON ログ出力（top5 & threshold）
+3. 同義語マップ初版 + before/after ログ
+
+#### KPI 初期セット
+- zero_hit_rate = zero_hit_total / total_queries
+- negative_rate = feedback_total{rating=-1} / feedback_total{all}
+- improvement 判定: (negative_rate_before - negative_rate_after) / negative_rate_before ≥ 10%
+
+#### リスク & 対応（追加）
+| リスク | 新規観点 | 対応 |
+|--------|----------|------|
+| ログ肥大 | JSON line 増加でディスク圧迫 | 日次ローテ + gzip 圧縮スクリプト |
+| 同義語誤適用 | ノイズ語で precision 低下 | マップに信頼度ラベル / A/B 比較ログ |
+| combined 過剰マッチ | 長文カードが常に上位独占 | combined は stage>0 のみ使用 |
+| retry 濫用 | レイテンシ増大 | stage 回数上限 2 / メトリクス監視 |
+
+---
+
 ## 未確定事項/質問
 1. Top-K の既定値（提案: 10）と最大値の上限は？
 2. 対応言語は日本語優先でよいか（英語同義も許容？）
@@ -451,5 +513,42 @@
 ### リスクと回避
 - 走査範囲拡張によりマッチ件数が過剰になる懸念: スコア/重み付け、AND 条件分解で制御。
 - 同義語過展開によるノイズ増: Embedding では代表1語のみ、Keyword フィルタで広く展開する二層方式で吸収。
+
+## 優先着手順（依存関係 × 効果 × 実装コスト）
+
+フィードバック基盤の最小スライス（MVP）
+
+search_feedback テーブル + POST /api/feedback
+検索完了時に QueryContext（一時: in-memory dict）へ query_id→メタ保存
+👎 評価でサーバ側がメタ再構築して保存 意義: 以降の全改善に客観データを蓄積開始。後回しにすると学習期間が失われる。
+ログ/可観測性拡充仕上げ
+
+既存 DEBUG ログから top5 スコア/threshold を構造化 (JSON line) に統一
+Prometheus カウンタ追加 (feedback_total, zero_hit_total) 意義: 閾値/namespace チューニングを数値ベースに移行できる。
+同義語/表記ゆれ軽量展開レイヤー（サーバ側 Embedding 前処理）
+
+固定マップ + 正規化（全角/半角・長音・余剰空白）
+ネガティブ例収集開始後すぐ適用 → 改善差分測定 意義: 0件/低Recall の主因に即効性。
+effect_combined インデックス追加 + フォールバック段階組込み
+
+既存 index スクリプトに combined 生成追加
+フォールバック第2段で combined を混ぜる 意義: 断片分散によるスコア落ち救済。Synonym 展開との相乗効果。
+動的 min_score / 再試行ポリシー
+
+1回目 0件 → threshold -0.05, top_k +10 で再検索
+ログに retry_stage フィールド 意義: 過度の恒久閾値引き下げを避けつつ 0件率削減。
+評価スクリプト (export_feedback_stats.py)
+
+期間別 negative_rate, トークン頻度, query_type breakdown
+CSV/JSON 出力 意義: チューニング効果の週次レビューを自動化。
+QA answer / effect_combined 再インデクシング自動フロー
+
+make タスク or scripts ディレクトリに統合
+index_version を feedback に記録 意義: 改善施策と品質変動の因果追跡を容易に。
+追加ランキング改善（後段）
+
+ベクトル topN に対する簡易再スコア（キーワードヒット + synonym boost）
+feedback の negative ケースを Hard Negative として単純重み調整
+
 
 ---

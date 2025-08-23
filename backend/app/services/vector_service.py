@@ -13,6 +13,8 @@ load_dotenv()
 class VectorService:
     # 検索ごとにカード名→スコアの辞書を保持
     last_scores: dict = {}
+    # 直近検索パラメータ/統計
+    last_params: dict = {}
     _instance = None
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -224,6 +226,16 @@ class VectorService:
         except Exception:
             pass
         self.last_scores = scores
+        try:
+            self.last_params = {
+                "final_stage": i if 'i' in locals() else None,
+                "used_namespaces": ns_list if isinstance(ns_list, list) else [],
+                "min_score": step_min_score if isinstance(step_min_score, (int,float)) else None,
+                "top5": top5,
+                "requested_top_k": top_k
+            }
+        except Exception:
+            pass
         return [title for title, _ in sorted_titles[:top_k]]
     
     def _optimize_search_params(
