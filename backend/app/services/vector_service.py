@@ -170,15 +170,24 @@ class VectorService:
 
         # フォールバック候補の段階
         from typing import Dict as _Dict
+        # 要件: 0件時 effect_combined を追加し min_score を 0.05 引き下げて再試行（シンプル2段階）
+        target_min_score = float(min_score or 0.5)
+        second_namespaces: List[str]
+        # 2段階目で combined を確実に含める（無ければそのまま）
+        if "effect_combined" in (all_ns or []):
+            # 既に含まれている場合は重複除去のみ
+            base_list = namespaces or effect_pref
+            if "effect_combined" not in base_list:
+                second_namespaces = ["effect_combined"] + [ns for ns in base_list if ns != "effect_combined"]
+            else:
+                second_namespaces = list(dict.fromkeys(base_list))
+        else:
+            second_namespaces = namespaces or effect_pref
+
         steps: List[_Dict[str, object]] = [
-            {"namespaces": namespaces or effect_pref, "min_score": float(min_score or 0.5), "top_k": int(top_k)},
-            {"namespaces": list(dict.fromkeys((combined_first or []) + (namespaces or effect_pref))), "min_score": max(0.0, float(min_score or 0.5) - 0.1), "top_k": int(min(max(top_k, 20), 50))},
+            {"namespaces": namespaces or effect_pref, "min_score": target_min_score, "top_k": int(top_k)},
+            {"namespaces": second_namespaces, "min_score": max(0.0, target_min_score - 0.05), "top_k": int(min(max(top_k, 20), 50))},
         ]
-        # 追加: qa系も含める段階
-        qa_aug = list(dict.fromkeys((effect_pref or []) + [ns for ns in (all_ns or []) if ns in ("qa_question", "qa_answer")]))
-        steps.append({"namespaces": qa_aug or (namespaces or all_ns), "min_score": max(0.0, float(min_score or 0.5) - 0.2), "top_k": 50})
-        # 最終段階: 全namespace + 最低しきい値0.0
-        steps.append({"namespaces": all_ns or (namespaces or []), "min_score": 0.0, "top_k": 50})
 
         for i, step in enumerate(steps, start=1):
             if scores:

@@ -1,80 +1,220 @@
 # Issue: カード効果のベクトル検索（LLM活用）
 
-## 目的
-- 「〇〇な効果を持つカード」「〇〇ができるカード」といった曖昧/自然言語の問い合わせに対し、DBの厳密一致・数値条件では拾い切れないカードを検索し、カード名を上位N件で返す。
-- LLMでクエリ意図を分類・要約し、ベクトル検索（Upstash Vector）とDB検索をハイブリッドに活用して高再現・高精度を両立。
+## 再整理タスクプラン（2025-08-25 時点）
+本Issue内で重複/分散していたタスクを粒度と優先度で再編成。現状完了済みは Done、着手中は In Progress、直近着手予定は Next、以降は Backlog/Future に分類。
 
-## 背景/課題
-- 現状のDBフィルタ検索は数値・明示的属性には強い一方、「〜できる/〜のような効果」などの抽象/同義表現には弱い。
-- 既存コードにベクトル検索（`VectorService`）とハイブリッド検索（`HybridSearchService`）があり、効果文抽出（`extract_embedding_text`）も実装済みだが、カード効果の自然言語検索を主目的とした要件定義・評価・データ整備が不十分。
+### 1. ゴール / 成功条件（再掲簡略）
+1) 日本語効果クエリで Top-10 に関連カード複数出現 (Precision/Recall 指標確立)  
+2) zero-hit rate と negative feedback rate を計測し 0件率を段階的に低下  
+3) 回帰（既存 pytest）維持 & レイテンシ劣化 ±10% 以内
 
-## 現状調査（抜粋）
-- Vector 検索:
-  - `backend/app/services/vector_service.py` に Upstash Vector 連携、`extract_embedding_text()` にて `effect_1..n`/`qa`/`flavorText` から埋め込み対象テキストを抽出。
-  - `search()`/`search_parallel()` は `metadata.title` をカード名として返却。`convert_data.json` から `namespace` を動的列挙。
-- ハイブリッド統合:
-  - `backend/app/services/hybrid_search_service.py` が LLM分類→DB/Vector→マージを実施。結果はカード名ベースでマージ、DB詳細は `get_card_details_by_titles()` で取得。
-- LLM分類:
-  - `ClassificationService` が `FILTERABLE / SEMANTIC / HYBRID / GREETING` を返す。効果系の曖昧クエリは `SEMANTIC` または `HYBRID` に振り分け想定。
+### 2. ステータスサマリ
+| 区分 | 件数 | 備考 |
+|------|------|------|
+| Done | 多数 | インデクサ / combined / synonym / ロギング / メトリクス 等 |
+| In Progress | 2 | min_score 最適化検証, synonym 評価指標化 |
+| Next | 4 | 精度バッチ / 追加テスト / 再試行段階化 / ガイド更新 |
+| Backlog | 6 | Embedding 強化 / 自動タグ付け 等 |
+| Future | 4 | 再ランキング / Hard Negative / アラート |
 
-結論: 実装の骨格は存在。効果検索特化の精度向上・データ整備・テスト・評価指標の整備が本Issueの主眼。
+### 3. 完了 (Done)
+- インデクサ作成 + `qa_answer` / `effect_combined` 生成（現在はデフォルトで combined 有効、`--no-combined` オプションで無効化）
+- VectorService: クエリ種別毎 namespace 最適化 (`effect_*` 優先, `effect_combined` 先頭)
+- VectorService: タイトル最大スコア集約 & 降順ソート（ランキング一貫性）
+- フォールバック実装（2段階）：
+  - Stage1: 指定 namespaces, min_score=M
+  - Stage2 (0件時): `effect_combined` を先頭に追加 / `min_score = M - 0.05` / `top_k >= 20`
+- 同義語/表記ゆれ軽量展開レイヤー（Embedding: 代表語+原文, DB Keyword: OR 展開）
+- 構造化検索ログ (`SEARCH_EVENT` JSON line) + top5 スコア出力
+- Prometheus カウンタ: feedback / zero_hit
+- 効果フィールド走査範囲拡張 (`effect_1..9`) + 回帰テスト
+- `min_score` 暫定チューニング (0.4 ベース) / 動的調整ロジック維持
 
-## スコープ/成果物
-- 自然言語（主に日本語）での効果説明クエリに対し、上位N件の「カード名」リストを返却。
-- ハイブリッド検索により、必要に応じてDB結果も補完（ただし本Issueの主対象は効果テキストの意味検索）。
-- 最低限の提案メッセージ/フォールバック（結果0件時）。
+### 4. 進行中 (In Progress)
+1. `VectorService.search()` 実測ログを用いた min_score / retry 効果分析（0件率ベースライン確定）
+2. 同義語展開の Precision 影響観測 (negative_feedback トークン頻度抽出)
 
-## 成功指標（Acceptance Criteria）
-- 検索例（日本語）で意図通りのカード名が上位に出ること。
-  - 例: 「継続ダメージを与えるカード」「守護を無視して攻撃できるカード」「ドローできるカード」
-- Top-K の初期値 10（調整可）。上位に関連性の高いカードが並ぶ。0件時に提案文を返せる。
-- 既存の `pytest` が全て通過し、追加テストが合格。検索レイテンシの劣化が±10%以内。
+### 5. 直近着手 (Next)
+1. 追加テスト: 0件再現 3 クエリ (フィールド戻す/リーダーへダメージ/ランダムフォロワーダメージ) が Top-10 非空となる検証を `test_hybrid_search_consolidated.py` へ追加
+2. 精度バッチスクリプト (16 サンプルで P@10 / Recall@10 / MRR 計算) -> 継続計測基盤
+3. 0件再試行段階化: Stage2 後も 0件時に synonym 再埋め込み Stage3 (計測用フラグ付)
+4. ガイド `docs/guides/hybrid_search_guide.md` 更新（synonym 展開 / combined フォールバック / ログ確認手順）
 
-## 要件（機能仕様）
-- 入力: 自然言語のクエリ文字列（日本語/一部英語混在を許容）。
-- 出力: 関連カード名のリスト（長さ ≤ Top-K）、および（検索情報/品質）メタ。
-- 同義語・言い換え対応: ベクトル検索を前提に、LLM要約でノイズを軽減。
-- 名前空間（`namespace`）はデータに応じ自動選択。設定でフィルタ/固定も可能。
-- しきい値（`min_score`）により低スコア候補を除外（既定は `settings.VECTOR_SEARCH_CONFIG`）。
+### 6. Backlog（優先度 中）
+1. EmbeddingService 軽量正規化強化（助詞/ストップワード削減, 代表動詞強調）
+2. インデクサ語彙ブースト（メタタグ付加: バウンス / ランダム / 直接ダメージ など）
+3. similarity_thresholds / confidence_adjustments 再学習 (精度バッチ結果反映)
+4. Feedback 自動タグ付け (synonym_miss / low_recall / low_score) 初版
+5. export_feedback_stats.py 正式版 (期間集計 + トークン頻度)
+6. QueryContext 永続化 (インメモリ→Redis) によるセッション跨ぎ分析
 
-## 設計方針
-- 埋め込み/インデックス
-  - 利用データ: `data/convert_data.json`（効果文・QA・フレーバーを `extract_embedding_text()` で統合）。
-  - Upstash Vector の `metadata` には `title`（カード名）, `text`（効果等全文）, `namespace` を格納。
-  - 既存の `EmbeddingService` を使用（分類結果に応じたクエリ要約→埋め込み）。
-- 検索/統合
-  - `HybridSearchService.search()` で、分類結果 `SEMANTIC/HYBRID` 時に `VectorService.search()` を必須実行。
-  - マージは既存の加重/優先度ロジックを流用。最終的にカード名リスト→詳細取得（FILTERABLE時はDB全件、その他は上位のみ）。
-- LLM分類
-  - 「〜な効果」「〜できるカード」「（抽象目的）」等のパターンを SEMANTIC 寄りに分類するようプロンプトを強化。
-- 品質と安全
-  - `min_score`・`top_k`・`namespaces` の最適化（既存の `_optimize_search_params` を活用）。
-  - タイムアウト・例外は既存のハンドラでログ化しフォールバック。
+### 7. Future（高度化 / 後段）
+1. Hard Negative 利用再ランキング (pairwise heuristic)
+2. Keyword + Embedding 複合再スコアリング (軽量 BM25 boost)
+3. ネガティブ率移動平均監視 & アラート (Prometheus + Alertmanager)
+4. A/B テスト基盤 (model_version / threshold バリエーション)
 
-## 実装タスク
+### 8. 指標 (Metrics) 初期セット
+| Metric | 目的 | 計算 | 目標 (初期) |
+|--------|------|------|-------------|
+| zero_hit_rate | Recall 監視 | zero_hit_total / total_queries | < 15% → < 8% |
+| negative_rate | 体感品質 | neg_feedback / all_feedback | 改善毎 -10% 相対 |
+| P@10 | Precision | relevant@10 / 10 | ベースライン測定後 +5pp |
+| Recall@10 | Recall | relevant@10 / total_relevant | +5pp 継続改善 |
+| MRR | ランキング品質 | 1/rank_first_relevant | 上昇傾向維持 |
 
-### Phase 0: 仕様確定・データ確認（0.5日）
-- [x] 検索サンプルの合意（10〜20例）。
-- [x] `convert_data.json` の効果テキスト充足度確認、欠落フィールドの洗い出し。
+### 9. リスク & 緩和（現行追加観点）
+| リスク | 影響 | 緩和 |
+|--------|------|------|
+| combined 長文優遇 | Precision 低下 | Stage>1 限定 + スコア差分監視 |
+| synonym ノイズ | 誤マッチ増 | 展開グループ最小化 + neg率上昇時ロールバック |
+| 閾値過剰引下げ | 低品質混入 | 段階的 -0.05 上限 / zero-hit 改善率が閾値 | 
+| インデックス肥大 | コスト増 | combined 1件/カード固定 + 冗長タグ実験的導入後評価 |
 
-補足（合意内容）
-- 検索サンプルセット（16例・日本語、効果表現中心）
-  - 継続ダメージを与えるカード（バーン/DoT）
-  - 守護を無視して攻撃できるカード（守護貫通/守護無視）
-  - 手札をドローできるカード（1ドロー/2ドロー含む）
-  - 味方全体を強化する効果を持つカード（全体バフ）
-  - 相手リーダーに直接ダメージを与えるカード（顔打点）
-  - 相手のフォロワーを破壊するカード（単体除去）
-  - 盤面のフォロワー全体にダメージを与えるカード（全体除去/AoE）
-  - 疾走を持つカード
-  - 守護を付与するカード（自分/味方に守護付与）
-  - ラストワードでトークン/カードを手札に加えるカード
-  - 進化時にトークンを出すカード
-  - デッキからカードを引く/サーチするカード
-  - 手札を捨てる/入れ替える効果を持つカード（ディスカード）
-  - コストを下げる/軽減する効果を持つカード（コスト軽減）
-  - カウントダウンを進めるカード（カウント-1等）
-  - 守護を失わせるカード（相手の守護剥がし）
+﻿# Issue: カード効果ベクトル検索最適化（LLM活用）
+
+最終更新: 2025-08-25
+
+本ドキュメントは肥大化した旧 Issue メモを再編し、意思決定と日次運用に必要な最小限の共通認識・優先課題・計測指標を即座に把握できる形へ整理したものです。旧詳細は末尾 Appendix に残し必要時のみ参照します。
+
+---
+## 1. ゴール / 成功条件（要約）
+1. 日本語の曖昧な効果クエリで Top-10 に関連カード複数（≥3件）を安定表示。
+2. zero_hit_rate を <15% → 継続改善で <8% へ段階的低下。
+3. negative_rate（ユーザーフィードバック）を施策毎に相対 -10% 以上改善。
+4. 既存 pytest 回帰維持 & 検索レイテンシ劣化 ±10% 以内。
+
+---
+## 2. 現況ステータス（サマリ）
+| 区分 | 状態 | 主内容 |
+|------|------|--------|
+| Done | ✅ | インデクサ / effect_combined / synonym 軽展開 / structured log / metrics counter / score 集約 / effect_1..9 拡張 |
+| In Progress | 🔄 | min_score & retry 効果分析 / synonym Precision 影響測定 |
+| Next | ⏭ | 追加 0件回帰テスト / 精度バッチ(P@10,Recall@10,MRR) / Stage3 再試行設計 / ガイド更新 |
+| Backlog | 📌 | Embedding 正規化強化 / 自動タグ付け / threshold 再学習 ほか |
+| Future | 🧪 | 再ランキング / Hard Negative / Alerting / A/B |
+
+---
+## 3. 直近 7 日で必須の優先タスク（集中リスト）
+1. テスト追加: 既知 zero-hit 再現 3 クエリが Top-10 非空になる回帰テスト（`test_hybrid_search_consolidated.py`）。
+2. 精度バッチスクリプト（16 サンプル）で初回ベースライン出力 → CSV 保存 & 指標表埋め。
+3. Retry Stage3 試験フラグ（synonym 再埋め込み）実装 & ログ計測。
+
+（完了定義: 上記 3 つ + ベースライン指標表更新）
+
+---
+## 4. 現行アーキ要点（最小説明）
+- Index: `index_effects_to_vector.py` が effect_i / qa_question / qa_answer / flavorText / effect_combined を Upstash Vector へ upsert。
+- Query Flow: クエリ分類 (ClassificationService) → HybridSearchService (DB + Vector) → VectorService (namespaces 最適化 + フォールバック) → 集約スコアでタイトル出力。
+- Synonym: 軽展開（Keyword=OR / Embedding=代表1語追記）で Recall 向上、ノイズ抑制。
+- Logging: JSON line `SEARCH_EVENT` に retry_stage / namespaces / min_score / top5_scores / normalized_query。
+- Metrics: Prometheus `feedback_total` / `zero_hit_total`。追加予定: recall_batch_gauge（手動集計投入）。
+
+---
+## 5. 検索リトライ戦略（現行 → 拡張予定）
+| Stage | 条件 | namespaces | min_score | top_k | 目的 |
+|-------|------|-----------|----------|-------|------|
+| 0 | 初回 | effect_* | base (≈0.4) | 10 | 通常精度 |
+| 1 | 0件時 | +effect_combined 先頭 | base-0.05 | 20 | 分散補完 |
+| 2 (設計中) | 依然0件 | 同 + synonym 再埋め込み | base-0.05〜0.10 | 20 | 語彙拡張救済 |
+
+Stage2 実装後は zero_hit_rate の減衰度を計測し、恒久的な base 阈値変更ではなく段階的フォールバックで Recall を確保。
+
+---
+## 6. 指標 (KPI) 定義 & 初期ターゲット
+| Metric | 意味 | 計算 | 初期目標 |
+|--------|------|------|-----------|
+| zero_hit_rate | 0件発生率 | zero_hit_total / total_queries | <15% → 中期 <8% |
+| negative_rate | 体感品質 | neg_feedback / all_feedback | 各施策 -10% 相対改善 |
+| P@10 | 精度 | relevant@10 / 10 | ベースライン +5pp |
+| Recall@10 | 再現 | relevant@10 / total_relevant | +5pp 継続 |
+| MRR | ランキング | 1/rank_first_relevant | 上昇傾向 |
+
+ベースラインは精度バッチ完了後に表内へ数値挿入。
+
+---
+## 7. フィードバック基盤（MVP 要約）
+- API: `POST /api/feedback` （rating: -1/1, optional reason）
+- 保存: `search_feedback`（query メタ: top_titles, namespaces, min_score, scores, query_type, timestamps）
+- メトリクス: rating 単純計数 + negative_rate 定期集計（スクリプト化予定）。
+- 活用: negative 上位トークン → synonym 辞書 / threshold 調整材料。
+
+---
+## 8. リスク & 緩和（現在有効なもののみ）
+| リスク | 影響 | 緩和策 |
+|--------|------|--------|
+| combined 長文優遇 | Precision 低下 | Stage>0 限定使用 + 差分監視 |
+| synonym 過展開 | ノイズ増 | 代表語最少 + Negative率監視でロールバック |
+| 閾値過剰引下げ | 低品質混入 | リトライ段階化（-0.05 刻み上限）|
+| インデックス肥大 | コスト増 | combined 1件/カード + タグ導入時に差分測定 |
+| ログ肥大 | ディスク圧迫 | 日次ローテ + gzip 圧縮スクリプト |
+
+---
+## 9. 即時オペレーション手順（最短版）
+1. フル再インデックス: `python scripts/data-processing/index_effects_to_vector.py` （不要なら `--no-combined`）
+2. 差分監査: `--dry-run` 実行 → JSONL 件数 / namespace 比較
+3. 挙動検証: `tail -f logs/* | jq 'select(.event=="SEARCH_EVENT") | {q:.normalized_query, st:.retry_stage, ns:.namespaces, top:.top5_scores}'`
+4. zero_hit_rate 上昇時: synonym マップ / min_score 調整を試験ブランチで A/B → 指標比較
+
+---
+## 10. Open Questions（決定待ち）
+1. Top-K 上限（ユーザ向け API 提供最大値）を 10 or 20 どちらで凍結するか。
+2. 英語混在クエリへの最小サポート方針（完全許容 / fallback / ガイド記述）。
+3. Index 再構築の運用トリガー（手動デイリー / 変更検知自動）。
+4. ベースライン評価用 “正解カード集合” のドメイン監修可能性。
+5. UI 表示にスコア/簡易効果抜粋を載せる要否（UX 改善 vs 情報過多）。
+
+---
+## 11. 近日ロードマップ（カテゴリ別）
+| Category | Item | 目的 | 優先 |
+|----------|------|------|------|
+| テスト | 0件既知 3 クエリ回帰追加 | Zero-hit 防止 | High |
+| 評価 | 精度バッチ (P/R/MRR) | ベースライン確立 | High |
+| 検索 | Retry Stage3 | Zero-hit 更削減 | High |
+| ドキュメント | ガイド更新 (synonym/retry) | 利用性 | Medium |
+| Embedding | 正規化/ストップワード軽除去 | Precision 保持 | Medium |
+| 分析 | feedback export v1 | 改善サイクル短縮 | Medium |
+| ランキング | Hard Negative 下準備 | 将来改良 | Low |
+
+---
+## 12. 受け入れ基準（近接スプリント）
+達成条件:
+- 追加 3 クエリ回帰テスト緑化。
+- 精度バッチ初回 CSV（16クエリ）と KPI 表更新。
+- SEARCH_EVENT に Stage2/3 ログ差分が記録される（0件時計測）。
+
+---
+## 13. 参考サンプルクエリ（16件セット）
+継続ダメージ / 守護無視 / 手札ドロー / 全体強化 / リーダー直接ダメージ / 単体破壊 / 全体ダメージ / 疾走 / 守護付与 / ラストワードでトークン or カード追加 / 進化時トークン生成 / デッキサーチ / 手札を捨てる・入替 / コスト軽減 / カウントダウン進める / 守護を失わせる
+
+---
+## 14. 変更履歴（要点）
+| 日付 | 種別 | 概要 |
+|------|------|------|
+| 2025-08-17 | 実装 | effect_combined インデックス追加 |
+| 2025-08-18 | 改善 | synonym 軽量展開（Keyword OR / Embedding 代表語）|
+| 2025-08-20 | ログ | SEARCH_EVENT 構造化 + retry_stage 追加 |
+| 2025-08-22 | 修正 | effect_1..9 走査拡張 / min_score=0.4 調整 |
+| 2025-08-25 | 文書 | 本ドキュメント再編（簡潔化） |
+
+---
+## 15. Appendix（旧詳細 / 参考用）
+旧ファイルに含まれていた詳細仕様・背景・完全タスクリスト・フィードバック設計全文などは履歴で参照可能です。将来必要になった粒度（例: モデル再学習、Hard Negative 再ランキング手法）に達した時点で再インポートしてください。
+
+（削除した主な冗長要素）
+- 重複したリスク表（差分のみ維持）
+- タスクの多段重複記述（最新優先表に統合）
+- 詳細なテーブル定義 / API 仕様（MVP 要約に集約）
+- 改善サイクルの逐語説明（要点のみ残存）
+
+---
+## 16. 次の一歩（今日着手推奨）
+1. テスト 3 クエリ追加 → CI 実行。
+2. 精度バッチ雛形 `scripts/data-processing/eval_precision_batch.py` 作成（未存在なら）。
+3. Stage3 試験実装ブランチで zero_hit_rate 差分ログ収集。
+
+---
+（以上）
 
 - `convert_data.json` 充足度チェック（現状）
   - 総件数: 398

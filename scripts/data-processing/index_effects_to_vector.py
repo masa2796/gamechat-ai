@@ -174,7 +174,8 @@ def upsert_with_retry(index: Index, namespace: str, rec_id: str, vector: List[fl
 def main():
     parser = argparse.ArgumentParser(description="Index card effects to Upstash Vector")
     parser.add_argument("--dry-run", action="store_true", help="Don't upsert to Upstash; only write audit JSONL")
-    parser.add_argument("--include-combined", action="store_true", help="Also index combined text per card")
+    # combined は Recall 改善のためデフォルト有効。無効化したい場合のみ --no-combined を指定。
+    parser.add_argument("--no-combined", action="store_true", help="Do NOT index combined text (effect_combined) per card")
     parser.add_argument("--namespaces", type=str, default="", help="Comma-separated namespace filter (e.g., effect_1,qa_question)")
     parser.add_argument("--limit", type=int, default=0, help="Max number of cards to process (0=all)")
     parser.add_argument("--output", type=str, default=str(project_root / 'data' / 'vector_index_effects.jsonl'), help="Audit JSONL output path")
@@ -215,10 +216,12 @@ def main():
     total_records = 0
     ns_counts: Dict[str, int] = {}
 
+    include_combined = not args.no_combined
+
     for card in cards:
         if args.limit and processed_cards >= args.limit:
             break
-        records = list(iter_records_from_card(card, include_combined=args.include_combined, namespace_filter=ns_filter))
+        records = list(iter_records_from_card(card, include_combined=include_combined, namespace_filter=ns_filter))
         if not records:
             processed_cards += 1
             continue
