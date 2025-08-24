@@ -157,7 +157,7 @@ class HybridSearchService:
         print(f"最適化限界: {optimized_limits}")
 
         # Step 3: 各検索の実行
-        db_titles, vector_titles = await self._execute_searches(
+        db_titles, vector_titles, embedding_extra_terms_count = await self._execute_searches(
             classification, search_strategy, optimized_limits, preprocessed_query
         )
 
@@ -227,7 +227,8 @@ class HybridSearchService:
                 "db_results_count": len(db_titles),
                 "vector_results_count": len(vector_titles),
                 # 正規化後クエリを後段(RagService)での構造化ログ出力用に渡す
-                "normalized_query": preprocessed_query
+                "normalized_query": preprocessed_query,
+                "embedding_extra_terms_count": embedding_extra_terms_count
             }
         }
 
@@ -275,29 +276,49 @@ class HybridSearchService:
         search_strategy: Any, 
         optimized_limits: Dict[str, int],
         query: str
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[list[str], list[str], int]:
         """各検索を実行しカード名リストを返却"""
-        db_titles = []
-        vector_titles = []
-        
-        if search_strategy.use_db_filter and classification.filter_keywords:
+        db_titles: list[str] = []
+        vector_titles: list[str] = []
+
+        # DBフィルタ検索
+        if getattr(search_strategy, "use_db_filter", False) and getattr(classification, "filter_keywords", None):
             print("--- 最適化データベースフィルター検索実行 ---")
-            # 正規化: DB向けは強め（OR展開）
-            expanded_keywords = self.query_normalizer.expand_keywords_for_db(classification.filter_keywords)
+            expansion_map = self.query_normalizer.build_db_keyword_expansion_mapping(classification.filter_keywords)
+            expanded_keywords = list(expansion_map.values())
             print(f"[DBフィルタ条件] expanded_keywords: {expanded_keywords}")
-            db_limit = optimized_limits["db_limit"]
-            db_titles = await self.database_service.filter_search_titles_async(
-                expanded_keywords, db_limit
-            )
+            try:
+                GameChatLogger.log_debug(
+                    "hybrid_search",
+                    "DBキーワード展開",
+                    {"expansion_map": expansion_map, "original_keywords": classification.filter_keywords},
+                )
+            except Exception:
+                pass
+            db_limit = optimized_limits.get("db_limit", 10)
+            db_titles = await self.database_service.filter_search_titles_async(expanded_keywords, db_limit)
             print(f"DB検索結果: {len(db_titles)}件")
-        
-        if search_strategy.use_vector_search:
+
+        # ベクトル検索（埋め込み拡張）
+        extra_terms_count = 0
+        if getattr(search_strategy, "use_vector_search", False):
             print("--- 最適化ベクトル意味検索実行 ---")
-            # 分類結果に基づく最適化された埋め込み生成
-            # Embedding向けは軽めに展開（代表同義語の少数追加）
             expanded_for_embed = self.query_normalizer.expand_text_for_embedding(query)
             print(f"[Embedding] expanded_text: {expanded_for_embed}")
-            # DEBUG: 埋め込み用正規化後テキストを記録
+            try:
+                extra_terms_part: list[str] = []
+                if "\n" in expanded_for_embed:
+                    parts = expanded_for_embed.split("\n", 1)
+                    if len(parts) == 2:
+                        extra_terms_part = parts[1].strip().split()
+                extra_terms_count = len(extra_terms_part)
+                GameChatLogger.log_debug(
+                    "hybrid_search",
+                    "埋め込み語展開",
+                    {"extra_terms": extra_terms_part, "extra_terms_count": extra_terms_count},
+                )
+            except Exception:
+                pass
             try:
                 GameChatLogger.log_debug(
                     "hybrid_search",
@@ -306,20 +327,12 @@ class HybridSearchService:
                 )
             except Exception:
                 pass
-            query_embedding = await self.embedding_service.get_embedding_from_classification(
-                expanded_for_embed, classification
-            )
-            
-            # 最適化されたベクトル検索
-            vector_limit = optimized_limits["vector_limit"]
-            vector_titles = await self.vector_service.search(
-                query_embedding, 
-                top_k=vector_limit,
-                classification=classification
-            )
+            query_embedding = await self.embedding_service.get_embedding_from_classification(expanded_for_embed, classification)
+            vector_limit = optimized_limits.get("vector_limit", 10)
+            vector_titles = await self.vector_service.search(query_embedding, top_k=vector_limit, classification=classification)
             print(f"ベクトル検索結果: {len(vector_titles)}件")
-        
-        return db_titles, vector_titles
+
+        return db_titles, vector_titles, extra_terms_count
     
     def _get_optimized_limits(self, classification: ClassificationResult, top_k: int) -> Dict[str, int]:
         """分類結果に基づいて検索限界を最適化（パフォーマンス改善版）"""

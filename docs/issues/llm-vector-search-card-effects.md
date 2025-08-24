@@ -311,9 +311,16 @@
 （理由）改善施策より先に“現状の土台”を観測しベースラインを固定するため。
 
 #### Tier 1（Recall 即効性：Zero-hit 削減）
-4. 同義語/表記ゆれ軽量展開レイヤー
-  - 固定マップ + 正規化（全角→半角 / 長音正規化 / 余剰空白）
-  - Embedding: 原語 + 代表1語のみ添付 / Keyword: OR 展開
+4. 同義語/表記ゆれ軽量展開レイヤー（済）
+  - 実装内容:
+    - QueryNormalizationService に synonym グループ + `build_db_keyword_expansion_mapping()` 追加
+    - DBフィルタ: キーワード毎に OR パターンへ展開しログ `DBキーワード展開` で `expansion_map` 計測
+    - Embedding: 原文 + グループ代表1語のみ（改行区切り）→ `embedding_extra_terms_count` を `search_info` に注入
+    - 正規化: NFKC / 余剰空白圧縮 / 長音連続縮約
+    - HybridSearchService `_execute_searches` 再構成（インデント/未定義変数バグ修正）
+  - ログ観測: `SEARCH_EVENT` に `normalized_query`, `embedding_extra_terms_count` を追加（上位解析用）
+  - テスト: 全 359 passed / 20 skipped（回帰なし）
+  - 次段階アイデア: synonym YAML 外部化 / 展開ヒット率 Prometheus Histogram
 5. `effect_combined` インデックス & フォールバック
   - index スクリプトで combined 生成
   - 0件時 combined 追加 + `min_score -0.05` で再試行

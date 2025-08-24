@@ -67,6 +67,24 @@ class QueryNormalizationService:
                 expanded.append(norm)
         return expanded
 
+    def build_db_keyword_expansion_mapping(self, keywords: List[str]) -> Dict[str, str]:
+        """キーワード毎の OR 展開マッピングを返す（観測/ログ用途）
+        例: {"フォロー": "フォロワー|フォロー|フォロワ"}
+        原語正規化後をキーにし、値は OR パターン文字列
+        """
+        mapping: Dict[str, str] = {}
+        for kw in keywords or []:
+            norm = self.preprocess(kw)
+            group_terms = self._term_to_group_terms.get(norm)
+            if group_terms:
+                alts = [self.preprocess(t) for t in group_terms]
+                if norm not in alts:
+                    alts.append(norm)
+                mapping[norm] = "|".join(list(dict.fromkeys(alts)))
+            else:
+                mapping[norm] = norm
+        return mapping
+
     # --- Embedding 検索向け（軽め） ---
     def expand_text_for_embedding(self, text: str, max_extra_terms_per_group: int = 1) -> str:
         """
