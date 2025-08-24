@@ -9,6 +9,7 @@ from ..models.feedback_models import QueryContext
 from ..config.ng_words import NG_WORDS
 from ..core.cache import prewarmed_query_cache as query_cache
 import logging
+from datetime import datetime
 import time
 import asyncio
 
@@ -88,7 +89,7 @@ class RagService:
                 # with_context=Falseの場合（最小限のレスポンス）
                 response = {"message": "検索完了"}
 
-            # QueryContext 保存 (MVP) ※例外は握り潰し
+            # QueryContext 保存 & 構造化検索ログ出力 (MVP) ※例外は握り潰し
             try:
                 classification_obj = search_result.get("classification")
                 query_type = getattr(classification_obj, "query_type", None)
@@ -115,6 +116,34 @@ class RagService:
                 )
                 feedback_service.store_query_context(ctx)
                 response["query_id"] = ctx.query_id
+
+                # 構造化ログ統一仕様
+                # フィールド: ts, query_id, stage, normalized_query, namespaces, min_score, top5_scores, retry_stage, zero_hit
+                from ..core.logging import GameChatLogger
+                search_info = search_result.get("search_info", {}) or {}
+                normalized_query = search_info.get("normalized_query")
+                final_stage = last_params.get("final_stage") if isinstance(last_params, dict) else None
+                zero_hit = len(last_scores) == 0
+                structured = {
+                    "ts": datetime.utcnow().isoformat(),
+                    "query_id": ctx.query_id,
+                    "stage": "search_complete",
+                    "retry_stage": 0 if zero_hit else (final_stage or 1),
+                    "normalized_query": normalized_query,
+                    "namespaces": namespaces,
+                    "min_score": min_score,
+                    "top5_scores": top_scores,
+                    "zero_hit": zero_hit,
+                }
+                # Zero-hit metrics (Prometheus stub)
+                if zero_hit:
+                    try:
+                        from ..core.metrics import inc_zero_hit
+                        inc_zero_hit()
+                    except Exception:
+                        pass
+                # JSON line として info レベルで出力（message固定でフィルタ可能）
+                GameChatLogger.log_info("search_structured", "SEARCH_EVENT", structured)
             except Exception:
                 pass
             

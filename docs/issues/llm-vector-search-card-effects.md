@@ -294,11 +294,19 @@
   - QueryContext に `namespaces` / `min_score` を注入（`search_info` から）
   - フィードバック API の単体 / ルータテスト追加
   - 簡易集計スクリプト（negative_rate, zero_hit_rate の CSV 出力）
-2. 構造化ログ統一
+2. 構造化ログ統一（済）
   - JSON line: `{"ts", "query_id", "stage", "normalized_query", "namespaces", "min_score", "top5_scores"}`
   - zero hit 時: `retry_stage`=0 を必ず出力
-3. Prometheus カウンタ雛形
-  - `feedback_total{rating,query_type}` / `zero_hit_total` のスタブ実装
+  - 実装状況: `RagService.process_query` で QueryContext 保存後に `GameChatLogger.log_info("search_structured", "SEARCH_EVENT", {...})` を出力。
+    - 追加フィールド: `retry_stage`, `zero_hit`（0件検出用）, `top5_scores`(=top5), `stage="search_complete"`
+    - `HybridSearchService` で `normalized_query` を `search_info` に注入し構造化ログに含める。
+    - `VectorService.last_params` から `used_namespaces`, `min_score`, `final_stage` を取得し `namespaces`, `min_score`, `retry_stage` に反映。
+3. Prometheus カウンタ雛形（済）
+  - `feedback_total{rating,query_type}` / `zero_hit_total` のスタブ実装完了
+    - 実装: `backend/app/core/metrics.py` で Counter 定義 (`FEEDBACK_COUNTER`, `ZERO_HIT_COUNTER`)
+    - 連携: `feedback_service.submit_feedback()` で `inc_feedback()`、`rag_service.process_query()` の SEARCH_EVENT 生成時に zero-hit 時 `inc_zero_hit()`
+    - 初期化: `main.py` 冒頭で side-effect import により登録
+    - 影響範囲: 既存テスト 359 passed (回帰なし)
 
 （理由）改善施策より先に“現状の土台”を観測しベースラインを固定するため。
 

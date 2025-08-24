@@ -225,7 +225,9 @@ class HybridSearchService:
                 "query_type": classification.query_type.value if hasattr(classification, "query_type") and hasattr(classification.query_type, "value") else str(getattr(classification, "query_type", QueryType.SEMANTIC)),
                 "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
                 "db_results_count": len(db_titles),
-                "vector_results_count": len(vector_titles)
+                "vector_results_count": len(vector_titles),
+                # 正規化後クエリを後段(RagService)での構造化ログ出力用に渡す
+                "normalized_query": preprocessed_query
             }
         }
 

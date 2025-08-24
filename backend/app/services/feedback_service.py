@@ -3,6 +3,7 @@ from typing import Dict, Optional, List
 import threading
 from datetime import datetime, timedelta
 from ..models.feedback_models import QueryContext, FeedbackStored, FeedbackCreate
+from ..core.metrics import inc_feedback  # Prometheus 雛形
 from ..core.logging import GameChatLogger
 
 class FeedbackService:
@@ -88,6 +89,11 @@ class FeedbackService:
             )
         with self._feedback_lock:
             self._feedbacks.append(stored)
+        # Metrics (best-effort, swallow exceptions inside helper)
+        try:
+            inc_feedback(stored.rating, stored.query_type)
+        except Exception:
+            pass
         GameChatLogger.log_success("feedback", "submitted", {"query_id": stored.query_id, "rating": stored.rating})
         return stored
 

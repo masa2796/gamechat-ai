@@ -15,6 +15,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
 from .routers import rag, streaming, security_admin, feedback
+from .core import metrics  # noqa: F401  (side-effect import: registers feedback/zero-hit counters early)
 from .core.exception_handlers import setup_exception_handlers
 from .core.config import settings
 from .core.security import SecurityHeadersMiddleware
@@ -362,7 +363,7 @@ import sys
 
 try:
     from .core.config import settings
-except Exception as e:
+except Exception:
     import traceback
     print("[FATAL] settings import/init failed:", file=sys.stderr)
     traceback.print_exc()
