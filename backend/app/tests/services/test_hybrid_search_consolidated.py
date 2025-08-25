@@ -394,10 +394,12 @@ class TestHybridSearchZeroHitRegression:
         }"""
         mock_openai_client.chat.completions.create.return_value = mock_resp
 
-        # Vector検索をモック（テスト環境でUpstash未設定の場合のゼロヒットを防ぐ）
-        async def mock_vector_search(*args, **kwargs):
-            return ["ダミーカードA", "ダミーカードB", "ダミーカードC"]
-        hybrid_search_service.vector_service.search = mock_vector_search
+        # Upstash 接続が無い CI/ローカルでは vector をモックし、
+        # 接続がある環境では実際のフォールバック挙動 (retry stage) を検証できるようにする。
+        if getattr(hybrid_search_service.vector_service, "vector_index", None) is None:
+            async def mock_vector_search(*args, **kwargs):
+                return ["ダミーカードA", "ダミーカードB", "ダミーカードC"]
+            hybrid_search_service.vector_service.search = mock_vector_search
 
         result = await hybrid_search_service.search(query, top_k=10)
 
@@ -406,8 +408,11 @@ class TestHybridSearchZeroHitRegression:
         info = result["search_info"]
         v_cnt = info.get("vector_results_count", 0)
         d_cnt = info.get("db_results_count", 0)
+        # デバッグ補助情報（失敗時に retry 段階などを表示）
+        vp = getattr(hybrid_search_service.vector_service, "last_params", {}) or {}
+        debug_ctx = f" query={query} v_cnt={v_cnt} d_cnt={d_cnt} last_params={vp}"
         # Top-10 で vector/db どちらかがヒットしていること
-        assert (v_cnt + d_cnt) > 0, f"クエリ '{query}' が zero-hit (vector+db=0)"
+        assert (v_cnt + d_cnt) > 0, "zero-hit: " + debug_ctx
         # semantic/hybrid 系では vector ヒットも最低1件期待
-        assert v_cnt > 0, f"クエリ '{query}' の vector 結果が 0 件"
+        assert v_cnt > 0, "vector empty: " + debug_ctx
 
