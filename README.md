@@ -1582,3 +1582,81 @@ Frontend (Next.js) → Backend (FastAPI) → AI Services (OpenAI)
                                       → Vector DB (Upstash)
                                       → Cloud Storage (GCS)
 ```
+
+---
+
+## 📚 インデクシング運用ガイド（カード効果ベクトル検索）
+
+本セクションでは、`scripts/data-processing/index_effects_to_vector.py` を用いたフル/増分インデクシングの実行方法をまとめます。
+
+### 前提
+- Python 3.11+
+- 依存関係: `backend/requirements.txt` をインストール済み
+- 環境変数は `backend/.env` に設定
+  - `BACKEND_OPENAI_API_KEY`
+  - `UPSTASH_VECTOR_REST_URL`
+  - `UPSTASH_VECTOR_REST_TOKEN`
+
+### フルインデクシング（全件）
+```bash
+# 仮想環境の有効化（任意）
+source .venv/bin/activate
+
+# 監査出力を上書きして全件実行（効果/QA/必要に応じてcombined）
+python3 scripts/data-processing/index_effects_to_vector.py \
+  --output data/vector_index_effects.jsonl
+```
+
+オプション: combinedレコードも作成する場合
+```bash
+python3 scripts/data-processing/index_effects_to_vector.py \
+  --include-combined \
+  --output data/vector_index_effects.jsonl
+```
+
+バックグラウンド実行（長時間処理向け）
+```bash
+nohup python3 scripts/data-processing/index_effects_to_vector.py \
+  --output data/vector_index_effects.jsonl \
+  > logs/vector_index_full.log 2>&1 &
+```
+
+完了確認
+```bash
+tail -n 50 logs/vector_index_full.log
+wc -l data/vector_index_effects.jsonl
+```
+
+### 増分インデクシング（一部namespaceや件数を限定）
+```bash
+# 例: effect_1 と qa_answer のみ再構築
+python3 scripts/data-processing/index_effects_to_vector.py \
+  --namespaces effect_1,qa_answer \
+  --output data/vector_index_effects.jsonl
+
+# 例: 動作確認として最初の10カードのみ
+python3 scripts/data-processing/index_effects_to_vector.py \
+  --limit 10 \
+  --output data/vector_index_effects.jsonl
+```
+
+### ドライラン（Upstash送信なし）
+```bash
+python3 scripts/data-processing/index_effects_to_vector.py \
+  --dry-run \
+  --output data/vector_index_effects.jsonl
+```
+
+### 出力と監査
+- Upstash Vector: 各レコードを namespace 単位で upsert（id=`{card_id}:{source_key}`）
+- 監査JSONL: `data/vector_index_effects.jsonl`
+  - 各行: `{ id, namespace, title, text_len, upserted, ts }`
+  - 失敗/スキップ時は `skipped_reason` を含む
+
+### トラブルシューティング
+- エラー: `BACKEND_OPENAI_API_KEY missing` → `backend/.env` を確認
+- エラー: `UPSTASH_VECTOR_REST_URL or ... TOKEN missing` → 同上
+- ベクトル件数が想定より少ない → `--namespaces` フィルタや `--limit` の指定有無を確認
+- 冪等性: 同一 `id` は upsert で置換されるため、再実行で差分反映可能
+
+関連: 仕様と進捗は `docs/issues/llm-vector-search-card-effects.md` を参照
