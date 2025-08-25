@@ -19,37 +19,26 @@ class HybridSearchService:
         classification: ClassificationResult,
         top_k: int,
         search_quality: dict,
-    quality_threshold: float = 0.0
+        quality_threshold: float = 0.0,
     ) -> list[str]:
-        """
-        スコア加重型のマージロジック（カード名リスト）
-        - DB/ベクトル両方のスコアを活用し、重複除去・加重平均・スコア順ソート
-        - 設計方針（重複除去・優先順位・重み付け・クエリタイプ分岐）に準拠
-        """
+        """正規化安全版マージ（ContextItem混入対応）"""
         if not db_titles and not vector_titles:
             return self._handle_no_results_optimized(classification)
 
-        # クエリタイプを正規化
         qtype = getattr(classification, "query_type", None)
         try:
-            # Enumなら値に変換
             qtype_value = qtype.value  # type: ignore[attr-defined]
         except Exception:
             qtype_value = str(qtype).lower() if qtype is not None else "semantic"
 
-        # 重み初期値（デフォルトはバランス）
-        db_weight = 0.5
-        vector_weight = 0.5
-
-        # 種別に応じた重みチューニング
+        db_weight, vector_weight = 0.5, 0.5
         if qtype_value in ("filterable", "querytype.filterable"):
             db_weight, vector_weight = 0.8, 0.2
         elif qtype_value in ("semantic", "querytype.semantic"):
             db_weight, vector_weight = 0.3, 0.7
-        else:  # hybrid 他
+        else:
             db_weight, vector_weight = 0.4, 0.6
 
-        # 信頼度が高い場合は優勢側を微増
         try:
             conf = float(getattr(classification, "confidence", 0.0))
         except Exception:
@@ -61,8 +50,21 @@ class HybridSearchService:
             else:
                 db_weight = min(0.9, db_weight + 0.05)
                 vector_weight = 1.0 - db_weight
-        merged_scores = {}
-        all_titles = list(dict.fromkeys(db_titles + vector_titles))
+
+        norm_db_titles = [t.title if isinstance(t, ContextItem) else str(t) for t in db_titles]
+        norm_vector_titles = [t.title if isinstance(t, ContextItem) else str(t) for t in vector_titles]
+
+        merged_scores: dict[str, float] = {}
+        try:
+            all_titles = list(dict.fromkeys(norm_db_titles + norm_vector_titles))
+        except TypeError:
+            seen: set[str] = set()
+            all_titles = []
+            for x in norm_db_titles + norm_vector_titles:
+                if x not in seen:
+                    seen.add(x)
+                    all_titles.append(x)
+
         for title in all_titles:
             db_score = db_scores.get(title)
             vec_score = vector_scores.get(title)
@@ -75,29 +77,20 @@ class HybridSearchService:
             else:
                 merged_scores[title] = 0.0
 
-        # クエリタイプごとに優先度を調整
         if qtype_value in ("filterable", "querytype.filterable"):
-            # DBスコアを優先
-            sorted_titles = sorted(all_titles, key=lambda t: (t in db_titles, merged_scores[t]), reverse=True)
+            sorted_titles = sorted(all_titles, key=lambda t: (t in norm_db_titles, merged_scores[t]), reverse=True)
         elif qtype_value in ("semantic", "querytype.semantic"):
-            # ベクトルスコアを優先
-            sorted_titles = sorted(all_titles, key=lambda t: (t in vector_titles, merged_scores[t]), reverse=True)
+            sorted_titles = sorted(all_titles, key=lambda t: (t in norm_vector_titles, merged_scores[t]), reverse=True)
         else:
-            # 加重スコア順
             sorted_titles = sorted(all_titles, key=lambda t: merged_scores[t], reverse=True)
 
-        # 品質スコアによるフィルタリング
         if quality_threshold > 0.0:
             filtered_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
         else:
             filtered_titles = sorted_titles
 
-        # 上位N件抽出
-        result_titles = filtered_titles[:top_k]
+        return filtered_titles[:top_k]
 
-        # 不足時の補完・提案メッセージ生成（但し、提案は別途処理）
-        # result_titlesはカード名のみとし、提案メッセージは含めない
-        return result_titles
     """分類に基づく統合検索サービス（最適化対応）"""
     
     def __init__(self) -> None:
@@ -217,8 +210,10 @@ class HybridSearchService:
             print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
 
+        # 後方互換性のため旧キー "merged_results" を一時的に同じ内容で提供
         return {
             "context": context,
+            "merged_results": context,  # TODO: 旧テスト削除後に除去予定
             "classification": classification,
             "search_quality": search_quality,
             "search_info": {
