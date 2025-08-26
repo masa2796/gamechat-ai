@@ -133,6 +133,21 @@ Stage2 実装後は zero_hit_rate の減衰度を計測し、恒久的な base �
 
 ベースラインは精度バッチ完了後に表内へ数値挿入。
 
+### 🧪 初回ベースライン (2025-08-27 08:41 JST)
+eval_precision_batch.py --real 実行 (labels v1 / Top-K=10)
+
+| Metric | Baseline | 備考 |
+|--------|----------|------|
+| P@10 | 0.0000 | 取得 context 0件 (提案のみ) |
+| Recall@10 | 0.0000 | 全16クエリ relevant ラベルありもヒット無し |
+| MRR | 0.0000 | |
+| zero_hit_rate(計測方法上) | 0.0000 | 実装上 suggestion が1件扱いで0件判定逃れ。実質ヒット0/16 |
+
+注記:
+1. VectorService 現行挙動で検索結果 (context) が空のため Precision/Recall が 0。まずはインデックス/namespace/threshold/Stage3 再試行で実ヒットを発生させる必要あり。
+2. zero_hit_rate が 0.0 と出力されたのは計測ロジックが suggestion を結果扱いしている可能性。評価スクリプト側で zero-hit 判定を context 件数ベースに修正検討。
+3. 次アクション優先度: (a) Stage3 実装 / synonym 再埋め込み (b) min_score 段階的引下げでヒット創出 (c) `effect_combined` namespace 有効化の挙動検証 (d) zero-hit 判定修正。
+
 ---
 ## 7. フィードバック基盤（MVP 要約）
 - API: `POST /api/feedback` （rating: -1/1, optional reason）
