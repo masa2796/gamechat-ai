@@ -11,34 +11,35 @@
 ### 2. ステータスサマリ
 | 区分 | 件数 | 備考 |
 |------|------|------|
-| Done | 多数 | インデクサ / combined / synonym / ロギング / メトリクス 等 |
-| In Progress | 2 | min_score 最適化検証, synonym 評価指標化 |
-| Next | 4 | 精度バッチ / 追加テスト / 再試行段階化 / ガイド更新 |
+| Done | 多数(+2) | 追加: Zero-hit 回帰テスト(3クエリ) / 精度バッチ評価スクリプト初版 |
+| In Progress | 2 | min_score 最適化検証, synonym Precision 影響測定 |
+| Next | 3 | Stage3 再試行 / KPIベースライン確定 / ガイド更新 |
 | Backlog | 6 | Embedding 強化 / 自動タグ付け 等 |
 | Future | 4 | 再ランキング / Hard Negative / アラート |
 
 ### 3. 完了 (Done)
-- インデクサ作成 + `qa_answer` / `effect_combined` 生成（現在はデフォルトで combined 有効、`--no-combined` オプションで無効化）
+- インデクサ作成 + `qa_answer` / `effect_combined` 生成（現在デフォルト combined 有効、`--no-combined` で無効化）
 - VectorService: クエリ種別毎 namespace 最適化 (`effect_*` 優先, `effect_combined` 先頭)
 - VectorService: タイトル最大スコア集約 & 降順ソート（ランキング一貫性）
-- フォールバック実装（2段階）：
-  - Stage1: 指定 namespaces, min_score=M
-  - Stage2 (0件時): `effect_combined` を先頭に追加 / `min_score = M - 0.05` / `top_k >= 20`
+- フォールバック実装（2段階）: Stage1 / Stage2 (`effect_combined` 追加, min_score -0.05, top_k拡張)
 - 同義語/表記ゆれ軽量展開レイヤー（Embedding: 代表語+原文, DB Keyword: OR 展開）
-- 構造化検索ログ (`SEARCH_EVENT` JSON line) + top5 スコア出力
+- 構造化検索ログ (`SEARCH_EVENT`) + top5 スコア出力
 - Prometheus カウンタ: feedback / zero_hit
 - 効果フィールド走査範囲拡張 (`effect_1..9`) + 回帰テスト
 - `min_score` 暫定チューニング (0.4 ベース) / 動的調整ロジック維持
+- Zero-hit 回帰テスト (過去 0件 3 クエリ) 追加: `test_hybrid_search_consolidated.py` にパラメトリック実装
+- 精度バッチ評価スクリプト初版: `scripts/data-processing/eval_precision_batch.py` + ラベル雛形 `data/eval/relevance_labels.json`
+  - 現状: relevant 未入力のため KPI ベースライン数値は未確定（P@10/Recall@10=0.0 仕様上）。
 
 ### 4. 進行中 (In Progress)
 1. `VectorService.search()` 実測ログを用いた min_score / retry 効果分析（0件率ベースライン確定）
 2. 同義語展開の Precision 影響観測 (negative_feedback トークン頻度抽出)
 
 ### 5. 直近着手 (Next)
-1. 追加テスト: 0件再現 3 クエリ (フィールド戻す/リーダーへダメージ/ランダムフォロワーダメージ) が Top-10 非空となる検証を `test_hybrid_search_consolidated.py` へ追加
-2. 精度バッチスクリプト (16 サンプルで P@10 / Recall@10 / MRR 計算) -> 継続計測基盤
-3. 0件再試行段階化: Stage2 後も 0件時に synonym 再埋め込み Stage3 (計測用フラグ付)
-4. ガイド `docs/guides/hybrid_search_guide.md` 更新（synonym 展開 / combined フォールバック / ログ確認手順）
+1. 0件再試行 Stage3 実装: synonym 再埋め込み + feature flag (`ENABLE_VECTOR_STAGE3`) + ログ差分 (expanded_terms)
+2. KPI ベースライン確定: `data/eval/relevance_labels.json` へ relevant タイトル入力 → `--real` 実行で初回 P@10 / Recall@10 / MRR 算出 & ドキュメント更新
+3. ガイド更新: `docs/guides/hybrid_search_guide.md` に retry 段階 (Stage0/1/2), synonym 展開, 評価スクリプト利用手順追記
+4. （オプション）評価スクリプト改善: Zero-hit 行抽出 / relevant 未設定クエリの除外オプション (`--skip-unlabeled`) 追加検討
 
 ### 6. Backlog（優先度 中）
 1. EmbeddingService 軽量正規化強化（助詞/ストップワード削減, 代表動詞強調）
@@ -96,11 +97,11 @@
 
 ---
 ## 3. 直近 7 日で必須の優先タスク（集中リスト）
-1. テスト追加: 既知 zero-hit 再現 3 クエリが Top-10 非空になる回帰テスト（`test_hybrid_search_consolidated.py`）。
-2. 精度バッチスクリプト（16 サンプル）で初回ベースライン出力 → CSV 保存 & 指標表埋め。
-3. Retry Stage3 試験フラグ（synonym 再埋め込み）実装 & ログ計測。
+1. Retry Stage3 試験フラグ（synonym 再埋め込み）実装 & ログ計測。
+2. ラベル整備: 16 クエリの relevant カード集合作成（ドメイン監修可）→ ベースライン一括計測。
+3. ガイド更新 + KPI 表へ初回ベースライン数値挿入。
 
-（完了定義: 上記 3 つ + ベースライン指標表更新）
+（完了定義: Stage3 実装 + ベースライン数値反映 + ガイド更新）
 
 ---
 ## 4. 現行アーキ要点（最小説明）
@@ -178,10 +179,10 @@ Stage2 実装後は zero_hit_rate の減衰度を計測し、恒久的な base �
 
 ---
 ## 12. 受け入れ基準（近接スプリント）
-達成条件:
-- 追加 3 クエリ回帰テスト緑化。
-- 精度バッチ初回 CSV（16クエリ）と KPI 表更新。
-- SEARCH_EVENT に Stage2/3 ログ差分が記録される（0件時計測）。
+達成条件（最新）:
+- Stage3 リトライ実装 & 0件クエリで `retry_stage=2` ログ発火。
+- 精度バッチ初回実測 (relevant ラベル投入後) CSV と KPI 表更新。
+- ガイドに評価/リトライ/ログ確認手順を反映。
 
 ---
 ## 13. 参考サンプルクエリ（16件セット）
