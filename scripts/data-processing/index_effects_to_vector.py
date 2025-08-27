@@ -178,6 +178,7 @@ def main():
     parser.add_argument("--no-combined", action="store_true", help="Do NOT index combined text (effect_combined) per card")
     parser.add_argument("--namespaces", type=str, default="", help="Comma-separated namespace filter (e.g., effect_1,qa_question)")
     parser.add_argument("--limit", type=int, default=0, help="Max number of cards to process (0=all)")
+    parser.add_argument("--skip-embed", action="store_true", help="Do not call embedding API (text_len 0以外でも upsert せず高速監査用)")
     parser.add_argument("--output", type=str, default=str(project_root / 'data' / 'vector_index_effects.jsonl'), help="Audit JSONL output path")
     args = parser.parse_args()
 
@@ -241,21 +242,24 @@ def main():
                     audit_f.write(json.dumps(audit, ensure_ascii=False) + "\n")
                 continue
 
-            try:
-                vec = embed_text(rec.text)
-            except Exception as e:
-                audit = {
-                    "id": rec.id,
-                    "namespace": rec.namespace,
-                    "title": rec.title,
-                    "text_len": len(rec.text),
-                    "upserted": False,
-                    "skipped_reason": f"embed_error: {e}",
-                    "ts": datetime.now(timezone.utc).isoformat(),
-                }
-                with open(out_path, 'a', encoding='utf-8') as audit_f:
-                    audit_f.write(json.dumps(audit, ensure_ascii=False) + "\n")
-                continue
+            if args.skip_embed:
+                vec = None  # type: ignore
+            else:
+                try:
+                    vec = embed_text(rec.text)
+                except Exception as e:
+                    audit = {
+                        "id": rec.id,
+                        "namespace": rec.namespace,
+                        "title": rec.title,
+                        "text_len": len(rec.text),
+                        "upserted": False,
+                        "skipped_reason": f"embed_error: {e}",
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                    }
+                    with open(out_path, 'a', encoding='utf-8') as audit_f:
+                        audit_f.write(json.dumps(audit, ensure_ascii=False) + "\n")
+                    continue
 
             metadata = {
                 "title": rec.title,
@@ -266,7 +270,7 @@ def main():
             }
 
             ok = True
-            if index is not None:
+            if index is not None and (not args.skip_embed) and vec is not None:
                 ok = upsert_with_retry(index, rec.namespace, rec.id, vec, metadata)
 
             audit = {

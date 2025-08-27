@@ -180,10 +180,19 @@ class VectorService:
             all_ns = self._get_all_namespaces()
         except Exception:
             all_ns = namespaces or []
-        effect_ns = [ns for ns in (all_ns or []) if ns.startswith("effect_")]
-        combined_first = ["effect_combined"] if "effect_combined" in effect_ns else []
-        effect_others = [ns for ns in effect_ns if ns != "effect_combined"]
-        effect_pref = (combined_first + effect_others) if effect_ns else (namespaces or all_ns)
+        # effect_* 系 + 特殊結合 namespace / flavorText を優先順で扱う
+        effect_like_all = [ns for ns in (all_ns or []) if ns.startswith("effect_") or ns == "effect_combined"]
+        has_combined = "effect_combined" in (all_ns or [])
+        # 並び: effect_combined -> effect_1..n -> (optional) flavorText （effect 系の末尾で Recall 補助）
+        ordered_effects: List[str] = []
+        if has_combined:
+            ordered_effects.append("effect_combined")
+        # 個別 effect_* を昇順で
+        ordered_effects.extend(sorted([ns for ns in effect_like_all if ns.startswith("effect_")]))
+        # flavorText もインデックスされていれば最後に追加（長文優遇リスク軽減のため後順位）
+        if "flavorText" in (all_ns or []):
+            ordered_effects.append("flavorText")
+        effect_pref = ordered_effects if ordered_effects else (namespaces or all_ns)
 
         # フォールバック候補の段階
         from typing import Dict as _Dict
@@ -470,20 +479,22 @@ class VectorService:
         """
         try:
             if query_type in (QueryType.SEMANTIC, QueryType.HYBRID):
-                effect_namespaces = [ns for ns in all_namespaces if ns.startswith("effect_")]
-                # effect_combined が存在する場合は先頭に配置
-                combined = [ns for ns in effect_namespaces if ns == "effect_combined"]
-                effect_others = [ns for ns in effect_namespaces if ns != "effect_combined"]
-                filtered = combined + sorted(effect_others)
-                if filtered:
-                    GameChatLogger.log_info("vector_service", "クエリ種別に応じてeffect系に限定", {
+                # effect_* / effect_combined / flavorText を検索対象候補とする
+                effect_like = [ns for ns in all_namespaces if ns.startswith("effect_") or ns in ("effect_combined", "flavorText")]
+                ordered: List[str] = []
+                if "effect_combined" in effect_like:
+                    ordered.append("effect_combined")
+                ordered.extend(sorted([ns for ns in effect_like if ns.startswith("effect_")]))
+                if "flavorText" in effect_like:
+                    ordered.append("flavorText")
+                if ordered:
+                    GameChatLogger.log_info("vector_service", "クエリ種別に応じて effect/combined/flavorText を優先", {
                         "query_type": query_type.value,
-                        "selected_namespaces": filtered[:10],
-                        "total": len(filtered)
+                        "selected_namespaces": ordered[:10],
+                        "total": len(ordered)
                     })
-                    return filtered
-                # 該当が無い場合はフォールバック（全namespace）
-                GameChatLogger.log_warning("vector_service", "effect系namespaceが見つからず全namespaceを使用します")
+                    return ordered
+                GameChatLogger.log_warning("vector_service", "effect系 namespace が見つからず全namespaceを使用します")
                 return all_namespaces
             # FILTERABLE/GREETING 等は既定のまま
             return all_namespaces

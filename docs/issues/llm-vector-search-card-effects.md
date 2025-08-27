@@ -89,7 +89,7 @@
 ## 2. 現況ステータス（サマリ）
 | 区分 | 状態 | 主内容 |
 |------|------|--------|
-| Done | ✅ | インデクサ / effect_combined / synonym 軽展開 / structured log / metrics counter / score 集約 / effect_1..9 拡張 |
+| Done | ✅ | インデクサ / effect_combined / flavorText / synonym 軽展開 / structured log / metrics counter / score 集約 / effect_1..9 拡張 |
 | In Progress | 🔄 | min_score & retry 効果分析 / synonym Precision 影響測定 |
 | Next | ⏭ | 追加 0件回帰テスト / 精度バッチ(P@10,Recall@10,MRR) / Stage3 再試行設計 / ガイド更新 |
 | Backlog | 📌 | Embedding 正規化強化 / 自動タグ付け / threshold 再学習 ほか |
@@ -105,7 +105,7 @@
 
 ---
 ## 4. 現行アーキ要点（最小説明）
-- Index: `index_effects_to_vector.py` が effect_i / qa_question / qa_answer / flavorText / effect_combined を Upstash Vector へ upsert。
+- Index: `index_effects_to_vector.py` が effect_i / qa_question / qa_answer / flavorText / effect_combined を Upstash Vector へ upsert（flavorText 追加済 / VectorService も対応済）。
 - Query Flow: クエリ分類 (ClassificationService) → HybridSearchService (DB + Vector) → VectorService (namespaces 最適化 + フォールバック) → 集約スコアでタイトル出力。
 - Synonym: 軽展開（Keyword=OR / Embedding=代表1語追記）で Recall 向上、ノイズ抑制。
 - Logging: JSON line `SEARCH_EVENT` に retry_stage / namespaces / min_score / top5_scores / normalized_query。
