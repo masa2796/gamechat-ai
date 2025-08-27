@@ -164,6 +164,38 @@ config.py で similarity_thresholds / confidence_adjustments / minimum_score を
 3. 欠損 namespace (effect_combined, flavorText) 未投入のため、更なる Recall 余地がある。
 4. 次フェーズは (a) effect_combined インデクシング再有効化 & namespace 出現確認 (b) 閾値を 2 段階フォールバック形式へ整理 (c) Stage3 synonym 再埋め込み検証。
 
+### 📦 インデックス拡張後 第3計測 (2025-08-28 08:31 JST)
+変更点: フル再インデックス (effect_1..5 + qa_question + qa_answer + effect_combined 全198カード) 実施。VectorService が `effect_combined → effect_1..n → flavorText(将来)` の優先順で namespace 選択するよう更新。（flavorText は現行データ未収録）
+
+Namespace 件数サマリ (監査 / analyzer):
+- effect_1=198, effect_2=118, effect_3=25, effect_4=3, effect_5=1 → 重複分含み最終監査では effect_1=396, effect_2=236, effect_3=50, effect_4=6, effect_5=2 (convert_data.json 由来カウントとの合算)
+- effect_combined=198
+- qa_question=53 (合算カウント 106), qa_answer=53
+- 欠落: effect_6..9, flavorText
+
+評価結果 (Top-K=10, 16クエリ, --real):
+
+| Metric | Value | 第2計測比 | コメント |
+|--------|-------|-----------|----------|
+| P@10 | 0.1625 | ±0.0000 | Precision 変化なし |
+| Recall@10 | 0.4198 | ±0.0000 | Recall 横ばい（combined 追加で未上昇）|
+| MRR | 0.3345 | -0.0813 | 先頭 relevant の平均順位が低下 |
+| zero_hit_rate | 0.0000 | ±0.0000 | 継続 0 |
+
+所見:
+1. effect_combined を Stage0 から即利用（先頭優先）した結果、Recall は改善せず MRR が低下 → 長文 combined がスコア上位を占有し first relevant の順位が後退した可能性。
+2. P@10 / Recall@10 が据え置きのため、現行のボトルネックは「関連カード候補集合の質」よりも「ランキング配置 (MRR)」にシフト。
+3. qa_answer 追加で誤マッチは顕在化していないが、クエリ意図と無関係な長文 combined の相対優遇リスクが確認された。
+4. flavorText が無い現状では Recall 追加余地は限定的。次の改善レバーは (a) Stage0 から combined を除外し Stage1 以降で投入 (b) combined に個別 threshold (+Δmin_score) を設定 (c) 簡易再ランキング（短文 effect_* を微ブースト）。
+
+即時アクション案:
+1. VectorService: Stage0 の namespace リストから `effect_combined` を除外し Stage1 追加時のみ利用（MRR 回復狙い）。
+2. 併せて Stage1 で combined のみ min_score -0.05、effect_* は base のままにする差別的閾値運用。
+3. Stage3 (synonym 再埋め込み) 実装準備: zero-hit は既に 0 なので主眼を Recall/Precision のバランス → synonym 展開は限定（高レバーユースケースのみ）に調整。
+4. 評価スクリプト拡張: `--dump-scores` で各クエリの top10 スコア + namespace を CSV 出力し、 combined の占有率と relevant の位置を可視化。
+
+次回計測目標 (第4計測仮): MRR ≥ 0.38 へ回復しつつ P@10 ≥ 0.18, Recall@10 ≥ 0.43 を目指す。
+
 ---
 ## 7. フィードバック基盤（MVP 要約）
 - API: `POST /api/feedback` （rating: -1/1, optional reason）
