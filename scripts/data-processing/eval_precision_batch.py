@@ -200,7 +200,10 @@ def run_evaluation(args: argparse.Namespace) -> int:
             context = retrieved_dict.get("context", []) if isinstance(retrieved_dict, dict) else []
             titles: List[str] = []
             for c in context:
+                # 検索提案 (suggestion) 行はゼロヒット扱いのため除外
                 if isinstance(c, dict):
+                    if "suggestion" in c or c.get("name") == "検索のご提案":
+                        continue
                     title = c.get("name") or c.get("title")
                     if title:
                         titles.append(str(title))
@@ -217,6 +220,7 @@ def run_evaluation(args: argparse.Namespace) -> int:
     p_list = [r.p_at_k for r in per_query]
     recall_list = [r.recall_at_k for r in per_query if r.recall_at_k is not None]
     mrr_list = [r.mrr for r in per_query]
+    # zero-hit: 実カード (suggestion 除く) が取得 0 のクエリ
     zero_hits = sum(1 for r in per_query if len(r.retrieved) == 0)
 
     overall_p = average(p_list)

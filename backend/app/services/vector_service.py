@@ -138,11 +138,14 @@ class VectorService:
                         include_vectors=True
                     )
                     matches = results.matches if hasattr(results, "matches") else results
+                    total_matches = len(matches) if matches is not None else 0
+                    passed_matches = 0
                     for match in matches:
                         score_value = getattr(match, 'score', None)
                         score = float(score_value) if score_value is not None else 0.0
                         if threshold is not None and score < threshold:
                             continue
+                        passed_matches += 1
                         meta = getattr(match, 'metadata', None)
                         if meta and hasattr(meta, 'get'):
                             title = meta.get('title', f"{namespace} - 情報")
@@ -152,6 +155,20 @@ class VectorService:
                             prev = scores.get(title)
                             if prev is None or score > prev:
                                 scores[title] = score
+                    try:
+                        GameChatLogger.log_debug(
+                            "vector_service",
+                            "namespaceマッチ統計",
+                            {
+                                "namespace": namespace,
+                                "total_matches": total_matches,
+                                "passed_threshold": passed_matches,
+                                "threshold": float(threshold) if isinstance(threshold, (int,float)) else None,
+                                "inner_top_k": inner_top_k
+                            },
+                        )
+                    except Exception:
+                        pass
                 except Exception as ns_error:
                     GameChatLogger.log_error("vector_service", f"Namespace {namespace} での検索エラー", ns_error, {
                         "namespace": namespace
@@ -343,12 +360,55 @@ class VectorService:
                 break
 
         if data_path is None:
-            GameChatLogger.log_warning(
-                "vector_service",
-                "convert_data.json が見つからず namespace を空集合として扱います",
-                {"tried": candidates[:3]}
-            )
-            return []
+            # フォールバック: vector_index_effects.jsonl (インデックス監査ログ) から抽出
+            audit_candidates = []
+            audit_candidates.append(os.path.join(project_root, "data", "vector_index_effects.jsonl"))
+            if data_dir_env:
+                audit_candidates.insert(0, os.path.join(data_dir_env, "vector_index_effects.jsonl"))
+            audit_path = None
+            for ap in audit_candidates:
+                if os.path.exists(ap):
+                    audit_path = ap
+                    break
+            if audit_path is None:
+                GameChatLogger.log_warning(
+                    "vector_service",
+                    "convert_data.json 及び 監査ファイルが見つからず namespace を空集合として扱います",
+                    {"convert_tried": candidates[:3], "audit_tried": audit_candidates[:2]}
+                )
+                return []
+            # 監査ファイルから抽出
+            namespaces = set()
+            try:
+                with open(audit_path, "r", encoding="utf-8") as af:
+                    for i, line in enumerate(af):
+                        if i > 50000:  # 念のため安全上限
+                            break
+                        try:
+                            obj = json.loads(line)
+                            if isinstance(obj, dict):
+                                ns = obj.get("namespace")
+                                if ns:
+                                    namespaces.add(ns)
+                        except Exception:
+                            continue
+                ns_list = sorted(list(namespaces))
+                if ns_list:
+                    GameChatLogger.log_info(
+                        "vector_service",
+                        "監査ファイルから namespace 抽出成功",
+                        {"count": len(ns_list), "sample": ns_list[:8]}
+                    )
+                else:
+                    GameChatLogger.log_warning(
+                        "vector_service",
+                        "監査ファイルから namespace を抽出できませんでした",
+                        {"audit_path": audit_path}
+                    )
+                return ns_list
+            except Exception as e:
+                GameChatLogger.log_error("vector_service", "監査ファイル読込でエラー", e, {"audit_path": audit_path})
+                return []
 
         namespaces = set()
         try:

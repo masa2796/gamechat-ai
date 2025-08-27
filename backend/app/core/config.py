@@ -124,9 +124,11 @@ class Settings:
         self.VECTOR_SEARCH_CONFIG = {
             # 分類タイプ別の類似度閾値
             "similarity_thresholds": {
-                "semantic": 0.75,      # セマンティック検索は高い閾値
-                "hybrid": 0.70,        # ハイブリッドは中程度
-                "filterable": 0.65     # フィルタ可能は低めに設定
+                # 2025-08-27 tuning: 閾値が高すぎて全件0ヒットだったため全体を引き下げ
+                # semantic * high_conf (0.6 * 0.8) ≒ 0.48 まで実効 min_score を緩和
+                "semantic": 0.60,
+                "hybrid": 0.55,
+                "filterable": 0.50
             },
             # 分類タイプ別の検索件数
             "search_limits": {
@@ -136,9 +138,10 @@ class Settings:
             },
             # 信頼度による調整係数
             "confidence_adjustments": {
-                "high": 0.9,      # 0.8以上の信頼度
-                "medium": 0.8,    # 0.5-0.8の信頼度
-                "low": 0.7        # 0.5未満の信頼度
+                # 閾値緩和に合わせ調整（過剰な信頼度掛け合わせで再び高止まりしないよう抑制）
+                "high": 0.8,
+                "medium": 0.75,
+                "low": 0.7
             },
             # 重み付けマージの係数
             "merge_weights": {
@@ -146,7 +149,7 @@ class Settings:
                 "vector_weight": 0.6
             },
             # 最小スコア閾値（これ以下は除外）
-            "minimum_score": 0.4,  # lowered from 0.5 (2025-08-23 min_score tuning phase)
+            "minimum_score": 0.35,  # 2025-08-27: 全体調整に合わせ暫定的に下げる (再評価後に再調整予定)
             # フォールバック設定
             "fallback_enabled": True,
             "fallback_limit": 3

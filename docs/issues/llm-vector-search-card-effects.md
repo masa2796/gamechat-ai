@@ -148,6 +148,22 @@ eval_precision_batch.py --real 実行 (labels v1 / Top-K=10)
 2. zero_hit_rate が 0.0 と出力されたのは計測ロジックが suggestion を結果扱いしている可能性。評価スクリプト側で zero-hit 判定を context 件数ベースに修正検討。
 3. 次アクション優先度: (a) Stage3 実装 / synonym 再埋め込み (b) min_score 段階的引下げでヒット創出 (c) `effect_combined` namespace 有効化の挙動検証 (d) zero-hit 判定修正。
 
+### 🔁 閾値チューニング後 第2計測 (2025-08-27 09:15 JST)
+config.py で similarity_thresholds / confidence_adjustments / minimum_score を引下げ後、`--real` 再実行。
+
+| Metric | Value | 変化 vs 初回 | メモ |
+|--------|-------|-------------|------|
+| P@10 | 0.1625 | +0.1625 | 上位10に平均1.625件の relevant |
+| Recall@10 | 0.4198 | +0.4198 | Top-10 で約42% を捕捉 |
+| MRR | 0.4158 | +0.4158 | 先頭関連順位平均 ≈ 2.4 位相当 |
+| zero_hit_rate | 0.0000 | ±0 | 16/16 で≥1件ヒット（提案除外判定）|
+
+所見:
+1. 単純な閾値引下げのみで Recall は即時向上 (0→0.42)。Precision (P@10=0.16) は改善余地あり。
+2. zero-hit が 0 になり再現性確保。今後は低スコアノイズ抑制策（再ランキング / effect_combined 導入制御）で Precision を引上げ。
+3. 欠損 namespace (effect_combined, flavorText) 未投入のため、更なる Recall 余地がある。
+4. 次フェーズは (a) effect_combined インデクシング再有効化 & namespace 出現確認 (b) 閾値を 2 段階フォールバック形式へ整理 (c) Stage3 synonym 再埋め込み検証。
+
 ---
 ## 7. フィードバック基盤（MVP 要約）
 - API: `POST /api/feedback` （rating: -1/1, optional reason）
