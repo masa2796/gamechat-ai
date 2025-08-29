@@ -192,7 +192,17 @@ class VectorService:
         # flavorText もインデックスされていれば最後に追加（長文優遇リスク軽減のため後順位）
         if "flavorText" in (all_ns or []):
             ordered_effects.append("flavorText")
+        # NOTE(Stage0 combined除外): 初回段階では長文 effect_combined を除外し、0件時のみ Stage1 で追加して Recall を補完する。
         effect_pref = ordered_effects if ordered_effects else (namespaces or all_ns)
+        if has_combined:
+            # Stage0 用に combined を除外したリストを作成（ユーザが明示指定した場合は尊重）
+            if namespaces is None:
+                effect_pref_stage0 = [ns for ns in effect_pref if ns != "effect_combined"]
+            else:
+                # 明示指定時はそのまま利用（予期しない除外を避ける）
+                effect_pref_stage0 = namespaces
+        else:
+            effect_pref_stage0 = effect_pref
 
         # フォールバック候補の段階
         from typing import Dict as _Dict
@@ -201,21 +211,22 @@ class VectorService:
         second_namespaces: List[str]
         # 2段階目で combined を確実に含める（無ければそのまま）
         if "effect_combined" in (all_ns or []):
-            # 既に含まれている場合は重複除去のみ
-            base_list = namespaces or effect_pref
+            # Stage1: Stage0 で除外していた場合は先頭に追加
+            base_list = namespaces or effect_pref_stage0
             if "effect_combined" not in base_list:
                 second_namespaces = ["effect_combined"] + [ns for ns in base_list if ns != "effect_combined"]
             else:
-                second_namespaces = list(dict.fromkeys(base_list))
+                second_namespaces = list(dict.fromkeys(base_list))  # 重複除去
         else:
-            second_namespaces = namespaces or effect_pref
+            second_namespaces = namespaces or effect_pref_stage0
 
         steps: List[_Dict[str, object]] = [
-            {"namespaces": namespaces or effect_pref, "min_score": target_min_score, "top_k": int(top_k)},
-            {"namespaces": second_namespaces, "min_score": max(0.0, target_min_score - 0.05), "top_k": int(min(max(top_k, 20), 50))},
+            {"namespaces": namespaces or effect_pref_stage0, "min_score": target_min_score, "top_k": int(top_k), "stage": 0},
+            {"namespaces": second_namespaces, "min_score": max(0.0, target_min_score - 0.05), "top_k": int(min(max(top_k, 20), 50)), "stage": 1},
         ]
 
-        for i, step in enumerate(steps, start=1):
+        result_stage = None
+        for i, step in enumerate(steps, start=1):  # i = 1,2 ... (ログ用)
             if scores:
                 break
             step_namespaces = step["namespaces"]  # type: ignore
@@ -242,6 +253,8 @@ class VectorService:
             except Exception:
                 pass
             _query_namespaces(ns_list, step_min_score if isinstance(step_min_score, (int, float)) else None, int(step_top_k))
+            if scores:
+                result_stage = step.get("stage", i-1)
 
         # スコアで降順ソートし、カード名を返却
         sorted_titles = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
@@ -263,11 +276,12 @@ class VectorService:
         self.last_scores = scores
         try:
             self.last_params = {
-                "final_stage": i if 'i' in locals() else None,
+                "final_stage": result_stage,
                 "used_namespaces": ns_list if isinstance(ns_list, list) else [],
                 "min_score": step_min_score if isinstance(step_min_score, (int,float)) else None,
                 "top5": top5,
-                "requested_top_k": top_k
+                "requested_top_k": top_k,
+                "stage0_excluded_combined": has_combined,
             }
         except Exception:
             pass

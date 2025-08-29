@@ -188,6 +188,7 @@ def run_evaluation(args: argparse.Namespace) -> int:
 
     top_k = args.top_k
     per_query: List[QueryEvalResult] = []
+    raw_topk_store: list[dict[str, any]] = []  # dump-scores 用
     for item in labels:
         query = item["query"]
         relevant = item["relevant"]
@@ -209,6 +210,26 @@ def run_evaluation(args: argparse.Namespace) -> int:
                         titles.append(str(title))
             # fallback: search_info has counts but not titles; keep as is
             eval_res = compute_metrics(query, titles, relevant, top_k)
+            if args.dump_scores:
+                # raw scores はサービス内部保持 (vector_service.last_scores) を参照できるようにする
+                try:
+                    vs = getattr(service, 'vector_service', None)
+                    last_params = getattr(vs, 'last_params', {}) if vs else {}
+                    last_scores = getattr(vs, 'last_scores', {}) if vs else {}
+                    # topK スコア抽出
+                    ranked = sorted(last_scores.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
+                    for rank, (title, score) in enumerate(ranked, start=1):
+                        raw_topk_store.append({
+                            'query': query,
+                            'rank': rank,
+                            'title': title,
+                            'score': f"{score:.4f}",
+                            'min_score': f"{(last_params.get('min_score') or 0):.4f}" if isinstance(last_params.get('min_score'), (int,float)) else "",
+                            'stage': last_params.get('final_stage'),
+                            'namespaces': ';'.join(last_params.get('used_namespaces', [])[:10]) if isinstance(last_params.get('used_namespaces'), list) else ''
+                        })
+                except Exception as e:  # pragma: no cover
+                    print(f"[WARN] dump-scores capture failed: {e}")
             per_query.append(eval_res)
         except Exception as e:  # pragma: no cover
             print(f"[WARN] Query failed '{query}': {e}")
@@ -263,6 +284,18 @@ def run_evaluation(args: argparse.Namespace) -> int:
         writer.writerow(["OVERALL_MRR", f"{overall_mrr:.4f}"])
         writer.writerow(["ZERO_HIT_RATE", f"{zero_hit_rate:.4f}"])
 
+    # Optional dump-scores CSV
+    if args.dump_scores and raw_topk_store:
+        dump_path = os.path.join(out_dir, f"dump_scores_{ts}.csv")
+        with open(dump_path, 'w', newline='', encoding='utf-8') as df:
+            dw = csv.writer(df)
+            dw.writerow(['query','rank','title','score','stage','min_score','namespaces'])
+            for row in raw_topk_store:
+                dw.writerow([
+                    row['query'], row['rank'], row['title'], row['score'], row.get('stage',''), row.get('min_score',''), row.get('namespaces','')
+                ])
+        print(f"[DUMP] Raw top-k scores written: {dump_path}")
+
     # Summary stdout (KPI table paste-ready)
     print("\n=== Batch Evaluation Summary ===")
     print(f"Queries: {len(per_query)}  Top-K: {top_k}")
@@ -282,6 +315,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--output", default="logs/eval", help="Directory to write CSV")
     parser.add_argument("--top-k", type=int, default=10, help="Top-K cutoff (default=10)")
     parser.add_argument("--real", action="store_true", help="Use real classification/vector search (requires env)")
+    parser.add_argument("--dump-scores", action="store_true", help="Dump per-query raw top-k scores & namespaces")
     return parser.parse_args(argv)
 
 
