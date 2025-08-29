@@ -13,6 +13,8 @@ load_dotenv()
 class VectorService:
     # 検索ごとにカード名→スコアの辞書を保持
     last_scores: dict = {}
+    # 最高スコアを与えた namespace を保持（ランキング分析用）
+    last_score_sources: dict = {}
     # 直近検索パラメータ/統計
     last_params: dict = {}
     _instance = None
@@ -125,6 +127,7 @@ class VectorService:
             pass
         # タイトル重複時は最大スコアで集約
         scores: dict[str, float] = {}
+        score_sources: dict[str, str] = {}
 
         def _query_namespaces(q_namespaces: List[str], threshold: Optional[float], inner_top_k: int) -> None:
             for namespace in q_namespaces:
@@ -155,6 +158,7 @@ class VectorService:
                             prev = scores.get(title)
                             if prev is None or score > prev:
                                 scores[title] = score
+                                score_sources[title] = namespace
                     try:
                         GameChatLogger.log_debug(
                             "vector_service",
@@ -274,6 +278,7 @@ class VectorService:
         except Exception:
             pass
         self.last_scores = scores
+        self.last_score_sources = score_sources
         try:
             self.last_params = {
                 "final_stage": result_stage,
@@ -282,6 +287,7 @@ class VectorService:
                 "top5": top5,
                 "requested_top_k": top_k,
                 "stage0_excluded_combined": has_combined,
+                "namespace_by_title_sample": {t: score_sources.get(t) for t,_ in sorted_titles[:5]},
             }
         except Exception:
             pass

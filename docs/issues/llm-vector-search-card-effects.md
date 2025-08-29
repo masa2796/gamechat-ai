@@ -74,7 +74,7 @@
 
 ﻿# Issue: カード効果ベクトル検索最適化（LLM活用）
 
-最終更新: 2025-08-25
+最終更新: 2025-08-29
 
 本ドキュメントは肥大化した旧 Issue メモを再編し、意思決定と日次運用に必要な最小限の共通認識・優先課題・計測指標を即座に把握できる形へ整理したものです。旧詳細は末尾 Appendix に残し必要時のみ参照します。
 
@@ -89,19 +89,19 @@
 ## 2. 現況ステータス（サマリ）
 | 区分 | 状態 | 主内容 |
 |------|------|--------|
-| Done | ✅ | インデクサ / effect_combined / flavorText / synonym 軽展開 / structured log / metrics counter / score 集約 / effect_1..9 拡張 |
-| In Progress | 🔄 | min_score & retry 効果分析 / synonym Precision 影響測定 |
-| Next | ⏭ | 追加 0件回帰テスト / 精度バッチ(P@10,Recall@10,MRR) / Stage3 再試行設計 / ガイド更新 |
+| Done | ✅ | インデクサ / effect_combined / synonym 軽展開 / structured log / metrics counter / score 集約 / effect_1..9 拡張 / relevance ラベル投入 / Stage0 combined 除外実装 / 評価 dump-scores |
+| In Progress | 🔄 | 第4計測 (Stage0 combined 除外効果) / min_score 差別適用検討 / synonym Precision 影響測定 |
+| Next | ⏭ | Retry Stage3 実装 / ガイド更新 (retry+dump-scores) / combined 個別閾値検証 |
 | Backlog | 📌 | Embedding 正規化強化 / 自動タグ付け / threshold 再学習 ほか |
 | Future | 🧪 | 再ランキング / Hard Negative / Alerting / A/B |
 
 ---
-## 3. 直近 7 日で必須の優先タスク（集中リスト）
-1. Retry Stage3 試験フラグ（synonym 再埋め込み）実装 & ログ計測。
-2. ラベル整備: 16 クエリの relevant カード集合作成（ドメイン監修可）→ ベースライン一括計測。
-3. ガイド更新 + KPI 表へ初回ベースライン数値挿入。
+## 3. 直近 7 日で必須の優先タスク（更新）
+1. 第4計測: Stage0 combined 除外後の MRR 回復 (目標 ≥0.38, P@10 ≥0.18, Recall@10 ≥0.43)
+2. Retry Stage3 (synonym 再埋め込み) 実装 & feature flag (`ENABLE_VECTOR_STAGE3`) + ログ `expanded_terms`
+3. ガイド更新: retry 段階 (Stage0/1/2) / dump-scores 使用例 / KPI 表初期数値挿入
 
-（完了定義: Stage3 実装 + ベースライン数値反映 + ガイド更新）
+完了定義更新: 第4計測目標達成 + Stage3 実装 PR + ガイド更新マージ
 
 ---
 ## 4. 現行アーキ要点（最小説明）
@@ -115,8 +115,8 @@
 ## 5. 検索リトライ戦略（現行 → 拡張予定）
 | Stage | 条件 | namespaces | min_score | top_k | 目的 |
 |-------|------|-----------|----------|-------|------|
-| 0 | 初回 | effect_* | base (≈0.4) | 10 | 通常精度 |
-| 1 | 0件時 | +effect_combined 先頭 | base-0.05 | 20 | 分散補完 |
+| 0 | 初回 | effect_* (combined 除外) | base (≈0.4) | 10 | Precision/MRR 重視 |
+| 1 | 0件時 | +effect_combined 先頭追加 | base-0.05 | 20 | Recall 分散補完 |
 | 2 (設計中) | 依然0件 | 同 + synonym 再埋め込み | base-0.05〜0.10 | 20 | 語彙拡張救済 |
 
 Stage2 実装後は zero_hit_rate の減衰度を計測し、恒久的な base 阈値変更ではなく段階的フォールバックで Recall を確保。
@@ -131,7 +131,7 @@ Stage2 実装後は zero_hit_rate の減衰度を計測し、恒久的な base �
 | Recall@10 | 再現 | relevant@10 / total_relevant | +5pp 継続 |
 | MRR | ランキング | 1/rank_first_relevant | 上昇傾向 |
 
-ベースラインは精度バッチ完了後に表内へ数値挿入。
+ベースライン (第2/第3計測) 測定済。第4計測で Stage0 除外効果確認予定。
 
 ### 🧪 初回ベースライン (2025-08-27 08:41 JST)
 eval_precision_batch.py --real 実行 (labels v1 / Top-K=10)
@@ -188,11 +188,11 @@ Namespace 件数サマリ (監査 / analyzer):
 3. qa_answer 追加で誤マッチは顕在化していないが、クエリ意図と無関係な長文 combined の相対優遇リスクが確認された。
 4. flavorText が無い現状では Recall 追加余地は限定的。次の改善レバーは (a) Stage0 から combined を除外し Stage1 以降で投入 (b) combined に個別 threshold (+Δmin_score) を設定 (c) 簡易再ランキング（短文 effect_* を微ブースト）。
 
-即時アクション案:
-1. VectorService: Stage0 の namespace リストから `effect_combined` を除外し Stage1 追加時のみ利用（MRR 回復狙い）。
-2. 併せて Stage1 で combined のみ min_score -0.05、effect_* は base のままにする差別的閾値運用。
-3. Stage3 (synonym 再埋め込み) 実装準備: zero-hit は既に 0 なので主眼を Recall/Precision のバランス → synonym 展開は限定（高レバーユースケースのみ）に調整。
-4. 評価スクリプト拡張: `--dump-scores` で各クエリの top10 スコア + namespace を CSV 出力し、 combined の占有率と relevant の位置を可視化。
+即時アクション進捗:
+1. Stage0 から `effect_combined` 除外 実装済 (第4計測待ち)。
+2. Stage1 で combined 追加 + min_score -0.05 適用 済。
+3. Stage3 実装準備 継続中（synonym 再埋め込み手順 & flag 設計）。
+4. 評価スクリプト `--dump-scores` 実装済 → combined 占有率/ランキング可視化可能。
 
 次回計測目標 (第4計測仮): MRR ≥ 0.38 へ回復しつつ P@10 ≥ 0.18, Recall@10 ≥ 0.43 を目指す。
 
@@ -260,6 +260,7 @@ Namespace 件数サマリ (監査 / analyzer):
 | 2025-08-20 | ログ | SEARCH_EVENT 構造化 + retry_stage 追加 |
 | 2025-08-22 | 修正 | effect_1..9 走査拡張 / min_score=0.4 調整 |
 | 2025-08-25 | 文書 | 本ドキュメント再編（簡潔化） |
+| 2025-08-29 | 改善 | Stage0 で effect_combined 除外 / フォールバック段階メタ導入 / 評価 `--dump-scores` 追加 / relevance ラベル確定 |
 
 ---
 ## 15. Appendix（旧詳細 / 参考用）
