@@ -152,7 +152,18 @@ class Settings:
             "minimum_score": 0.35,  # 2025-08-27: 全体調整に合わせ暫定的に下げる (再評価後に再調整予定)
             # フォールバック設定
             "fallback_enabled": True,
-            "fallback_limit": 3
+            "fallback_limit": 3,
+            # plateau 検知 & combined 条件付き注入設定
+            "plateau": {
+                "enable_combined": os.getenv("VECTOR_ENABLE_COMBINED_PLATEAU", "true").lower() == "true",
+                # top3 スコアの標準偏差がこの値未満 あるいは spread が下記閾値未満で plateau 扱い
+                "stddev": float(os.getenv("COMBINED_PLATEAU_STDDEV", "0.005")),
+                "score_spread": float(os.getenv("COMBINED_PLATEAU_SCORE_SPREAD", "0.01")),
+                # combined 注入時に適用する base_min_score への加算Δ（Precision 保持）
+                "combined_extra_min_score": float(os.getenv("COMBINED_EXTRA_MIN_SCORE", "0.02")),
+                # combined 再検索の top_k （過剰取得抑制）
+                "combined_top_k": int(os.getenv("COMBINED_PLATEAU_TOP_K", "12"))
+            }
         }
 
     @property

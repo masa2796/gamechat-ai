@@ -11,287 +11,169 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class VectorService:
-    # 検索ごとにカード名→スコアの辞書を保持
     last_scores: dict = {}
-    # 最高スコアを与えた namespace を保持（ランキング分析用）
     last_score_sources: dict = {}
-    # 直近検索パラメータ/統計
     last_params: dict = {}
     _instance = None
+
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
-    """Upstash Vector を使用した類似検索サービス（最適化対応）"""
-    
+
     def __init__(self) -> None:
         upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
         upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
         is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
-        environment = os.getenv("ENVIRONMENT", "development")
-        
-        # テスト環境では設定不要
+        env = os.getenv("ENVIRONMENT", "development")
         if is_test_mode:
-            GameChatLogger.log_info("vector_service", "テストモード: Vector検索は無効化されています")
+            GameChatLogger.log_info("vector_service", "テストモード: Vector検索無効化")
             self.vector_index = None
             return
-        
-        # 本番環境では設定が必須
         if not upstash_url or not upstash_token:
-            if environment == "production":
-                error = Exception(f"Upstash Vector設定が不完全です。URL: {bool(upstash_url)}, Token: {bool(upstash_token)}")
-                GameChatLogger.log_error(
-                    "vector_service", 
-                    "本番環境でUpstash Vector設定が不完全です",
-                    error
-                )
+            if env == "production":
+                err = Exception("Upstash Vector設定が不完全です")
+                GameChatLogger.log_error("vector_service", "本番設定不備", err)
             else:
-                GameChatLogger.log_warning(
-                    "vector_service", 
-                    "🟡 Upstash Vector設定が不完全です。一部機能が制限されます。"
-                )
+                GameChatLogger.log_warning("vector_service", "🟡 Upstash Vector設定不足")
             self.vector_index = None
-        else:
-            try:
-                self.vector_index = Index(url=upstash_url, token=upstash_token)
-                GameChatLogger.log_info("vector_service", "Upstash Vector初期化完了")
-            except Exception as e:
-                GameChatLogger.log_error("vector_service", f"Upstash Vector初期化失敗: {e}", e)
-                self.vector_index = None
-    
-    @handle_service_exceptions("vector", fallback_return=[])
+            return
+        self.vector_index = Index(url=upstash_url, token=upstash_token)
+        GameChatLogger.log_success("vector_service", "✅ Upstash Vector 初期化成功")
+
+    @handle_service_exceptions
     async def search(
-        self, 
-        query_embedding: List[float], 
-        top_k: int = 50, 
+        self,
+        query_embedding: List[float],
+        top_k: int = 50,
         namespaces: Optional[List[str]] = None,
         classification: Optional[ClassificationResult] = None,
         min_score: Optional[float] = None
     ) -> List[str]:
-        """
-        ベクトル検索を実行し、カード名リストを返却
-        
-        Args:
-            query_embedding: クエリの埋め込みベクトル
-            top_k: 取得する最大件数
-            namespaces: 検索対象のネームスペース
-            classification: 分類結果（最適化に使用）
-            min_score: 最小スコア閾値
-            
-        Returns:
-            検索結果のリスト
-        """
-        # 設定がない場合は空の結果を返す
+        """ベクトル検索 (Stage0: effect_combined除外→Plateau条件で挿入)"""
+        if classification is not None:
+            try:
+                top_k, min_score, namespaces = self._optimize_search_params(classification, top_k, min_score, namespaces)
+            except Exception as e:
+                GameChatLogger.log_warning("vector_service", f"最適化失敗: {e}")
         if self.vector_index is None:
-            GameChatLogger.log_warning("vector_service", "Upstash Vector未設定のため空の結果を返します")
             return []
-        
-        # 分類結果に基づく最適化
-        if classification:
-            top_k, min_score, namespaces = self._optimize_search_params(
-                classification, top_k, min_score, namespaces
-            )
-        
-        # デフォルト値の設定
-        if namespaces is None:
-            namespaces = self._get_default_namespaces(classification)
-        
-        if min_score is None:
-            config = settings.VECTOR_SEARCH_CONFIG
-            min_score_value = config.get("minimum_score")
-            if isinstance(min_score_value, (int, float)):
-                min_score = float(min_score_value)
-            else:
-                min_score = 0.5
-        
-        GameChatLogger.log_info("vector_service", "ベクトル検索を開始", {
-            "namespaces": namespaces,
-            "top_k": top_k,
-            "min_score": min_score,
-            "classification_type": classification.query_type if classification else None,
-            "confidence": classification.confidence if classification else None
-        })
-        # DEBUG: 検索パラメータを詳細に出力
-        try:
-            GameChatLogger.log_debug(
-                "vector_service",
-                "検索パラメータ（初期）",
-                {
-                    "namespaces": (namespaces or [])[:20],
-                    "threshold": float(min_score) if isinstance(min_score, (int, float)) else None,
-                    "top_k": int(top_k),
-                },
-            )
-        except Exception:
-            pass
-        # タイトル重複時は最大スコアで集約
+
         scores: dict[str, float] = {}
         score_sources: dict[str, str] = {}
 
-        def _query_namespaces(q_namespaces: List[str], threshold: Optional[float], inner_top_k: int) -> None:
-            for namespace in q_namespaces:
+        def _calc_top3_stats(local: dict[str, float]):
+            try:
+                if not local:
+                    return None
+                import math
+                vs = sorted(local.values(), reverse=True)[:3]
+                if len(vs) <= 1:
+                    return {"values": vs, "stddev": 0.0, "spread": 0.0}
+                mean = sum(vs)/len(vs)
+                var = sum((v-mean)**2 for v in vs)/len(vs)
+                return {"values": vs, "stddev": math.sqrt(var), "spread": max(vs)-min(vs)}
+            except Exception:
+                return None
+
+        def _query_ns(ns_list: List[str], threshold: Optional[float], inner_top_k: int):
+            for ns in ns_list:
                 try:
-                    GameChatLogger.log_info("vector_service", f"Namespace {namespace} で検索中")
-                    results = self.vector_index.query(  # type: ignore
+                    res = self.vector_index.query(  # type: ignore
                         vector=query_embedding,
                         top_k=inner_top_k,
-                        namespace=namespace,
+                        namespace=ns,
                         include_metadata=True,
                         include_vectors=True
                     )
-                    matches = results.matches if hasattr(results, "matches") else results
-                    total_matches = len(matches) if matches is not None else 0
-                    passed_matches = 0
-                    for match in matches:
-                        score_value = getattr(match, 'score', None)
-                        score = float(score_value) if score_value is not None else 0.0
-                        if threshold is not None and score < threshold:
+                    matches = res.matches if hasattr(res, "matches") else res
+                    if not matches:
+                        continue
+                    for m in matches:
+                        sc = float(getattr(m, 'score', 0.0) or 0.0)
+                        if threshold is not None and sc < threshold:
                             continue
-                        passed_matches += 1
-                        meta = getattr(match, 'metadata', None)
-                        if meta and hasattr(meta, 'get'):
-                            title = meta.get('title', f"{namespace} - 情報")
-                        else:
-                            title = f"{namespace} - 情報"
-                        if title:
-                            prev = scores.get(title)
-                            if prev is None or score > prev:
-                                scores[title] = score
-                                score_sources[title] = namespace
-                    try:
-                        GameChatLogger.log_debug(
-                            "vector_service",
-                            "namespaceマッチ統計",
-                            {
-                                "namespace": namespace,
-                                "total_matches": total_matches,
-                                "passed_threshold": passed_matches,
-                                "threshold": float(threshold) if isinstance(threshold, (int,float)) else None,
-                                "inner_top_k": inner_top_k
-                            },
-                        )
-                    except Exception:
-                        pass
-                except Exception as ns_error:
-                    GameChatLogger.log_error("vector_service", f"Namespace {namespace} での検索エラー", ns_error, {
-                        "namespace": namespace
-                    })
+                        meta = getattr(m, 'metadata', None)
+                        title = meta.get('title', f"{ns} - 情報") if meta and hasattr(meta, 'get') else f"{ns} - 情報"
+                        if not title:
+                            continue
+                        prev = scores.get(title)
+                        if prev is None or sc > prev:
+                            scores[title] = sc
+                            score_sources[title] = ns
+                except Exception as inner_e:
+                    GameChatLogger.log_error("vector_service", f"Namespace {ns} 検索エラー", inner_e, {"namespace": ns})
                     continue
 
-        # 段階的フォールバック戦略
+        # Namespace 設定
         try:
             all_ns = self._get_all_namespaces()
         except Exception:
             all_ns = namespaces or []
-        # effect_* 系 + 特殊結合 namespace / flavorText を優先順で扱う
-        effect_like_all = [ns for ns in (all_ns or []) if ns.startswith("effect_") or ns == "effect_combined"]
-        has_combined = "effect_combined" in (all_ns or [])
-        # 並び: effect_combined -> effect_1..n -> (optional) flavorText （effect 系の末尾で Recall 補助）
-        ordered_effects: List[str] = []
-        if has_combined:
-            ordered_effects.append("effect_combined")
-        # 個別 effect_* を昇順で
-        ordered_effects.extend(sorted([ns for ns in effect_like_all if ns.startswith("effect_")]))
-        # flavorText もインデックスされていれば最後に追加（長文優遇リスク軽減のため後順位）
-        if "flavorText" in (all_ns or []):
-            ordered_effects.append("flavorText")
-        # NOTE(Stage0 combined除外): 初回段階では長文 effect_combined を除外し、0件時のみ Stage1 で追加して Recall を補完する。
-        effect_pref = ordered_effects if ordered_effects else (namespaces or all_ns)
-        if has_combined:
-            # Stage0 用に combined を除外したリストを作成（ユーザが明示指定した場合は尊重）
-            if namespaces is None:
-                effect_pref_stage0 = [ns for ns in effect_pref if ns != "effect_combined"]
-            else:
-                # 明示指定時はそのまま利用（予期しない除外を避ける）
-                effect_pref_stage0 = namespaces
+        has_combined = "effect_combined" in all_ns
+        effect_like = [n for n in all_ns if n.startswith("effect_")]
+        ordered_effect = sorted(effect_like)
+        if has_combined and namespaces is None:
+            stage0_list = [n for n in ordered_effect if n != "effect_combined"]
         else:
-            effect_pref_stage0 = effect_pref
+            stage0_list = namespaces or ordered_effect or all_ns
+        second_namespaces = (["effect_combined"] + stage0_list) if has_combined and "effect_combined" not in stage0_list else stage0_list
 
-        # フォールバック候補の段階
-        from typing import Dict as _Dict
-        # 要件: 0件時 effect_combined を追加し min_score を 0.05 引き下げて再試行（シンプル2段階）
-        target_min_score = float(min_score or 0.5)
-        second_namespaces: List[str]
-        # 2段階目で combined を確実に含める（無ければそのまま）
-        if "effect_combined" in (all_ns or []):
-            # Stage1: Stage0 で除外していた場合は先頭に追加
-            base_list = namespaces or effect_pref_stage0
-            if "effect_combined" not in base_list:
-                second_namespaces = ["effect_combined"] + [ns for ns in base_list if ns != "effect_combined"]
-            else:
-                second_namespaces = list(dict.fromkeys(base_list))  # 重複除去
-        else:
-            second_namespaces = namespaces or effect_pref_stage0
+        base_min = float(min_score or 0.5)
+        conf = settings.VECTOR_SEARCH_CONFIG.get("plateau", {}) if isinstance(settings.VECTOR_SEARCH_CONFIG, dict) else {}
+        plateau_enabled = conf.get("enable_combined", True)
+        std_thr = conf.get("stddev", 0.005)
+        spread_thr = conf.get("score_spread", 0.01)
+        extra_min = conf.get("combined_extra_min_score", 0.02)
+        combined_top_k = conf.get("combined_top_k", 12)
 
-        steps: List[_Dict[str, object]] = [
-            {"namespaces": namespaces or effect_pref_stage0, "min_score": target_min_score, "top_k": int(top_k), "stage": 0},
-            {"namespaces": second_namespaces, "min_score": max(0.0, target_min_score - 0.05), "top_k": int(min(max(top_k, 20), 50)), "stage": 1},
-        ]
+        plateau_triggered = False
+        final_stage: Optional[int] = None
+        used_ns: List[str] = []
+        used_min: Optional[float] = None
 
-        result_stage = None
-        for i, step in enumerate(steps, start=1):  # i = 1,2 ... (ログ用)
-            if scores:
-                break
-            step_namespaces = step["namespaces"]  # type: ignore
-            step_min_score = step["min_score"]  # type: ignore
-            step_top_k = step["top_k"]  # type: ignore
-            ns_list = step_namespaces if isinstance(step_namespaces, list) else (namespaces or all_ns)
-            GameChatLogger.log_info("vector_service", f"フォールバック段階 {i} 実行", {
-                "min_score": step_min_score,
-                "namespaces_sample": (ns_list or [])[:10],
-                "inner_top_k": step_top_k
-            })
-            # DEBUG: 各段階のパラメータ詳細
-            try:
-                GameChatLogger.log_debug(
-                    "vector_service",
-                    "フォールバック段階パラメータ",
-                    {
-                        "stage": i,
-                        "namespaces": ns_list[:20] if isinstance(ns_list, list) else [],
-                        "threshold": float(step_min_score) if isinstance(step_min_score, (int, float)) else None,
-                        "top_k": int(step_top_k),
-                    },
-                )
-            except Exception:
-                pass
-            _query_namespaces(ns_list, step_min_score if isinstance(step_min_score, (int, float)) else None, int(step_top_k))
-            if scores:
-                result_stage = step.get("stage", i-1)
+        _query_ns(stage0_list, base_min, top_k)
+        used_ns = stage0_list
+        used_min = base_min
+        if scores:
+            final_stage = 0
 
-        # スコアで降順ソートし、カード名を返却
+        need_plateau = False
+        stats = _calc_top3_stats(scores)
+        if plateau_enabled:
+            if not scores:
+                need_plateau = True
+            elif stats and (stats['stddev'] <= std_thr or stats['spread'] <= spread_thr):
+                need_plateau = True
+        if need_plateau and has_combined:
+            plateau_triggered = True
+            adj_min = base_min + extra_min
+            _query_ns(second_namespaces, adj_min, min(max(combined_top_k, 10), 30))
+            if scores and final_stage is None:
+                final_stage = 1
+            used_ns = second_namespaces
+            used_min = adj_min
+
         sorted_titles = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
-        # 上位5件をDEBUGログ（スコア可視化）
         top5 = [{"title": t, "score": s} for t, s in sorted_titles[:5]]
-        GameChatLogger.log_success("vector_service", "ベクトル検索完了", {
-            "total_results": len(sorted_titles),
-            "top5": top5
-        })
-        # DEBUG: 上位5件のスコアを明示的に出力
-        try:
-            GameChatLogger.log_debug(
-                "vector_service",
-                "上位スコア（top5）",
-                {"top5": top5},
-            )
-        except Exception:
-            pass
+        GameChatLogger.log_success("vector_service", "ベクトル検索完了", {"total_results": len(sorted_titles), "top5": top5})
         self.last_scores = scores
         self.last_score_sources = score_sources
         try:
             self.last_params = {
-                "final_stage": result_stage,
-                "used_namespaces": ns_list if isinstance(ns_list, list) else [],
-                "min_score": step_min_score if isinstance(step_min_score, (int,float)) else None,
+                "final_stage": final_stage,
+                "used_namespaces": used_ns,
+                "min_score": used_min,
                 "top5": top5,
                 "requested_top_k": top_k,
                 "stage0_excluded_combined": has_combined,
                 "namespace_by_title_sample": {t: score_sources.get(t) for t,_ in sorted_titles[:5]},
+                "plateau_triggered": plateau_triggered,
+                "plateau_stats": stats,
             }
         except Exception:
             pass
-        return [title for title, _ in sorted_titles[:top_k]]
+        return [t for t,_ in sorted_titles[:top_k]]
     
     def _optimize_search_params(
         self, 
