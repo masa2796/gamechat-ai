@@ -41,7 +41,7 @@ class VectorService:
         self.vector_index = Index(url=upstash_url, token=upstash_token)
         GameChatLogger.log_success("vector_service", "✅ Upstash Vector 初期化成功")
 
-    @handle_service_exceptions
+    @handle_service_exceptions("vector_service")
     async def search(
         self,
         query_embedding: List[float],
@@ -61,20 +61,9 @@ class VectorService:
 
         scores: dict[str, float] = {}
         score_sources: dict[str, str] = {}
-
+        # 統計計算（静的メソッド利用）
         def _calc_top3_stats(local: dict[str, float]):
-            try:
-                if not local:
-                    return None
-                import math
-                vs = sorted(local.values(), reverse=True)[:3]
-                if len(vs) <= 1:
-                    return {"values": vs, "stddev": 0.0, "spread": 0.0}
-                mean = sum(vs)/len(vs)
-                var = sum((v-mean)**2 for v in vs)/len(vs)
-                return {"values": vs, "stddev": math.sqrt(var), "spread": max(vs)-min(vs)}
-            except Exception:
-                return None
+            return self.calc_top3_stats(local)
 
         def _query_ns(ns_list: List[str], threshold: Optional[float], inner_top_k: int):
             for ns in ns_list:
@@ -174,6 +163,22 @@ class VectorService:
         except Exception:
             pass
         return [t for t,_ in sorted_titles[:top_k]]
+
+    @staticmethod
+    def calc_top3_stats(local: dict[str, float]):
+        """上位3件スコアの標準偏差とスプレッドを計算（テスト容易性のため分離）。"""
+        try:
+            if not local:
+                return None
+            import math
+            vs = sorted(local.values(), reverse=True)[:3]
+            if len(vs) <= 1:
+                return {"values": vs, "stddev": 0.0, "spread": 0.0}
+            mean = sum(vs)/len(vs)
+            var = sum((v-mean)**2 for v in vs)/len(vs)
+            return {"values": vs, "stddev": math.sqrt(var), "spread": max(vs)-min(vs)}
+        except Exception:
+            return None
     
     def _optimize_search_params(
         self, 
