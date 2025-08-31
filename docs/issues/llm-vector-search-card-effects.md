@@ -8,14 +8,14 @@
 2) zero-hit rate と negative feedback rate を計測し 0件率を段階的に低下  
 3) 回帰（既存 pytest）維持 & レイテンシ劣化 ±10% 以内
 
-### 2. ステータスサマリ
-| 区分 | 件数 | 備考 |
-|------|------|------|
-| Done | 多数(+2) | 追加: Zero-hit 回帰テスト(3クエリ) / 精度バッチ評価スクリプト初版 |
-| In Progress | 2 | min_score 最適化検証, synonym Precision 影響測定 |
-| Next | 3 | Stage3 再試行 / KPIベースライン確定 / ガイド更新 |
-| Backlog | 6 | Embedding 強化 / 自動タグ付け 等 |
-| Future | 4 | 再ランキング / Hard Negative / アラート |
+### 2. ステータスサマリ (2025-09-01 更新)
+| 区分 | 件数 | 主な追加/変更点 |
+|------|------|----------------|
+| Done | 前回比 +6 | Plateau 条件付き combined 再投入 / 境界テスト / 評価CSV plateau率行 / --export-config / Prometheus plateau カウンタ / インデクサ coverage & stats-json |
+| In Progress | 1 | synonym 展開 Precision 影響測定 (negative token 分析準備) |
+| Next | 3 | Stage3 (synonym 再埋め込み) / KPI ラベル再充填 & 再測定 / ガイド更新 |
+| Backlog | 7 | Embedding 強化 / 自動タグ付け / threshold 再学習 等 |
+| Future | 4 | 再ランキング / Hard Negative / Alert / A/B |
 
 ### 3. 完了 (Done)
 - インデクサ作成 + `qa_answer` / `effect_combined` 生成（現在デフォルト combined 有効、`--no-combined` で無効化）
@@ -32,14 +32,14 @@
   - 現状: relevant 未入力のため KPI ベースライン数値は未確定（P@10/Recall@10=0.0 仕様上）。
 
 ### 4. 進行中 (In Progress)
-1. `VectorService.search()` 実測ログを用いた min_score / retry 効果分析（0件率ベースライン確定）
-2. 同義語展開の Precision 影響観測 (negative_feedback トークン頻度抽出)
+1. 同義語展開の Precision 影響観測 (negative_feedback トークン頻度抽出 下準備段階)
+  - min_score / retry 効果一次分析は plateau 実装後第5計測で一旦収束（MRR 改善余地のみ残存）。
 
 ### 5. 直近着手 (Next)
-1. 0件再試行 Stage3 実装: synonym 再埋め込み + feature flag (`ENABLE_VECTOR_STAGE3`) + ログ差分 (expanded_terms)
-2. KPI ベースライン確定: `data/eval/relevance_labels.json` へ relevant タイトル入力 → `--real` 実行で初回 P@10 / Recall@10 / MRR 算出 & ドキュメント更新
-3. ガイド更新: `docs/guides/hybrid_search_guide.md` に retry 段階 (Stage0/1/2), synonym 展開, 評価スクリプト利用手順追記
-4. （オプション）評価スクリプト改善: Zero-hit 行抽出 / relevant 未設定クエリの除外オプション (`--skip-unlabeled`) 追加検討
+1. Stage3 実装: 0件または plateau 継続時 synonym 再埋め込み再検索 (`ENABLE_VECTOR_STAGE3`) + ログ `expanded_terms`
+2. KPI 再確定: relevance ラベル追記 → `eval_precision_batch.py --real --export-config` 実行で P@10 / Recall@10 / MRR / plateau_trigger_rate 更新
+3. ガイド更新: retry 戦略 (Stage0/1(+plateau)/2), 評価スクリプト & config snapshot & dump-scores 利用手順
+4. (任意) Zero-hit 詳細列挙オプション `--list-zero-hit` 追加検討
 
 ### 6. Backlog（優先度 中）
 1. EmbeddingService 軽量正規化強化（助詞/ストップワード削減, 代表動詞強調）
@@ -221,7 +221,7 @@ Namespace 件数サマリ (監査 / analyzer):
 | Recall@10 | 0.4198 | ±0.0000 | Recall 横ばい（plateau 発火率低/要調整余地）|
 | MRR | 0.3377 | +0.002〜0.003 | MRR 部分回復も目標 0.38 未達 |
 | zero_hit_rate | 0.0000 | ±0.0000 | 0件維持 |
-| plateau_trigger_rate | スクリプト出力 (次計測で値確定) | - | 低頻度なら閾値緩和検討 |
+| plateau_trigger_rate | CSV フッタ PLATEAU_TRIGGER_RATE 行出力済 (値収集中) | - | 低頻度なら閾値緩和検討 |
 
 所見:
 1. Plateau 条件付き注入により MRR 下振れ抑制しつつ combined の再活用を段階化できた。
@@ -242,6 +242,11 @@ Namespace 件数サマリ (監査 / analyzer):
 1. plateau_trigger_rate < 10% かつ MRR 目標未達 → 閾値を緩和 (stddev +0.001 / spread +0.002)。
 2. Precision 低下 or ノイズ増加時 → combined_extra_min_score +0.01 上げる、あるいは enable_combined=false で効果検証。
 3. Recall 変化が小さい場合 → Stage2 (synonym 再埋め込み) 追加を優先。
+
+追加計測/可観測性 (2025-09-01):
+- 評価CSV 末尾に `PLATEAU_TRIGGER_RATE` (rate,count,applicable) 行を追加。
+- `--export-config` で snapshot JSON 出力 (差分追跡容易化)。
+- Prometheus カウンタ `plateau_trigger_total` を追加し Grafana で発火率監視。
 
 ---
 ## 7. フィードバック基盤（MVP 要約）
@@ -328,6 +333,40 @@ Namespace 件数サマリ (監査 / analyzer):
 ---
 （以上）
 
+---
+## 17. 次にやること（優先とチューニング手順 2025-09-01）
+優先度: P1 高 / P2 中 / P3 低
+
+P1
+1. Stage3 実装 (`ENABLE_VECTOR_STAGE3`): synonym 再埋め込み + `expanded_terms` ログ
+2. KPI 再測定: ラベル補完 → `eval_precision_batch.py --real --export-config --dump-scores` → CSV / config snapshot コミット
+3. ガイド更新: retry 戦略 / plateau パラメータ調整 / 評価ワークフロー / config diff 運用
+
+P2
+4. Zero-hit 詳細列挙 `--list-zero-hit` オプション
+5. ranking heuristic フラグ `VECTOR_RANKING_LIGHT_BOOST` 雛形 (短文/keyword overlap 微ブースト)
+6. feedback 集計スクリプト v1 (negative_rate, token頻度, plateau発火時 vs 非発火比較)
+
+P3
+7. Embedding 正規化追加 (助詞軽除去 / ストップ語) AB計測
+8. plateau パラメータグリッド探索 (stddev, spread, extra_min_score) 第6計測後
+9. threshold / confidence_adjustments 再学習
+
+### Plateau チューニング簡易フロー
+1. ラベル更新後バッチ実行 → PLATEAU_TRIGGER_RATE 確認
+2. 発火率 <0.10 & MRR 未達 → stddev +0.001 / spread +0.002
+3. 発火率 >0.30 or Precision 低下兆候 → stddev -0.001 / spread -0.002 あるいは extra_min_score +0.01
+4. combined ノイズ感: extra_min_score +0.01〜+0.02 (上限 0.05 目安)
+5. Stage3 有効化 → zero_hit_rate 改善が +2pp 以上継続で恒常化検討
+6. 変更毎に `--export-config` snapshot を保存し差分レビュー（再現性確保）
+
+### 計測ログ活用
+- SEARCH_EVENT: `retry_stage`, `plateau_stats(stddev,spread,triggered)` で条件適合状況を即確認
+- Prometheus: `plateau_trigger_total` / `zero_hit_total` レート差分で Stage3 効果判定
+- CSV フッタ: PLATEAU_TRIGGER_RATE を Git 管理 → 履歴トレンド可視化
+
+---
+
 - `convert_data.json` 充足度チェック（現状）
   - 総件数: 398
   - namespace 内訳: effect_1=198, effect_2=118, effect_3=25, effect_4=3, effect_5=1, qa_question=53
@@ -413,16 +452,13 @@ Namespace 件数サマリ (監査 / analyzer):
 - [x] VectorService: クエリ種別に応じた namespace フィルタを実装
   - SEMANTIC/HYBRID → `effect_*`（＋あれば `effect_combined`）を優先/限定
   - FILTERABLE → 既定のまま or Vectorを補助使用
-- [ ] VectorService: タイトル重複時は最大スコアを保持し、グローバルランキングで返却
-  - `scores[title] = max(scores.get(title, 0), score)` に変更
-  - 返却前にスコア降順で dedupe + sort（単体利用時の一貫性向上）
+- [x] VectorService: タイトル重複時は最大スコア集約 & 降順ソート実装済
 - [ ] EmbeddingService: 効果中心の埋め込みテキスト生成を強化
   - SEMANTIC/HYBRID 時は効果キーワードを強調し、不要な属性語/助詞を軽く正規化
   - 日本語ストップワード/単純な表記ゆれ（例: 「〜できる」「可能」）の正規化を軽量で追加
 - [ ] Indexing: `qa_answer` を取り込み、`effect_combined` を追加生成（任意）
   - combined の利用は設定で切替（効果 recall が要るときに限定）
-- [ ] Logging/可観測性: 検索毎に namespace 選択・上位スコア上位5件・しきい値を記録
-  - 調整ループを短縮し、誤設定の早期検知に活用
+- [x] Logging/可観測性: namespace / top5_scores / min_score / plateau_stats を構造化記録 (SEARCH_EVENT)
 - [ ] Config チューニング: `similarity_thresholds`/`confidence_adjustments` の再学習
   - サンプルクエリで Precision@K/Recall@K を測って再設定
 
