@@ -292,6 +292,23 @@ def run_evaluation(args: argparse.Namespace) -> int:
         writer.writerow(["OVERALL_Recall@K", f"{overall_recall:.4f}"])
         writer.writerow(["OVERALL_MRR", f"{overall_mrr:.4f}"])
         writer.writerow(["ZERO_HIT_RATE", f"{zero_hit_rate:.4f}"])
+        plateau_rate = (plateau_trigger_count / plateau_applicable_count) if plateau_applicable_count else 0.0
+        writer.writerow(["PLATEAU_TRIGGER_RATE", f"{plateau_rate:.4f}", plateau_trigger_count, plateau_applicable_count])
+
+    # Export config snapshot if requested
+    if getattr(args, 'export_config', False):
+        try:
+            from app.core.config import settings as _settings  # type: ignore
+            snapshot = {
+                "vector_search_config": getattr(_settings, 'VECTOR_SEARCH_CONFIG', {}),
+                "timestamp": ts
+            }
+            cfg_path = os.path.join(out_dir, f"config_snapshot_{ts}.json")
+            with open(cfg_path, 'w', encoding='utf-8') as cf:
+                json.dump(snapshot, cf, ensure_ascii=False, indent=2)
+            print(f"[EXPORT] Config snapshot written: {cfg_path}")
+        except Exception as e:  # pragma: no cover
+            print(f"[WARN] Failed to export config: {e}")
 
     # Optional dump-scores CSV
     if args.dump_scores and raw_topk_store:
@@ -328,6 +345,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--real", action="store_true", help="Use real classification/vector search (requires env)")
     parser.add_argument("--dump-scores", action="store_true", help="Dump per-query raw top-k scores & namespaces")
     parser.add_argument("--skip-unlabeled", action="store_true", help="Skip queries whose relevant list is empty (they don't affect Recall anyway)")
+    parser.add_argument("--export-config", action="store_true", help="Also export current VECTOR_SEARCH_CONFIG snapshot JSON next to CSV")
     return parser.parse_args(argv)
 
 

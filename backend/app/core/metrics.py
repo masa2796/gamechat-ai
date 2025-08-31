@@ -32,6 +32,12 @@ ZERO_HIT_COUNTER = Counter(
     "Total number of search queries resulting in zero hits",
 )
 
+# Plateau trigger counter (Stage1 combined reinsertion)
+PLATEAU_TRIGGER_COUNTER = Counter(
+    "gamechat_ai_plateau_trigger_total",
+    "Total number of times plateau condition triggered combined namespace reinsertion",
+)
+
 def inc_feedback(rating: int, query_type: Optional[str]) -> None:
     """Increment feedback counter.
 
@@ -48,5 +54,12 @@ def inc_zero_hit() -> None:
     """Increment zero-hit counter."""
     try:
         ZERO_HIT_COUNTER.inc()
+    except Exception:
+        pass
+
+def inc_plateau_trigger() -> None:
+    """Increment plateau trigger counter."""
+    try:
+        PLATEAU_TRIGGER_COUNTER.inc()
     except Exception:
         pass

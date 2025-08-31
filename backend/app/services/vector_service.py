@@ -1,13 +1,15 @@
 from typing import List, Optional
+import os
+import asyncio
 from upstash_vector import Index
+from dotenv import load_dotenv
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationResult, QueryType
 from ..core.config import settings
 from ..core.decorators import handle_service_exceptions
 from ..core.logging import GameChatLogger
-import os
-import asyncio
-from dotenv import load_dotenv
+from ..core.metrics import inc_plateau_trigger
+
 load_dotenv()
 
 class VectorService:
@@ -142,6 +144,10 @@ class VectorService:
             plateau_triggered = True
             adj_min = base_min + extra_min
             _query_ns(second_namespaces, adj_min, min(max(combined_top_k, 10), 30))
+            try:
+                inc_plateau_trigger()
+            except Exception:
+                pass
             if scores and final_stage is None:
                 final_stage = 1
             used_ns = second_namespaces
