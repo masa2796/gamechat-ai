@@ -74,7 +74,7 @@
 
 ﻿# Issue: カード効果ベクトル検索最適化（LLM活用）
 
-最終更新: 2025-08-29
+最終更新: 2025-09-01
 
 本ドキュメントは肥大化した旧 Issue メモを再編し、意思決定と日次運用に必要な最小限の共通認識・優先課題・計測指標を即座に把握できる形へ整理したものです。旧詳細は末尾 Appendix に残し必要時のみ参照します。
 
@@ -90,7 +90,7 @@
 | 区分 | 状態 | 主内容 |
 |------|------|--------|
 | Done | ✅ | インデクサ / effect_combined / synonym 軽展開 / structured log / metrics counter / score 集約 / effect_1..9 拡張 / relevance ラベル投入 / Stage0 combined 除外実装 / 評価 dump-scores / plateau 条件付き combined 再投入 |
-| In Progress | 🔄 | 第4計測 (Stage0 combined 除外効果) / min_score 差別適用検討 / synonym Precision 影響測定 |
+| In Progress | 🔄 | 第5計測結果分析 (plateau 条件適合率 / MRR未達ギャップ) / Stage2 (synonym 再埋め込み) 設計 / パラメータグリッド準備 |
 | Next | ⏭ | Retry Stage3 実装 / ガイド更新 (retry+dump-scores) / combined 個別閾値検証 |
 | Backlog | 📌 | Embedding 正規化強化 / 自動タグ付け / threshold 再学習 ほか |
 | Future | 🧪 | 再ランキング / Hard Negative / Alerting / A/B |
@@ -137,7 +137,7 @@ Stage2 実装後は zero_hit_rate の減衰度を計測し、恒久的な base �
 | Recall@10 | 再現 | relevant@10 / total_relevant | +5pp 継続 |
 | MRR | ランキング | 1/rank_first_relevant | 上昇傾向 |
 
-ベースライン (第2/第3計測) 測定済。第4計測で Stage0 除外効果確認予定。
+ベースライン (第2/第3計測) 測定済。第4/第5計測で Stage0 除外 & plateau 条件付き再投入効果を確認済。次は 第6計測 (Stage2 試行 / plateau パラメータグリッド適用) 予定。
 
 ### 🧪 初回ベースライン (2025-08-27 08:41 JST)
 eval_precision_batch.py --real 実行 (labels v1 / Top-K=10)
@@ -221,7 +221,7 @@ Namespace 件数サマリ (監査 / analyzer):
 | Recall@10 | 0.4198 | ±0.0000 | Recall 横ばい（plateau 発火率低/要調整余地）|
 | MRR | 0.3377 | +0.002〜0.003 | MRR 部分回復も目標 0.38 未達 |
 | zero_hit_rate | 0.0000 | ±0.0000 | 0件維持 |
-| plateau_trigger_rate | (後段スクリプト改修で算出予定) | - | 初期は低頻度想定 |
+| plateau_trigger_rate | スクリプト出力 (次計測で値確定) | - | 低頻度なら閾値緩和検討 |
 
 所見:
 1. Plateau 条件付き注入により MRR 下振れ抑制しつつ combined の再活用を段階化できた。

@@ -40,10 +40,27 @@ class EmbeddingService:
             self.is_mocked = False
         # クエリ正規化サービス（助詞の軽正規化/同義語の軽展開に利用）
         self._normalizer = QueryNormalizationService()
+        # 軽正規化 / 同義語代表語追加の挙動を環境変数で制御 (ABテスト/将来調整用)
+        self.enable_light_normalize = os.getenv("EMBED_LIGHT_NORMALIZE", "true").lower() == "true"
+        self.enable_rep_terms = os.getenv("EMBED_ADD_REP_TERMS", "true").lower() == "true"
 
     @handle_service_exceptions("embedding")
     async def get_embedding(self, query: str) -> List[float]:
         """質問文をOpenAI APIでエンベディングに変換"""
+        original_query = query
+        if self.enable_light_normalize:
+            try:
+                # QueryNormalizationService に依存: tokenize + synonym map
+                norm_result = self._normalizer.normalize(query)
+                # 代表語を1語だけEmbedding用に後置（ノイズ抑制）
+                if self.enable_rep_terms and norm_result.representative_terms:
+                    rep = " ".join(norm_result.representative_terms[:3])  # 上限3語
+                    query = f"{norm_result.normalized_query}\n{rep}" if rep else norm_result.normalized_query
+                else:
+                    query = norm_result.normalized_query
+            except Exception as e:  # フォールバック: 元のクエリを使用
+                GameChatLogger.log_warning("embedding_service", f"軽正規化失敗 fallback: {e}")
+                query = original_query
         # モック環境での処理
         if self.is_mocked:
             GameChatLogger.log_info("embedding_service", "モック環境で埋め込み生成", {
@@ -68,7 +85,9 @@ class EmbeddingService:
         
         GameChatLogger.log_info("embedding_service", "埋め込み生成開始", {
             "query_length": len(query),
-            "query_preview": query[:50]
+            "query_preview": query[:50],
+            "light_normalize": self.enable_light_normalize,
+            "rep_terms": self.enable_rep_terms
         })
         
         # レート制限対応のためのリトライ処理
@@ -102,7 +121,7 @@ class EmbeddingService:
                 else:
                     delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
                     GameChatLogger.log_warning("embedding_service", f"OpenAI Embedding APIレート制限エラー、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
-                    asyncio.run(asyncio.sleep(delay))
+                    await asyncio.sleep(delay)
                     continue
                     
             except Exception as e:
@@ -118,7 +137,7 @@ class EmbeddingService:
                     else:
                         delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
                         GameChatLogger.log_warning("embedding_service", f"OpenAI Embedding APIレート制限エラー（その他）、{delay:.1f}秒後にリトライします (試行 {attempt + 1}/{max_retries + 1})")
-                        asyncio.run(asyncio.sleep(delay))
+                        await asyncio.sleep(delay)
                         continue
                 else:
                     GameChatLogger.log_error("embedding_service", f"OpenAI Embedding API呼び出しエラー (試行 {attempt + 1}): {error_str}", e)

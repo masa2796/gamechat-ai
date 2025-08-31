@@ -180,6 +180,7 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Max number of cards to process (0=all)")
     parser.add_argument("--skip-embed", action="store_true", help="Do not call embedding API (text_len 0以外でも upsert せず高速監査用)")
     parser.add_argument("--output", type=str, default=str(project_root / 'data' / 'vector_index_effects.jsonl'), help="Audit JSONL output path")
+    parser.add_argument("--stats-json", type=str, default="", help="Write field coverage stats to this JSON file")
     args = parser.parse_args()
 
     openai_key, upstash_url, upstash_token = load_env()
@@ -216,12 +217,52 @@ def main():
     processed_cards = 0
     total_records = 0
     ns_counts: Dict[str, int] = {}
+    # coverage counters
+    coverage = {
+        "cards_total": 0,
+        "with_name": 0,
+        "with_flavorText": 0,
+        "with_qa": 0,
+        "qa_questions": 0,
+        "qa_answers": 0,
+        "effects_present": {f"effect_{i}": 0 for i in range(1,10)},
+        "missing_name_samples": [],
+        "missing_effect_1_samples": [],
+    }
 
     include_combined = not args.no_combined
 
     for card in cards:
         if args.limit and processed_cards >= args.limit:
             break
+        coverage["cards_total"] += 1
+        name = card.get("name")
+        if name:
+            coverage["with_name"] += 1
+        else:
+            if len(coverage["missing_name_samples"]) < 5:
+                coverage["missing_name_samples"].append(card.get("id"))
+        # effects coverage
+        has_effect1 = False
+        for i in range(1,10):
+            key = f"effect_{i}"
+            if card.get(key):
+                coverage["effects_present"][key] += 1
+                if i == 1:
+                    has_effect1 = True
+        if not has_effect1 and len(coverage["missing_effect_1_samples"]) < 5:
+            coverage["missing_effect_1_samples"].append(card.get("id"))
+        # qa coverage
+        qa_list = card.get("qa")
+        if isinstance(qa_list, list) and qa_list:
+            coverage["with_qa"] += 1
+            for qa in qa_list:
+                if qa.get("question"):
+                    coverage["qa_questions"] += 1
+                if qa.get("answer"):
+                    coverage["qa_answers"] += 1
+        if card.get("flavorText"):
+            coverage["with_flavorText"] += 1
         records = list(iter_records_from_card(card, include_combined=include_combined, namespace_filter=ns_filter))
         if not records:
             processed_cards += 1
@@ -296,6 +337,33 @@ def main():
     for ns, cnt in sorted(ns_counts.items()):
         print(f"  {ns}: {cnt}")
     print(f"audit_file: {out_path}")
+    # coverage summary percentages
+    if coverage["cards_total"]:
+        def pct(x: int) -> str:
+            return f"{(x/coverage['cards_total']*100):.1f}%"
+        print("--- Field Coverage ---")
+        print(f" name_present: {coverage['with_name']}/{coverage['cards_total']} ({pct(coverage['with_name'])})")
+        print(f" flavorText_present: {coverage['with_flavorText']}/{coverage['cards_total']} ({pct(coverage['with_flavorText'])})")
+        print(f" qa_present: {coverage['with_qa']}/{coverage['cards_total']} ({pct(coverage['with_qa'])}) questions={coverage['qa_questions']} answers={coverage['qa_answers']}")
+        for i in range(1,10):
+            key = f"effect_{i}"
+            val = coverage['effects_present'][key]
+            if val:
+                print(f" {key}: {val}/{coverage['cards_total']} ({pct(val)})")
+        if coverage['missing_name_samples']:
+            print(f" missing_name_sample_ids: {coverage['missing_name_samples']}")
+        if coverage['missing_effect_1_samples']:
+            print(f" missing_effect_1_sample_ids: {coverage['missing_effect_1_samples']}")
+    # write stats json if requested
+    if args.stats_json:
+        try:
+            stats_out = Path(args.stats_json)
+            stats_out.parent.mkdir(parents=True, exist_ok=True)
+            with open(stats_out, 'w', encoding='utf-8') as sf:
+                json.dump(coverage, sf, ensure_ascii=False, indent=2)
+            print(f"stats_json: {stats_out}")
+        except Exception as e:  # pragma: no cover
+            print(f"[WARN] failed writing stats json: {e}")
 
 
 if __name__ == "__main__":
