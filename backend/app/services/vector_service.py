@@ -38,8 +38,12 @@ class VectorService:
                 GameChatLogger.log_warning("vector_service", "🟡 Upstash Vector設定不足")
             self.vector_index = None
             return
-        self.vector_index = Index(url=upstash_url, token=upstash_token)
-        GameChatLogger.log_success("vector_service", "✅ Upstash Vector 初期化成功")
+        try:
+            self.vector_index = Index(url=upstash_url, token=upstash_token)
+            GameChatLogger.log_success("vector_service", "✅ Upstash Vector 初期化成功")
+        except Exception as e:  # 初期化エラーは致命的にせずログのみ
+            GameChatLogger.log_error("vector_service", "Upstash Vector 初期化失敗 (フォールバック: 無効化)", e)
+            self.vector_index = None
 
     @handle_service_exceptions("vector_service")
     async def search(

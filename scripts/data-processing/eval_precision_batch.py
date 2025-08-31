@@ -189,9 +189,14 @@ def run_evaluation(args: argparse.Namespace) -> int:
     top_k = args.top_k
     per_query: List[QueryEvalResult] = []
     raw_topk_store: list[dict[str, any]] = []  # dump-scores 用
+    plateau_trigger_count = 0
+    plateau_applicable_count = 0  # scoresが存在したクエリで判定対象数 (approx)
     for item in labels:
         query = item["query"]
         relevant = item["relevant"]
+        if args.skip_unlabeled and not relevant:
+            print(f"[EVAL] Skip unlabeled query: {query}")
+            continue
         print(f"[EVAL] Processing {len(per_query)+1}/{len(labels)}: {query}", flush=True)
         try:
             # HybridSearchService.search is async
@@ -210,13 +215,16 @@ def run_evaluation(args: argparse.Namespace) -> int:
                         titles.append(str(title))
             # fallback: search_info has counts but not titles; keep as is
             eval_res = compute_metrics(query, titles, relevant, top_k)
-            if args.dump_scores:
-                # raw scores はサービス内部保持 (vector_service.last_scores) を参照できるようにする
-                try:
-                    vs = getattr(service, 'vector_service', None)
-                    last_params = getattr(vs, 'last_params', {}) if vs else {}
+            # Collect plateau stats always
+            try:
+                vs = getattr(service, 'vector_service', None)
+                last_params = getattr(vs, 'last_params', {}) if vs else {}
+                if isinstance(last_params, dict) and 'plateau_stats' in last_params:
+                    plateau_applicable_count += 1
+                    if last_params.get('plateau_triggered'):
+                        plateau_trigger_count += 1
+                if args.dump_scores:
                     last_scores = getattr(vs, 'last_scores', {}) if vs else {}
-                    # topK スコア抽出
                     ranked = sorted(last_scores.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
                     for rank, (title, score) in enumerate(ranked, start=1):
                         raw_topk_store.append({
@@ -228,7 +236,8 @@ def run_evaluation(args: argparse.Namespace) -> int:
                             'stage': last_params.get('final_stage'),
                             'namespaces': ';'.join(last_params.get('used_namespaces', [])[:10]) if isinstance(last_params.get('used_namespaces'), list) else ''
                         })
-                except Exception as e:  # pragma: no cover
+            except Exception as e:  # pragma: no cover
+                if args.dump_scores:
                     print(f"[WARN] dump-scores capture failed: {e}")
             per_query.append(eval_res)
         except Exception as e:  # pragma: no cover
@@ -302,7 +311,9 @@ def run_evaluation(args: argparse.Namespace) -> int:
     print(f"P@{top_k}: {overall_p:.4f}")
     print(f"Recall@{top_k}: {overall_recall:.4f} (labels w/ relevance: {len(recall_list)})")
     print(f"MRR: {overall_mrr:.4f}")
+    plateau_rate = (plateau_trigger_count / plateau_applicable_count) if plateau_applicable_count else 0.0
     print(f"Zero-Hit Rate: {zero_hit_rate:.4f}")
+    print(f"Plateau Trigger Rate: {plateau_rate:.4f}  (triggered {plateau_trigger_count} / applicable {plateau_applicable_count})")
     print(f"CSV: {out_path}")
     print("================================")
 
@@ -316,6 +327,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=10, help="Top-K cutoff (default=10)")
     parser.add_argument("--real", action="store_true", help="Use real classification/vector search (requires env)")
     parser.add_argument("--dump-scores", action="store_true", help="Dump per-query raw top-k scores & namespaces")
+    parser.add_argument("--skip-unlabeled", action="store_true", help="Skip queries whose relevant list is empty (they don't affect Recall anyway)")
     return parser.parse_args(argv)
 
 
