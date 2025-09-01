@@ -201,8 +201,15 @@ class ClassificationService:
             )
 
         # 念のため防御的アクセス
+        # response.choices[0] への安全アクセス（mypy index ignore除去）
         try:
-            result_text = (response.choices[0].message.content or "").strip()  # type: ignore[index]
+            first_choice = response.choices[0] if getattr(response, "choices", None) else None
+            # first_choice.message.content へは hasattr チェックで安全にアクセス
+            if first_choice and hasattr(first_choice, 'message') and hasattr(first_choice.message, 'content'):
+                content_obj: str | None = getattr(first_choice.message, 'content')
+            else:
+                content_obj = None
+            result_text = (content_obj or "").strip()
         except Exception:
             result_text = ""
         if not result_text:

@@ -93,7 +93,12 @@ class RagService:
             try:
                 classification_obj = search_result.get("classification")
                 query_type = getattr(classification_obj, "query_type", None)
-                query_type_str = query_type.value if hasattr(query_type, "value") else (str(query_type) if query_type else None)
+                if query_type is not None and hasattr(query_type, "value"):
+                    query_type_str = getattr(query_type, "value")  # Enum -> str
+                elif query_type is not None:
+                    query_type_str = str(query_type)
+                else:
+                    query_type_str = None
                 classification_summary = getattr(classification_obj, "summary", None)
                 vector_service = self.vector_service
                 last_scores = getattr(vector_service, 'last_scores', {}) or {}

@@ -9,14 +9,17 @@ from ..core.logging import GameChatLogger
 class FeedbackService:
     """インメモリ簡易実装 (MVP)。将来RDB/Auditログへ移行予定。"""
     _instance: Optional['FeedbackService'] = None
+    # インスタンス初期化済みフラグ（動的属性アクセスを避けてmypy対応）
+    _initialized: bool = False
 
-    def __new__(cls, *args, **kwargs) -> 'FeedbackService':
+    def __new__(cls, *args: object, **kwargs: object) -> 'FeedbackService':
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self) -> None:
-        if hasattr(self, '_initialized') and self._initialized:
+        # 既に初期化済みならスキップ
+        if self._initialized:
             return
         self._initialized = True
         self._context_lock = threading.Lock()

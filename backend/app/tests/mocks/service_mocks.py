@@ -1,7 +1,7 @@
 """
 サービス用のモッククラス定義
 """
-from typing import List
+from typing import List, Optional
 from unittest.mock import MagicMock
 from app.models.classification_models import ClassificationResult, QueryType
 
@@ -9,7 +9,7 @@ from app.models.classification_models import ClassificationResult, QueryType
 class MockMatch:
     """Upstash検索結果のmatchオブジェクトのモック"""
     
-    def __init__(self, score: float, title: str, text: str, id: str = None):
+    def __init__(self, score: float, title: str, text: str, id: Optional[str] = None):
         self.score = score
         self.metadata = {"title": title, "text": text}
         self.id = id or f"id-{hash(title)}"
@@ -65,7 +65,7 @@ class MockClassificationResult:
     """分類結果のモッククラス"""
     
     @classmethod
-    def create_semantic(cls, confidence: float = 0.8, summary: str = None) -> ClassificationResult:
+    def create_semantic(cls, confidence: float = 0.8, summary: Optional[str] = None) -> ClassificationResult:
         """セマンティック分類結果を生成"""
         return ClassificationResult(
             query_type=QueryType.SEMANTIC,
@@ -77,7 +77,7 @@ class MockClassificationResult:
         )
     
     @classmethod
-    def create_filterable(cls, confidence: float = 0.9, summary: str = None) -> ClassificationResult:
+    def create_filterable(cls, confidence: float = 0.9, summary: Optional[str] = None) -> ClassificationResult:
         """フィルター可能分類結果を生成"""
         return ClassificationResult(
             query_type=QueryType.FILTERABLE,
@@ -89,7 +89,7 @@ class MockClassificationResult:
         )
     
     @classmethod
-    def create_hybrid(cls, confidence: float = 0.85, summary: str = None) -> ClassificationResult:
+    def create_hybrid(cls, confidence: float = 0.85, summary: Optional[str] = None) -> ClassificationResult:
         """ハイブリッド分類結果を生成"""
         return ClassificationResult(
             query_type=QueryType.HYBRID,
@@ -150,8 +150,8 @@ class MockOpenAIResponse:
         query_type: str = "semantic",
         summary: str = "テスト分類結果",
         confidence: float = 0.8,
-        search_keywords: List[str] = None,
-        filter_keywords: List[str] = None
+        search_keywords: Optional[List[str]] = None,
+        filter_keywords: Optional[List[str]] = None
     ):
         """分類レスポンスのモック"""
         import json

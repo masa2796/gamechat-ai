@@ -66,7 +66,7 @@ class TestDataFactory:
     def create_filter_classification() -> ClassificationResult:
         """フィルター分類結果を生成"""
         return ClassificationResult(
-            query_type=QueryType.FILTER,
+            query_type=QueryType.FILTERABLE,
             summary="フィルター検索",
             confidence=0.90,
             search_keywords=[],

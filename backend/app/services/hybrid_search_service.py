@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union, Sequence
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType
 from ..core.config import settings
@@ -12,24 +12,20 @@ from ..core.logging import GameChatLogger
 class HybridSearchService:
     def _merge_results_weighted(
         self,
-        db_titles: list[str],
-        vector_titles: list[str],
-        db_scores: dict,
-        vector_scores: dict,
+        db_titles: Sequence[Union[str, ContextItem]],
+        vector_titles: Sequence[Union[str, ContextItem]],
+        db_scores: dict[str, float],
+        vector_scores: dict[str, float],
         classification: ClassificationResult,
         top_k: int,
-        search_quality: dict,
         quality_threshold: float = 0.0,
     ) -> list[str]:
-        """正規化安全版マージ（ContextItem混入対応）"""
+        """DB/ベクトル結果を重み付きでマージし上位タイトルを返す安全実装"""
         if not db_titles and not vector_titles:
-            return self._handle_no_results_optimized(classification)
+            return []
 
         qtype = getattr(classification, "query_type", None)
-        try:
-            qtype_value = qtype.value  # type: ignore[attr-defined]
-        except Exception:
-            qtype_value = str(qtype).lower() if qtype is not None else "semantic"
+        qtype_value = getattr(qtype, "value", "semantic") if qtype is not None else "semantic"
 
         db_weight, vector_weight = 0.5, 0.5
         if qtype_value in ("filterable", "querytype.filterable"):
@@ -51,20 +47,11 @@ class HybridSearchService:
                 db_weight = min(0.9, db_weight + 0.05)
                 vector_weight = 1.0 - db_weight
 
-        norm_db_titles = [t.title if isinstance(t, ContextItem) else str(t) for t in db_titles]
-        norm_vector_titles = [t.title if isinstance(t, ContextItem) else str(t) for t in vector_titles]
+        norm_db_titles: list[str] = [t.title if isinstance(t, ContextItem) else str(t) for t in db_titles]
+        norm_vector_titles: list[str] = [t.title if isinstance(t, ContextItem) else str(t) for t in vector_titles]
 
         merged_scores: dict[str, float] = {}
-        try:
-            all_titles = list(dict.fromkeys(norm_db_titles + norm_vector_titles))
-        except TypeError:
-            seen: set[str] = set()
-            all_titles = []
-            for x in norm_db_titles + norm_vector_titles:
-                if x not in seen:
-                    seen.add(x)
-                    all_titles.append(x)
-
+        all_titles = list(dict.fromkeys(norm_db_titles + norm_vector_titles))
         for title in all_titles:
             db_score = db_scores.get(title)
             vec_score = vector_scores.get(title)
@@ -85,11 +72,8 @@ class HybridSearchService:
             sorted_titles = sorted(all_titles, key=lambda t: merged_scores[t], reverse=True)
 
         if quality_threshold > 0.0:
-            filtered_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
-        else:
-            filtered_titles = sorted_titles
-
-        return filtered_titles[:top_k]
+            sorted_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
+        return sorted_titles[:top_k]
 
     """分類に基づく統合検索サービス（最適化対応）"""
     
@@ -184,8 +168,16 @@ class HybridSearchService:
         elif conf < 0.5:
             quality_threshold = max(0.15, quality_threshold - 0.05)
 
+        # 型: db_titles / vector_titles は list[str] だが後方互換で ContextItem 混入に備え Union 型定義。cast で不変リストを Sequence として渡す。
+        from typing import cast
         merged_titles = self._merge_results_weighted(
-            db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
+            cast(Sequence[Union[str, ContextItem]], db_titles),
+            cast(Sequence[Union[str, ContextItem]], vector_titles),
+            db_scores,
+            vector_scores,
+            classification,
+            top_k,
+            quality_threshold=quality_threshold,
         )
 
         query_type_str = str(classification.query_type).lower()
@@ -279,7 +271,8 @@ class HybridSearchService:
         # DBフィルタ検索
         if getattr(search_strategy, "use_db_filter", False) and getattr(classification, "filter_keywords", None):
             print("--- 最適化データベースフィルター検索実行 ---")
-            expansion_map = self.query_normalizer.build_db_keyword_expansion_mapping(classification.filter_keywords)
+            keywords: list[str] = classification.filter_keywords or []
+            expansion_map = self.query_normalizer.build_db_keyword_expansion_mapping(keywords)
             expanded_keywords = list(expansion_map.values())
             print(f"[DBフィルタ条件] expanded_keywords: {expanded_keywords}")
             try:

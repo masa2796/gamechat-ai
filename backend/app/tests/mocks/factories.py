@@ -1,7 +1,7 @@
 """
 ファクトリーパターンでのテストデータ生成
 """
-from typing import List
+from typing import List, Optional
 from app.models.rag_models import ContextItem
 from app.models.classification_models import ClassificationResult, QueryType
 
@@ -108,7 +108,7 @@ class ClassificationResultFactory:
     def create_semantic_result(
         confidence: float = 0.85,
         summary: str = "意味的検索",
-        search_keywords: List[str] = None
+        search_keywords: Optional[List[str]] = None
     ) -> ClassificationResult:
         """セマンティック検索の分類結果を生成"""
         return ClassificationResult(
@@ -124,7 +124,7 @@ class ClassificationResultFactory:
     def create_filterable_result(
         confidence: float = 0.9,
         summary: str = "フィルター検索",
-        filter_keywords: List[str] = None
+        filter_keywords: Optional[List[str]] = None
     ) -> ClassificationResult:
         """フィルター検索の分類結果を生成"""
         return ClassificationResult(
@@ -140,8 +140,8 @@ class ClassificationResultFactory:
     def create_hybrid_result(
         confidence: float = 0.8,
         summary: str = "ハイブリッド検索",
-        search_keywords: List[str] = None,
-        filter_keywords: List[str] = None
+        search_keywords: Optional[List[str]] = None,
+        filter_keywords: Optional[List[str]] = None
     ) -> ClassificationResult:
         """ハイブリッド検索の分類結果を生成"""
         return ClassificationResult(
