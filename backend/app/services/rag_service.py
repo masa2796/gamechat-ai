@@ -4,9 +4,12 @@ from .embedding_service import EmbeddingService
 from .vector_service import VectorService
 from .llm_service import LLMService
 from .hybrid_search_service import HybridSearchService
+from .feedback_service import feedback_service
+from ..models.feedback_models import QueryContext
 from ..config.ng_words import NG_WORDS
 from ..core.cache import prewarmed_query_cache as query_cache
 import logging
+from datetime import datetime
 import time
 import asyncio
 
@@ -84,9 +87,70 @@ class RagService:
                 logger.info("[RAG][DEBUG] Using context from HybridSearchService directly to avoid duplication")
             else:
                 # with_context=Falseの場合（最小限のレスポンス）
-                response = {
-                    "message": "検索完了"
+                response = {"message": "検索完了"}
+
+            # QueryContext 保存 & 構造化検索ログ出力 (MVP) ※例外は握り潰し
+            try:
+                classification_obj = search_result.get("classification")
+                query_type = getattr(classification_obj, "query_type", None)
+                if query_type is not None and hasattr(query_type, "value"):
+                    query_type_str = getattr(query_type, "value")  # Enum -> str
+                elif query_type is not None:
+                    query_type_str = str(query_type)
+                else:
+                    query_type_str = None
+                classification_summary = getattr(classification_obj, "summary", None)
+                vector_service = self.vector_service
+                last_scores = getattr(vector_service, 'last_scores', {}) or {}
+                last_params = getattr(vector_service, 'last_params', {}) or {}
+                top_scores = sorted([
+                    {"title": t, "score": s} for t, s in last_scores.items()
+                ], key=lambda kv: kv["score"], reverse=True)[:5]
+                vector_top_titles = top_scores
+                namespaces = last_params.get("used_namespaces", []) if isinstance(last_params, dict) else []
+                min_score = last_params.get("min_score") if isinstance(last_params, dict) else None
+                ctx = QueryContext.new(
+                    query_text=rag_req.question,
+                    answer_text="",  # 生成回答は未導入
+                    query_type=query_type_str,
+                    classification_summary=classification_summary,
+                    vector_top_titles=vector_top_titles,
+                    namespaces=namespaces,
+                    min_score=min_score,
+                    top_scores=top_scores
+                )
+                feedback_service.store_query_context(ctx)
+                response["query_id"] = ctx.query_id
+
+                # 構造化ログ統一仕様
+                # フィールド: ts, query_id, stage, normalized_query, namespaces, min_score, top5_scores, retry_stage, zero_hit
+                from ..core.logging import GameChatLogger
+                search_info = search_result.get("search_info", {}) or {}
+                normalized_query = search_info.get("normalized_query")
+                final_stage = last_params.get("final_stage") if isinstance(last_params, dict) else None
+                zero_hit = len(last_scores) == 0
+                structured = {
+                    "ts": datetime.utcnow().isoformat(),
+                    "query_id": ctx.query_id,
+                    "stage": "search_complete",
+                    "retry_stage": 0 if zero_hit else (final_stage or 1),
+                    "normalized_query": normalized_query,
+                    "namespaces": namespaces,
+                    "min_score": min_score,
+                    "top5_scores": top_scores,
+                    "zero_hit": zero_hit,
                 }
+                # Zero-hit metrics (Prometheus stub)
+                if zero_hit:
+                    try:
+                        from ..core.metrics import inc_zero_hit
+                        inc_zero_hit()
+                    except Exception:
+                        pass
+                # JSON line として info レベルで出力（message固定でフィルタ可能）
+                GameChatLogger.log_info("search_structured", "SEARCH_EVENT", structured)
+            except Exception:
+                pass
             
             # レスポンスをキャッシュ（非同期で実行、レスポンス時間に影響しない）
             asyncio.create_task(

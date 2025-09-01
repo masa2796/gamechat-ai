@@ -2,7 +2,6 @@ import re
 import os
 import json
 import asyncio
-import openai
 from typing import List, Dict, Any, Optional
 from ..core.logging import GameChatLogger
 from ..core.config import settings
@@ -1252,19 +1251,32 @@ cardsテーブル
                         print(f"[DEBUG] タイプ条件不一致: {type_condition} not in {item_type}")
                     return False
             
-            # 効果条件チェック
+            # 効果条件チェック（拡張: effect_1..9 + 複合語 AND 判定）
             effect_condition = conditions.get("effect", "")
             if effect_condition:
-                # effect_1, effect_2, effect_3すべてで検索
-                effect_found = False
-                for effect_field in ["effect_1", "effect_2", "effect_3"]:
-                    item_effect = str(item.get(effect_field, ""))
-                    if effect_condition in item_effect:
-                        effect_found = True
+                # 区切り文字で分割（'と' '、' '・' ',' ' '）し空要素除去
+                import re
+                raw_terms = re.split(r"[、・,\s]+|と", effect_condition)
+                effect_terms = [t.strip() for t in raw_terms if t.strip()]
+                if not effect_terms:
+                    effect_terms = [effect_condition]
+
+                # 各 term がいずれかの effect_n に含まれるか（AND 条件）
+                fields = [f"effect_{i}" for i in range(1, 10)]
+                item_effect_texts = [str(item.get(f, "")) for f in fields]
+
+                all_terms_found = True
+                for term in effect_terms:
+                    term_found = any(term in eff for eff in item_effect_texts if eff)
+                    if not term_found:
+                        all_terms_found = False
+                        if self.debug:
+                            print(f"[DEBUG] 効果条件語未マッチ: '{term}' in {fields}")
                         break
-                if not effect_found:
+
+                if not all_terms_found:
                     if self.debug:
-                        print(f"[DEBUG] 効果条件不一致: {effect_condition} not found in effects")
+                        print(f"[DEBUG] 効果条件不一致: {effect_condition} not satisfied (terms={effect_terms})")
                     return False
             
             # 声優条件チェック
@@ -1473,6 +1485,23 @@ cardsテーブル
         """従来の正規表現ベースのフィルタリング（フォールバック用・拡張版）"""
         if self.debug:
             print(f"[DEBUG] _match_filterable_fallback: item={item.get('name', '')}, keyword={keyword}")
+        
+        # OR 記法の簡易対応: "A|B|C" はいずれかが一致すれば True
+        if "|" in keyword:
+            # 空要素を除去しつつ再帰的に判定（各サブキーワードには '|' は含まない想定）
+            alts = [part.strip() for part in keyword.split("|") if part.strip()]
+            for alt in alts:
+                try:
+                    if self._match_filterable_fallback(item, alt):
+                        if self.debug:
+                            print(f"[DEBUG] ORマッチ: '{alt}' matched within '{keyword}'")
+                        return True
+                except RecursionError:
+                    # 念のため再帰安全策
+                    if alt.lower() in str(item.get("name", "")).lower():
+                        return True
+            # どれも一致しない
+            return False
         
         # Phase 2: 複雑な数値パターンのチェック
         complex_conditions = self._parse_complex_numeric_conditions(keyword)

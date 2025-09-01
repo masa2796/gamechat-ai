@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union, Sequence
 from ..models.rag_models import ContextItem
 from ..models.classification_models import ClassificationRequest, ClassificationResult, QueryType
 from ..core.config import settings
@@ -6,33 +6,52 @@ from .classification_service import ClassificationService
 from .database_service import DatabaseService
 from .vector_service import VectorService
 from .embedding_service import EmbeddingService
+from .query_normalization_service import QueryNormalizationService
+from ..core.logging import GameChatLogger
 
 class HybridSearchService:
     def _merge_results_weighted(
         self,
-        db_titles: list[str],
-        vector_titles: list[str],
-        db_scores: dict,
-        vector_scores: dict,
+        db_titles: Sequence[Union[str, ContextItem]],
+        vector_titles: Sequence[Union[str, ContextItem]],
+        db_scores: dict[str, float],
+        vector_scores: dict[str, float],
         classification: ClassificationResult,
         top_k: int,
-        search_quality: dict,
-        quality_threshold: float = 0.0
+        quality_threshold: float = 0.0,
     ) -> list[str]:
-        """
-        スコア加重型のマージロジック（カード名リスト）
-        - DB/ベクトル両方のスコアを活用し、重複除去・加重平均・スコア順ソート
-        - 設計方針（重複除去・優先順位・重み付け・クエリタイプ分岐）に準拠
-        """
+        """DB/ベクトル結果を重み付きでマージし上位タイトルを返す安全実装"""
         if not db_titles and not vector_titles:
-            return self._handle_no_results_optimized(classification)
+            return []
 
-        query_type = getattr(classification, "query_type", None)
-        # スコア辞書を構築
-        db_weight = 0.7
-        vector_weight = 0.3
-        merged_scores = {}
-        all_titles = list(dict.fromkeys(db_titles + vector_titles))
+        qtype = getattr(classification, "query_type", None)
+        qtype_value = getattr(qtype, "value", "semantic") if qtype is not None else "semantic"
+
+        db_weight, vector_weight = 0.5, 0.5
+        if qtype_value in ("filterable", "querytype.filterable"):
+            db_weight, vector_weight = 0.8, 0.2
+        elif qtype_value in ("semantic", "querytype.semantic"):
+            db_weight, vector_weight = 0.3, 0.7
+        else:
+            db_weight, vector_weight = 0.4, 0.6
+
+        try:
+            conf = float(getattr(classification, "confidence", 0.0))
+        except Exception:
+            conf = 0.0
+        if conf >= 0.85:
+            if vector_weight > db_weight:
+                vector_weight = min(0.8, vector_weight + 0.1)
+                db_weight = 1.0 - vector_weight
+            else:
+                db_weight = min(0.9, db_weight + 0.05)
+                vector_weight = 1.0 - db_weight
+
+        norm_db_titles: list[str] = [t.title if isinstance(t, ContextItem) else str(t) for t in db_titles]
+        norm_vector_titles: list[str] = [t.title if isinstance(t, ContextItem) else str(t) for t in vector_titles]
+
+        merged_scores: dict[str, float] = {}
+        all_titles = list(dict.fromkeys(norm_db_titles + norm_vector_titles))
         for title in all_titles:
             db_score = db_scores.get(title)
             vec_score = vector_scores.get(title)
@@ -45,29 +64,17 @@ class HybridSearchService:
             else:
                 merged_scores[title] = 0.0
 
-        # クエリタイプごとに優先度を調整
-        if query_type == "filterable":
-            # DBスコアを優先
-            sorted_titles = sorted(all_titles, key=lambda t: (t in db_titles, merged_scores[t]), reverse=True)
-        elif query_type == "semantic":
-            # ベクトルスコアを優先
-            sorted_titles = sorted(all_titles, key=lambda t: (t in vector_titles, merged_scores[t]), reverse=True)
+        if qtype_value in ("filterable", "querytype.filterable"):
+            sorted_titles = sorted(all_titles, key=lambda t: (t in norm_db_titles, merged_scores[t]), reverse=True)
+        elif qtype_value in ("semantic", "querytype.semantic"):
+            sorted_titles = sorted(all_titles, key=lambda t: (t in norm_vector_titles, merged_scores[t]), reverse=True)
         else:
-            # 加重スコア順
             sorted_titles = sorted(all_titles, key=lambda t: merged_scores[t], reverse=True)
 
-        # 品質スコアによるフィルタリング
         if quality_threshold > 0.0:
-            filtered_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
-        else:
-            filtered_titles = sorted_titles
+            sorted_titles = [t for t in sorted_titles if merged_scores.get(t, 0.0) >= quality_threshold]
+        return sorted_titles[:top_k]
 
-        # 上位N件抽出
-        result_titles = filtered_titles[:top_k]
-
-        # 不足時の補完・提案メッセージ生成（但し、提案は別途処理）
-        # result_titlesはカード名のみとし、提案メッセージは含めない
-        return result_titles
     """分類に基づく統合検索サービス（最適化対応）"""
     
     def __init__(self) -> None:
@@ -75,133 +82,140 @@ class HybridSearchService:
         self.database_service = DatabaseService()
         self.vector_service = VectorService()
         self.embedding_service = EmbeddingService()
+        self.query_normalizer = QueryNormalizationService()
     
     async def search(self, query: str, top_k: int = 3) -> Dict[str, Any]:
         """
         クエリを分類し、最適化された検索戦略でカード名リストを返却
-        
+
         このメソッドはハイブリッド検索システムの中核となる機能で、
         LLMによる分類結果に基づいて最適な検索戦略を選択し、
         データベース検索とベクトル検索を組み合わせて最適な結果を返します。
-        
+
         Args:
             query: 検索クエリ文字列
-                例: "HP100以上のカード", "強いカードを教えて"
             top_k: 返却する最大結果数 (デフォルト: 3)
-                
+
         Returns:
-            検索結果を含む辞書:
-            - classification: 分類結果 (ClassificationResult)
-            - search_strategy: 使用した検索戦略 (SearchStrategy)
-            - db_results: データベース検索結果 (List[ContextItem])
-            - vector_results: ベクトル検索結果 (List[ContextItem])
-            - merged_results: マージされた最終結果 (List[ContextItem])
-            - search_quality: 検索品質評価 (Dict[str, Any])
-            - optimization_applied: 最適化適用フラグ (bool)
-            
-        Raises:
-            ClassificationException: クエリ分類に失敗した場合
-            DatabaseException: データベース検索でエラーが発生した場合
-            VectorException: ベクトル検索でエラーが発生した場合
-            
-        Examples:
-            >>> service = HybridSearchService()
-            >>> result = await service.search("HP100以上のカード", top_k=5)
-            >>> print(result["classification"].query_type)
-            QueryType.FILTERABLE
-            >>> print(len(result["merged_results"]))
-            5
-            
-            >>> # 挨拶の場合は検索をスキップ
-            >>> result = await service.search("こんにちは")
-            >>> print(result["classification"].query_type)
-            QueryType.GREETING
+            検索結果情報の辞書
         """
         print("=== 最適化統合検索開始 ===")
         print(f"クエリ: {query}")
-        
-        # Step 1: LLMによる分類・要約
-        classification = await self._classify_query(query)
-        
+
+        # Step 0: クエリ正規化（前処理）
+        preprocessed_query = self.query_normalizer.preprocess(query)
+        print(f"[Normalize] 原文→前処理: '{query}' -> '{preprocessed_query}'")
+        # DEBUG: 正規化前後のクエリを記録
+        try:
+            GameChatLogger.log_debug(
+                "hybrid_search",
+                "クエリ正規化",
+                {
+                    "raw_query": str(query)[:500],
+                    "preprocessed_query": str(preprocessed_query)[:500],
+                },
+            )
+        except Exception:
+            # ログで例外を起こさないため安全に無視
+            pass
+
+        # Step 1: LLMによる分類・要約（前処理後のクエリを入力）
+        classification = await self._classify_query(preprocessed_query)
+
         # 挨拶の場合は検索をスキップ
         if self._is_greeting(classification):
             return self._create_greeting_response(classification)
-        
+
         # Step 2: 検索戦略の決定と最適化
         search_strategy = self.classification_service.determine_search_strategy(classification)
         optimized_limits = self._get_optimized_limits(classification, top_k)
-        
+
         print(f"検索戦略: DB={search_strategy.use_db_filter}, Vector={search_strategy.use_vector_search}")
         print(f"最適化限界: {optimized_limits}")
-        
+
         # Step 3: 各検索の実行
-        db_titles, vector_titles = await self._execute_searches(
-            classification, search_strategy, optimized_limits, query
+        db_titles, vector_titles, embedding_extra_terms_count = await self._execute_searches(
+            classification, search_strategy, optimized_limits, preprocessed_query
         )
-        
+
         print(f"[DEBUG] After _execute_searches: db_titles type={type(db_titles)}, first_item_type={type(db_titles[0]) if db_titles else 'empty'}")
         if db_titles:
             print(f"[DEBUG] db_titles sample: {db_titles[:3]}")
-        
+
         # Step 4: 結果の品質評価
         search_quality = self._evaluate_search_quality(
             db_titles, vector_titles, classification
         )
-        
+
         # Step 5: 最適化されたマージ・選択
-        # DB/ベクトルのスコアを取得
         db_scores = getattr(self.database_service, "last_scores", {}) if hasattr(self.database_service, "last_scores") else {}
         vector_scores = getattr(self.vector_service, "last_scores", {}) if hasattr(self.vector_service, "last_scores") else {}
-        # 品質スコア閾値（例: 0.3未満は除外）
-        quality_threshold = 0.3
+
+        try:
+            qtype_value = classification.query_type.value  # Enum -> str
+        except Exception:
+            qtype_value = str(getattr(classification, "query_type", "semantic")).lower()
+
+        base_threshold_map = {
+            "filterable": 0.20,
+            "semantic": 0.35,
+            "hybrid": 0.30
+        }
+        quality_threshold = base_threshold_map.get(qtype_value, 0.30)
+        conf = getattr(classification, "confidence", 0.0) or 0.0
+        if conf >= 0.85:
+            quality_threshold = min(0.5, quality_threshold + 0.05)
+        elif conf < 0.5:
+            quality_threshold = max(0.15, quality_threshold - 0.05)
+
+        # 型: db_titles / vector_titles は list[str] だが後方互換で ContextItem 混入に備え Union 型定義。cast で不変リストを Sequence として渡す。
+        from typing import cast
         merged_titles = self._merge_results_weighted(
-            db_titles, vector_titles, db_scores, vector_scores, classification, top_k, search_quality, quality_threshold=quality_threshold
+            cast(Sequence[Union[str, ContextItem]], db_titles),
+            cast(Sequence[Union[str, ContextItem]], vector_titles),
+            db_scores,
+            vector_scores,
+            classification,
+            top_k,
+            quality_threshold=quality_threshold,
         )
 
         query_type_str = str(classification.query_type).lower()
         if query_type_str == "filterable" or query_type_str == "querytype.filterable" or classification.query_type == QueryType.FILTERABLE:
-            # DB検索結果全件をcontextに返す（カード詳細JSON）
-            # デバッグ: db_titlesの型と内容を確認
-            print(f"[DEBUG] FILTERABLE branch entered: db_titles type: {type(db_titles)}, content: {db_titles}")
-            # db_titlesが文字列リストであることを確認し、必要に応じて修正
             if db_titles and isinstance(db_titles[0], str):
-                title_strings = db_titles  # 既に文字列リスト
+                title_strings = db_titles
             else:
-                title_strings = [str(item) for item in db_titles]  # 文字列に変換
-            print(f"[DEBUG] title_strings: {title_strings}")
-            
+                title_strings = [str(item) for item in db_titles]
             card_details = self.database_service.get_card_details_by_titles(title_strings)
             context = card_details
-            
-            # 結果が全くない場合のみ提案を追加
             if len(card_details) == 0:
                 suggestion_message = self._generate_search_suggestion(classification)
                 context.append({"name": "検索のご提案", "suggestion": suggestion_message})
-            
             print(f"最終結果: {len(context)}件（FILTERABLE: DB検索結果全件）")
         else:
-            # それ以外はmerged_titlesで詳細取得＋提案
             details = self.database_service.get_card_details_by_titles(merged_titles)
             context = []
             context.extend(details)
-            
-            # 結果が全くない場合のみ提案を追加
             if len(details) == 0:
                 suggestion_message = self._generate_search_suggestion(classification)
                 context.append({"name": "検索のご提案", "suggestion": suggestion_message})
-            
             print(f"最終結果: {len(context)}件（詳細: {len(details)}件＋提案: {len(context)-len(details)}件）")
         print(f"検索品質: {search_quality}")
 
+        # 後方互換性のため旧キー "merged_results" を一時的に同じ内容で提供
         return {
-            "context": context,  # contextにカード詳細jsonリスト（これがメインのデータ）
+            "context": context,
+            "merged_results": context,  # TODO: 旧テスト削除後に除去予定
             "classification": classification,
             "search_quality": search_quality,
             "search_info": {
                 "query_type": classification.query_type.value if hasattr(classification, "query_type") and hasattr(classification.query_type, "value") else str(getattr(classification, "query_type", QueryType.SEMANTIC)),
                 "confidence": classification.confidence if hasattr(classification, "confidence") else getattr(classification, "confidence", 0.0),
                 "db_results_count": len(db_titles),
-                "vector_results_count": len(vector_titles)
+                "vector_results_count": len(vector_titles),
+                # 正規化後クエリを後段(RagService)での構造化ログ出力用に渡す
+                "normalized_query": preprocessed_query,
+                "embedding_extra_terms_count": embedding_extra_terms_count
             }
         }
 
@@ -249,37 +263,64 @@ class HybridSearchService:
         search_strategy: Any, 
         optimized_limits: Dict[str, int],
         query: str
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[list[str], list[str], int]:
         """各検索を実行しカード名リストを返却"""
-        db_titles = []
-        vector_titles = []
-        
-        if search_strategy.use_db_filter and classification.filter_keywords:
+        db_titles: list[str] = []
+        vector_titles: list[str] = []
+
+        # DBフィルタ検索
+        if getattr(search_strategy, "use_db_filter", False) and getattr(classification, "filter_keywords", None):
             print("--- 最適化データベースフィルター検索実行 ---")
-            print(f"[DBフィルタ条件] filter_keywords: {classification.filter_keywords}")
-            db_limit = optimized_limits["db_limit"]
-            db_titles = await self.database_service.filter_search_titles_async(
-                classification.filter_keywords, db_limit
-            )
+            keywords: list[str] = classification.filter_keywords or []
+            expansion_map = self.query_normalizer.build_db_keyword_expansion_mapping(keywords)
+            expanded_keywords = list(expansion_map.values())
+            print(f"[DBフィルタ条件] expanded_keywords: {expanded_keywords}")
+            try:
+                GameChatLogger.log_debug(
+                    "hybrid_search",
+                    "DBキーワード展開",
+                    {"expansion_map": expansion_map, "original_keywords": classification.filter_keywords},
+                )
+            except Exception:
+                pass
+            db_limit = optimized_limits.get("db_limit", 10)
+            db_titles = await self.database_service.filter_search_titles_async(expanded_keywords, db_limit)
             print(f"DB検索結果: {len(db_titles)}件")
-        
-        if search_strategy.use_vector_search:
+
+        # ベクトル検索（埋め込み拡張）
+        extra_terms_count = 0
+        if getattr(search_strategy, "use_vector_search", False):
             print("--- 最適化ベクトル意味検索実行 ---")
-            # 分類結果に基づく最適化された埋め込み生成
-            query_embedding = await self.embedding_service.get_embedding_from_classification(
-                query, classification
-            )
-            
-            # 最適化されたベクトル検索
-            vector_limit = optimized_limits["vector_limit"]
-            vector_titles = await self.vector_service.search(
-                query_embedding, 
-                top_k=vector_limit,
-                classification=classification
-            )
+            expanded_for_embed = self.query_normalizer.expand_text_for_embedding(query)
+            print(f"[Embedding] expanded_text: {expanded_for_embed}")
+            try:
+                extra_terms_part: list[str] = []
+                if "\n" in expanded_for_embed:
+                    parts = expanded_for_embed.split("\n", 1)
+                    if len(parts) == 2:
+                        extra_terms_part = parts[1].strip().split()
+                extra_terms_count = len(extra_terms_part)
+                GameChatLogger.log_debug(
+                    "hybrid_search",
+                    "埋め込み語展開",
+                    {"extra_terms": extra_terms_part, "extra_terms_count": extra_terms_count},
+                )
+            except Exception:
+                pass
+            try:
+                GameChatLogger.log_debug(
+                    "hybrid_search",
+                    "埋め込み用テキスト（展開後）",
+                    {"expanded_for_embedding": str(expanded_for_embed)[:800]},
+                )
+            except Exception:
+                pass
+            query_embedding = await self.embedding_service.get_embedding_from_classification(expanded_for_embed, classification)
+            vector_limit = optimized_limits.get("vector_limit", 10)
+            vector_titles = await self.vector_service.search(query_embedding, top_k=vector_limit, classification=classification)
             print(f"ベクトル検索結果: {len(vector_titles)}件")
-        
-        return db_titles, vector_titles
+
+        return db_titles, vector_titles, extra_terms_count
     
     def _get_optimized_limits(self, classification: ClassificationResult, top_k: int) -> Dict[str, int]:
         """分類結果に基づいて検索限界を最適化（パフォーマンス改善版）"""

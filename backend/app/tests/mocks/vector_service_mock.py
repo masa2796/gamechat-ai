@@ -1,7 +1,5 @@
-"""
-VectorService用のモッククラス
-"""
-from typing import Optional
+"""VectorService用のモッククラス"""
+from typing import Optional, List, Union
 from unittest.mock import MagicMock
 from app.models.rag_models import ContextItem
 from app.models.classification_models import ClassificationResult
@@ -12,9 +10,9 @@ class MockVectorService:
     
     def __init__(self) -> None:
         self._test_mode = True
-        self.vector_index = MagicMock()  # テスト用のモックインデックス
-        self.vector_index.name = "test_index"  # テスト用の名前を設定
-        self._mock_results = []
+        self.vector_index = MagicMock()
+        self.vector_index.name = "test_index"
+        self._mock_results: List[Union[ContextItem, str]] = []
         self._setup_default_results()
     
     def _setup_default_results(self) -> None:
@@ -37,7 +35,7 @@ class MockVectorService:
             )
         ]
     
-    def set_mock_results(self, results: list[str]) -> None:
+    def set_mock_results(self, results: List[Union[ContextItem, str]]) -> None:
         """テスト用のカード名リストを設定"""
         self._mock_results = results
     
@@ -50,5 +48,5 @@ class MockVectorService:
         min_score: Optional[float] = None
     ) -> list[str]:
         """モック検索結果（カード名リスト）を返す"""
-        results = self._mock_results.copy()
+        results: List[str] = [r.title if isinstance(r, ContextItem) else r for r in self._mock_results]
         return results[:min(top_k, len(results))]
