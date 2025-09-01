@@ -10,7 +10,7 @@ class FeedbackService:
     """インメモリ簡易実装 (MVP)。将来RDB/Auditログへ移行予定。"""
     _instance: Optional['FeedbackService'] = None
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs) -> 'FeedbackService':
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance

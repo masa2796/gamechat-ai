@@ -23,7 +23,8 @@ class ClassificationService:
         is_testing = os.getenv("BACKEND_TESTING", "false").lower() == "true"
 
         self.is_mocked = bool(mock_external or is_testing)
-        self.client = None
+        from typing import Optional
+        self.client: Optional[openai.OpenAI] = None
 
         if not self.is_mocked:
             # OpenAI クライアントを初期化
@@ -89,6 +90,10 @@ class ClassificationService:
                     f"OpenAI API呼び出し開始 (試行 {attempt + 1}/{max_retries + 1})",
                 )
 
+                if self.client is None:
+                    raise ClassificationException(
+                        message="OpenAI クライアント未初期化です", code="CLIENT_NOT_INITIALIZED"
+                    )
                 response = self.client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -195,7 +200,11 @@ class ClassificationService:
                 reasoning="LLM応答なしフォールバック",
             )
 
-        result_text = (response.choices[0].message.content or "").strip()
+        # 念のため防御的アクセス
+        try:
+            result_text = (response.choices[0].message.content or "").strip()  # type: ignore[index]
+        except Exception:
+            result_text = ""
         if not result_text:
             raise ClassificationException(
                 message="OpenAI APIからの応答が空です", code="EMPTY_RESPONSE"

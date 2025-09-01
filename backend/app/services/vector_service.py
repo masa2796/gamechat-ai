@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
 import asyncio
 from upstash_vector import Index
@@ -57,21 +57,27 @@ class VectorService:
         min_score: Optional[float] = None
     ) -> List[str]:
         """ベクトル検索 (Stage0: effect_combined除外→Plateau条件で挿入)"""
+        # 分類結果に応じたパラメータ最適化
         if classification is not None:
             try:
-                top_k, min_score, namespaces = self._optimize_search_params(classification, top_k, min_score, namespaces)
+                top_k, min_score, namespaces = self._optimize_search_params(
+                    classification, top_k, min_score, namespaces
+                )
             except Exception as e:
                 GameChatLogger.log_warning("vector_service", f"最適化失敗: {e}")
+
         if self.vector_index is None:
             return []
 
         scores: dict[str, float] = {}
         score_sources: dict[str, str] = {}
+
         # 統計計算（静的メソッド利用）
-        def _calc_top3_stats(local: dict[str, float]):
+        def _calc_top3_stats(local: dict[str, float]) -> Optional[dict[str, Any]]:
             return self.calc_top3_stats(local)
 
-        def _query_ns(ns_list: List[str], threshold: Optional[float], inner_top_k: int):
+        # 指定 namespace を検索してスコアを集約
+        def _query_ns(ns_list: List[str], threshold: Optional[float], inner_top_k: int) -> None:
             for ns in ns_list:
                 try:
                     res = self.vector_index.query(  # type: ignore
@@ -79,17 +85,21 @@ class VectorService:
                         top_k=inner_top_k,
                         namespace=ns,
                         include_metadata=True,
-                        include_vectors=True
+                        include_vectors=True,
                     )
                     matches = res.matches if hasattr(res, "matches") else res
                     if not matches:
                         continue
                     for m in matches:
-                        sc = float(getattr(m, 'score', 0.0) or 0.0)
+                        sc = float(getattr(m, "score", 0.0) or 0.0)
                         if threshold is not None and sc < threshold:
                             continue
-                        meta = getattr(m, 'metadata', None)
-                        title = meta.get('title', f"{ns} - 情報") if meta and hasattr(meta, 'get') else f"{ns} - 情報"
+                        meta = getattr(m, "metadata", None)
+                        title = (
+                            meta.get("title", f"{ns} - 情報")
+                            if meta and hasattr(meta, "get")
+                            else f"{ns} - 情報"
+                        )
                         if not title:
                             continue
                         prev = scores.get(title)
@@ -97,7 +107,12 @@ class VectorService:
                             scores[title] = sc
                             score_sources[title] = ns
                 except Exception as inner_e:
-                    GameChatLogger.log_error("vector_service", f"Namespace {ns} 検索エラー", inner_e, {"namespace": ns})
+                    GameChatLogger.log_error(
+                        "vector_service",
+                        f"Namespace {ns} 検索エラー",
+                        inner_e,
+                        {"namespace": ns},
+                    )
                     continue
 
         # Namespace 設定
@@ -112,34 +127,48 @@ class VectorService:
             stage0_list = [n for n in ordered_effect if n != "effect_combined"]
         else:
             stage0_list = namespaces or ordered_effect or all_ns
-        second_namespaces = (["effect_combined"] + stage0_list) if has_combined and "effect_combined" not in stage0_list else stage0_list
+        second_namespaces = (
+            ["effect_combined"] + stage0_list
+            if has_combined and "effect_combined" not in stage0_list
+            else stage0_list
+        )
 
+        # Plateau 関連設定
         base_min = float(min_score or 0.5)
-        conf = settings.VECTOR_SEARCH_CONFIG.get("plateau", {}) if isinstance(settings.VECTOR_SEARCH_CONFIG, dict) else {}
-        plateau_enabled = conf.get("enable_combined", True)
-        std_thr = conf.get("stddev", 0.005)
-        spread_thr = conf.get("score_spread", 0.01)
-        extra_min = conf.get("combined_extra_min_score", 0.02)
-        combined_top_k = conf.get("combined_top_k", 12)
+        conf_raw: Any = (
+            settings.VECTOR_SEARCH_CONFIG.get("plateau", {})
+            if isinstance(settings.VECTOR_SEARCH_CONFIG, dict)
+            else {}
+        )
+        conf: Dict[str, Any] = conf_raw if isinstance(conf_raw, dict) else {}
+        plateau_enabled: bool = bool(conf.get("enable_combined", True))
+        std_thr: float = float(conf.get("stddev", 0.005))
+        spread_thr: float = float(conf.get("score_spread", 0.01))
+        extra_min: float = float(conf.get("combined_extra_min_score", 0.02))
+        combined_top_k: int = int(conf.get("combined_top_k", 12))
 
         plateau_triggered = False
         final_stage: Optional[int] = None
         used_ns: List[str] = []
         used_min: Optional[float] = None
 
+        # Stage0 検索
         _query_ns(stage0_list, base_min, top_k)
         used_ns = stage0_list
         used_min = base_min
         if scores:
             final_stage = 0
 
+        # Plateau 判定
         need_plateau = False
         stats = _calc_top3_stats(scores)
         if plateau_enabled:
             if not scores:
                 need_plateau = True
-            elif stats and (stats['stddev'] <= std_thr or stats['spread'] <= spread_thr):
+            elif stats and (stats["stddev"] <= std_thr or stats["spread"] <= spread_thr):
                 need_plateau = True
+
+        # effect_combined 再投入
         if need_plateau and has_combined:
             plateau_triggered = True
             adj_min = base_min + extra_min
@@ -153,9 +182,14 @@ class VectorService:
             used_ns = second_namespaces
             used_min = adj_min
 
+        # 結果整形
         sorted_titles = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         top5 = [{"title": t, "score": s} for t, s in sorted_titles[:5]]
-        GameChatLogger.log_success("vector_service", "ベクトル検索完了", {"total_results": len(sorted_titles), "top5": top5})
+        GameChatLogger.log_success(
+            "vector_service",
+            "ベクトル検索完了",
+            {"total_results": len(sorted_titles), "top5": top5},
+        )
         self.last_scores = scores
         self.last_score_sources = score_sources
         try:
@@ -166,16 +200,18 @@ class VectorService:
                 "top5": top5,
                 "requested_top_k": top_k,
                 "stage0_excluded_combined": has_combined,
-                "namespace_by_title_sample": {t: score_sources.get(t) for t,_ in sorted_titles[:5]},
+                "namespace_by_title_sample": {
+                    t: score_sources.get(t) for t, _ in sorted_titles[:5]
+                },
                 "plateau_triggered": plateau_triggered,
                 "plateau_stats": stats,
             }
         except Exception:
             pass
-        return [t for t,_ in sorted_titles[:top_k]]
+        return [t for t, _ in sorted_titles[:top_k]]
 
     @staticmethod
-    def calc_top3_stats(local: dict[str, float]):
+    def calc_top3_stats(local: dict[str, float]) -> Optional[dict[str, Any]]:
         """上位3件スコアの標準偏差とスプレッドを計算（テスト容易性のため分離）。"""
         try:
             if not local:

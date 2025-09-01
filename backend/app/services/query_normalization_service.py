@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 from typing import List, Dict
+from dataclasses import dataclass
 import unicodedata
+
+
+@dataclass
+class NormalizationResult:
+    normalized_query: str
+    representative_terms: List[str]
 
 
 class QueryNormalizationService:
@@ -33,15 +40,30 @@ class QueryNormalizationService:
     # --- 基本前処理 ---
     def preprocess(self, text: str) -> str:
         """NFKC・空白正規化・簡易長音正規化（破壊的すぎない範囲）"""
-        if not isinstance(text, str):
-            text = str(text)
-        s = unicodedata.normalize("NFKC", text)
+        s = text if isinstance(text, str) else str(text)
+        s = unicodedata.normalize("NFKC", s)
         # 連続空白（全角含む）→ 単一スペース
         s = " ".join(s.replace("\u3000", " ").split())
         # 長音記号の連続は1つに（例: "ーー"→"ー"）。単一の長音は保持。
         while "ーー" in s:
             s = s.replace("ーー", "ー")
         return s
+
+    # --- 高レベル正規化 (Embedding 用) ---
+    def normalize(self, text: str) -> NormalizationResult:
+        """EmbeddingService などが利用する統合正規化 API.
+        現状は preprocess + 同義語代表語抽出を行い representative_terms を返す。
+        """
+        base = self.preprocess(text)
+        reps: List[str] = []
+        # 原文に含まれるグループの先頭語を representative として採用
+        for terms in self._group_name_to_terms.values():
+            for cand in terms:
+                norm_cand = self.preprocess(cand)
+                if norm_cand in base and norm_cand not in reps:
+                    reps.append(norm_cand)
+                    break
+        return NormalizationResult(normalized_query=base, representative_terms=reps)
 
     # --- Keyword 検索向け（強め） ---
     def expand_keywords_for_db(self, keywords: List[str]) -> List[str]:
