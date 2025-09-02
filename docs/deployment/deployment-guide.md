@@ -4,13 +4,13 @@
 
 ## 📋 概要
 
-GameChat AIプロジェクトの包括的なデプロイメントガイドです。開発環境から本番環境まで、すべてのデプロイメント手順を統合してまとめています。
+GameChat AIプロジェクトのデプロイメントガイドです。開発環境でのローカル実行手順を示します。
 
 ## 🎯 クイックスタート
 
 ### 前提条件
-- Google Cloud CLI インストール・認証済み
-- Docker インストール済み  
+- Python 3.8以上
+- Node.js 14以上
 - 必要なAPIキー取得済み（OpenAI、Upstash Vector、reCAPTCHA）
 
 ### 1分でデプロイ
@@ -18,100 +18,8 @@ GameChat AIプロジェクトの包括的なデプロイメントガイドです
 # 1. プロジェクトルートに移動
 cd /Users/masaki/Documents/gamechat-ai
 
-# 2. 一括デプロイスクリプト実行
-./scripts/cloud-run-deploy.sh
-```
-
-## 🚀 本番環境 (Google Cloud Run)
-
-### 現在の本番環境情報
-
-**プロジェクト構成**:
-- **プロジェクトID**: `gamechat-ai`
-- **リージョン**: `asia-northeast1` (東京)
-- **サービス名**: `gamechat-ai-backend`
-- **URL**: `https://gamechat-ai-backend-905497046775.asia-northeast1.run.app`
-
-### デプロイ手順
-
-#### 自動デプロイ（推奨）
-```bash
-./scripts/cloud-run-deploy.sh
-```
-
-#### 手動デプロイ
-```bash
-# 1. Artifact Registryにイメージプッシュ
-docker build -t asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend ./backend
-docker push asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend
-
-# 2. Cloud Runサービス更新
-gcloud run deploy gamechat-ai-backend \
-  --image asia-northeast1-docker.pkg.dev/gamechat-ai/gamechat-ai-backend/backend \
-  --region asia-northeast1 \
-  --platform managed \
-  --allow-unauthenticated \
-  --port 8000 \
-  --memory 1Gi \
-  --cpu 1 \
-  --max-instances 10 \
-  --set-env-vars ENVIRONMENT=production,LOG_LEVEL=INFO
-```
-
-### 環境変数・Secret管理
-
-**Secret Manager設定**:
-```bash
-# APIキー設定
-echo "your_openai_api_key" | gcloud secrets create BACKEND_OPENAI_API_KEY --data-file=-
-echo "your_upstash_url" | gcloud secrets create UPSTASH_VECTOR_REST_URL --data-file=-
-echo "your_upstash_token" | gcloud secrets create UPSTASH_VECTOR_REST_TOKEN --data-file=-
-echo "your_recaptcha_secret" | gcloud secrets create RECAPTCHA_SECRET_TEST --data-file=-
-echo "your_api_key_dev" | gcloud secrets create API_KEY_DEVELOPMENT --data-file=-
-
-# Cloud RunサービスにSecret設定
-gcloud run services update gamechat-ai-backend \
-  --region=asia-northeast1 \
-  --update-secrets BACKEND_OPENAI_API_KEY=BACKEND_OPENAI_API_KEY:latest \
-  --update-secrets UPSTASH_VECTOR_REST_URL=UPSTASH_VECTOR_REST_URL:latest \
-  --update-secrets UPSTASH_VECTOR_REST_TOKEN=UPSTASH_VECTOR_REST_TOKEN:latest \
-  --update-secrets RECAPTCHA_SECRET_TEST=RECAPTCHA_SECRET_TEST:latest \
-  --update-secrets API_KEY_DEVELOPMENT=API_KEY_DEVELOPMENT:latest
-```
-
-## 🌐 フロントエンド (Firebase Hosting)
-
-### Firebase Hosting設定
-
-```bash
-# 1. Firebase初期化
-firebase init hosting
-
-# 2. フロントエンドビルド
-cd frontend
-npm run build
-
-# 3. デプロイ
-firebase deploy --only hosting
-```
-
-### 設定ファイル例
-```json
-{
-  "hosting": {
-    "public": "frontend/out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      {
-        "source": "/api/**",
-        "run": {
-          "serviceId": "gamechat-ai-backend",
-          "region": "asia-northeast1"
-        }
-      }
-    ]
-  }
-}
+# 2. 開発サーバー起動
+uvicorn app.main:app --reload --port 8000
 ```
 
 ## 🔧 開発環境

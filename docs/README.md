@@ -1,6 +1,4 @@
-# GameChat AI - ドキュメント
-
-このディレクトリには、GameChat AIプロジェクトの各種ドキュメントが整理されています。
+GameChat AI docs trimmed for MVP. See `project/release_mvp.md`.
 
 📖 **[ドキュメント ナビゲーション](./navigation.md)** - どこに何があるかの簡潔な案内
 

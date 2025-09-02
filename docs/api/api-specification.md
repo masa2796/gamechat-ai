@@ -1,43 +1,4 @@
-# RAG API仕様書
-
-## 概要
-
-カードゲームのカード名に関する質問に対して、RAG（検索拡張生成）を用いて関連情報を検索し、LLMによる回答を生成するAPI。
-
-### LLMによるクエリ分類について
-本APIでは、LLM（GPT-4o等）を用いてユーザーの自然言語クエリを「FILTERABLE（構造化）」「SEMANTIC（ベクトル）」「HYBRID（複合）」の3タイプに分類し、最適な検索戦略を自動選択します。
-分類基準例:
-- FILTERABLE: 明確な数値条件や属性指定（例: HP100以上、炎タイプ等）
-- SEMANTIC: 曖昧・主観的・抽象的な問い（例: 強いカード、人気のカード等）
-- HYBRID: 両方の要素を含む（例: HP100以上で強いカード）
-分類結果は `classification.query_type` フィールドで返却されます。
-
----
-
-## エンドポイント
-
-### POST `/api/rag/query`
-
-カードに関する自然言語の質問を受け取り、RAGによる回答を生成する。
-
----
-
-## リクエスト形式
-
-### Content-Type: `application/json`
-
-```json
-{
-  "question": "《ブラック・ロータス》ってどんな効果？",
-  "top_k": 3,
-  "with_context": true,
-  "recaptchaToken": "xxx"
-}
-```
-
-| パラメータ名           | 型      | 必須 | 説明                               |
-| ---------------- | ------ | -- | -------------------------------- |
-| `question`       | string | 必須 | 回答対象となる自然言語の質問                   |
+MVP: Only active endpoints -> POST /chat , GET /health
 | `top_k`          | int    | 任意 | 上位何件の検索結果を利用するか（デフォルト: 3、最大: 10） |
 | `with_context`   | bool   | 任意 | 回答に検索結果を含めるか（デフォルト: true、省略時はtrueとして扱う）        |
 | `recaptchaToken` | string | 必須 | Google reCAPTCHAのトークン            |

@@ -133,4 +133,3 @@ BACKEND_PORT=8000 docker-compose up
 ---
 
 **最終更新**: 2025年6月24日  
-**関連ドキュメント**: [デプロイガイド](docs/deployment/deployment-guide.md)

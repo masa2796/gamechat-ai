@@ -189,7 +189,7 @@ Namespace 件数サマリ (監査 / analyzer):
 | zero_hit_rate | 0.0000 | ±0.0000 | 継続 0 |
 
 所見:
-1. effect_combined を Stage0 から即利用（先頭優先）した結果、Recall は改善せず MRR が低下 → 長文 combined がスコア上位を占有し first relevant の順位が後退した可能性。
+1. effect_combined を Stage0 から即利用（先頭優先）した結果、Recall は改善せず MRR が低下 → 長文 combined がスコア上位を占有しfirst relevant の順位が後退した可能性。
 2. P@10 / Recall@10 が据え置きのため、現行のボトルネックは「関連カード候補集合の質」よりも「ランキング配置 (MRR)」にシフト。
 3. qa_answer 追加で誤マッチは顕在化していないが、クエリ意図と無関係な長文 combined の相対優遇リスクが確認された。
 4. flavorText が無い現状では Recall 追加余地は限定的。次の改善レバーは (a) Stage0 から combined を除外し Stage1 以降で投入 (b) combined に個別 threshold (+Δmin_score) を設定 (c) 簡易再ランキング（短文 effect_* を微ブースト）。
@@ -842,7 +842,7 @@ effect_combined インデックス追加 + フォールバック段階組込み
 ログに retry_stage フィールド 意義: 過度の恒久閾値引き下げを避けつつ 0件率削減。
 評価スクリプト (export_feedback_stats.py)
 
-期間別 negative_rate, トークン頻度, query_type breakdown
+期間別 negative_rate, トークン頻度, query_type 別 breakdown
 CSV/JSON 出力 意義: チューニング効果の週次レビューを自動化。
 QA answer / effect_combined 再インデクシング自動フロー
 
@@ -852,6 +852,3 @@ index_version を feedback に記録 意義: 改善施策と品質変動の因�
 
 ベクトル topN に対する簡易再スコア（キーワードヒット + synonym boost）
 feedback の negative ケースを Hard Negative として単純重み調整
-
-
----
