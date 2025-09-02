@@ -13,7 +13,7 @@ from ..core.logging import GameChatLogger
 from ..core.performance import bottleneck_detector
 import time
 
-router = APIRouter(prefix="/streaming", tags=["streaming"])
+router = APIRouter()
 logger = GameChatLogger.get_logger(__name__)
 
 class StreamingRagService:

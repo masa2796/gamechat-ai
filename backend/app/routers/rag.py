@@ -1,128 +1,112 @@
-from fastapi import APIRouter, Request, Response, Body, Cookie, HTTPException, Depends
-from typing import Optional, Dict, Any
+from fastapi import APIRouter, Body
+from typing import Dict, Any, List
+from pydantic import BaseModel
+import os
+import json
+import threading
 import logging
-from ..models.rag_models import RagRequest
-from ..services.rag_service import RagService
-from ..services.auth_service import AuthService
-from ..services.hybrid_search_service import HybridSearchService
-from ..core.auth import require_read_permission
+from ..services.embedding_service import EmbeddingService
+from ..services.vector_service import VectorService
+from ..services.llm_service import LLMService
+from ..services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-rag_service = RagService()
-auth_service = AuthService()
-hybrid_search_service = HybridSearchService()
+## 旧RAG/検索テストエンドポイント削除（MVP）
 
-# OPTIONSプリフライトリクエストのハンドラー
-@router.options("/rag/query")
-@router.options("/chat")  
-async def options_preflight(request: Request, response: Response) -> Dict[str, str]:
-    """OPTIONSプリフライトリクエストを処理"""
-    client_host = request.client.host if request.client else "unknown"
-    logger.info(f"OPTIONS request received from {client_host}")
-    logger.info(f"Request headers: {dict(request.headers)}")
-    
-    # CORS ヘッダーを設定
-    response.headers["Access-Control-Allow-Origin"] = "https://gamechat-ai.web.app"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-API-Key, X-Requested-With, Accept, Origin, Cache-Control"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Max-Age"] = "86400"
-    
-    return {"status": "ok"}
+############################
+# MVP シンプルチャット (/chat)
+#  - 認証 / reCAPTCHA / ハイブリッド検索を排除
+#  - Embedding + Vector 検索 + 最小カード情報 + スタブLLM
+############################
 
-@router.post("/rag/query")
-async def rag_query(
-    request: Request,
-    response: Response,
-    rag_req: RagRequest = Body(...),
-    recaptcha_passed: Optional[str] = Cookie(None),
-    auth_info: dict = Depends(require_read_permission)
-) -> Dict[str, Any]:
-    """RAGクエリエンドポイント - API認証とreCAPTCHA認証の両方が必要"""
-    print(f"[API] /rag/query クエリ受信: {rag_req.question}")
-    recaptcha_status = await auth_service.verify_request(
-        request, response, rag_req.recaptchaToken, recaptcha_passed
-    )
-    if not recaptcha_status:
-        raise HTTPException(status_code=401, detail="reCAPTCHA認証に失敗しました")
-    
-    # API認証情報がauth_infoに含まれる
-    result = await rag_service.process_query(rag_req)
-    
-    return result
+class MVPChatRequest(BaseModel):
+    message: str
+    top_k: int | None = 5
+    with_context: bool | None = True
 
-@router.post("/rag/search-test")
-async def search_test(
-    request: Request,
-    response: Response,
-    query_data: Dict[str, Any] = Body(...),
-    recaptcha_passed: Optional[str] = Cookie(None),
-    auth_info: dict = Depends(require_read_permission)
-) -> Dict[str, Any]:
-    """ハイブリッド検索のテスト用エンドポイント - API認証とreCAPTCHA認証の両方が必要"""
-    print(f"[API] /rag/search-test クエリ受信: {query_data.get('query', '')}")
-    recaptcha_status = await auth_service.verify_request(
-        request, response, query_data.get("recaptchaToken"), recaptcha_passed
-    )
-    if not recaptcha_status:
-        raise HTTPException(status_code=401, detail="reCAPTCHA認証に失敗しました")
-    
-    query = query_data.get("query", "")
-    top_k = query_data.get("top_k", 50)
-    
-    if not query:
-        raise HTTPException(status_code=400, detail="クエリが必要です")
-    
-    # ハイブリッド検索を実行
-    result = await hybrid_search_service.search(query, top_k)
-    
-    return {
-        "query": query,
-        "classification": result["classification"].model_dump(),
-        "search_strategy": result["search_strategy"].model_dump(),
-        "db_results": [item.model_dump() for item in result["db_results"]],
-        "vector_results": [item.model_dump() for item in result["vector_results"]],
-        "merged_results": [item.model_dump() for item in result["merged_results"]]
-    }
+_mvp_card_index_lock = threading.Lock()
+_mvp_card_index: Dict[str, Dict[str, Any]] | None = None
+
+def _mvp_load_card_index() -> Dict[str, Dict[str, Any]]:
+    global _mvp_card_index
+    if _mvp_card_index is not None:
+        return _mvp_card_index
+    with _mvp_card_index_lock:
+        if _mvp_card_index is not None:
+            return _mvp_card_index
+        storage = StorageService()
+        paths = [storage.get_file_path("convert_data"), storage.get_file_path("data")]
+        idx: Dict[str, Dict[str, Any]] = {}
+        for p in paths:
+            if not p or not os.path.exists(p):
+                continue
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    for item in data:
+                        if not isinstance(item, dict):
+                            continue
+                        title = item.get("title") or item.get("name")
+                        if title and title not in idx:
+                            idx[title] = {k: v for k, v in item.items() if k in {"title","name","effect_1","rarity","class","cost","attack","hp"}}
+                elif isinstance(data, dict):
+                    for k, v in data.items():
+                        if isinstance(v, dict):
+                            title = v.get("title") or k
+                            if title and title not in idx:
+                                idx[title] = {kk: vv for kk, vv in v.items() if kk in {"title","name","effect_1","rarity","class","cost","attack","hp"}}
+            except Exception:
+                continue
+        _mvp_card_index = idx
+        return _mvp_card_index
 
 @router.post("/chat")
-async def chat(
-    request: Request,
-    response: Response,
-    chat_data: Dict[str, Any] = Body(...),
-    recaptcha_passed: Optional[str] = Cookie(None),
-    auth_info: dict = Depends(require_read_permission)
-) -> Dict[str, Any]:
-    """一般的なチャットエンドポイント - API認証とreCAPTCHA認証の両方が必要"""
-    # リクエストデータをRagRequestに変換
-    question = chat_data.get("message") or chat_data.get("question", "")
-    print(f"[API] /chat クエリ受信: {question}")
+async def chat(req: MVPChatRequest = Body(...)) -> Dict[str, Any]:
+    question = (req.message or "").strip()
     if not question:
-        raise HTTPException(status_code=400, detail="メッセージまたは質問が必要です")
-    
-    # reCAPTCHA認証確認
-    recaptcha_status = await auth_service.verify_request(
-        request, response, chat_data.get("recaptchaToken"), recaptcha_passed
-    )
-    if not recaptcha_status:
-        raise HTTPException(status_code=401, detail="reCAPTCHA認証に失敗しました")
-    
-    # RagRequestオブジェクトを作成
-    from ..models.rag_models import RagRequest
-    rag_req = RagRequest(
-        question=question,
-        top_k=chat_data.get("top_k", 5),
-        with_context=chat_data.get("with_context", False),
-        recaptchaToken=chat_data.get("recaptchaToken")
-    )
-    
-    # RAGサービスで処理
-    result = await rag_service.process_query(rag_req)
-    
-    # チャット形式のレスポンスに変換
+        return {"answer": "質問を入力してください。", "context": None}
+
+    embedding_service = EmbeddingService()
+    vector_service = VectorService()
+    llm_service = LLMService()
+
+    # Embedding
+    try:
+        embedding = await embedding_service.get_embedding(question)
+        if not embedding:
+            raise ValueError("empty embedding")
+    except Exception:
+        import hashlib
+        h = hashlib.sha256(question.encode()).digest()
+        embedding = [(b - 128)/128 for b in h][:32]
+
+    # Vector search
+    try:
+        titles: List[str] = await vector_service.search(embedding, top_k=req.top_k or 5)
+    except Exception:
+        titles = []
+
+    context_items: List[Dict[str, Any]] = []
+    if titles and req.with_context:
+        idx = _mvp_load_card_index()
+        for t in titles:
+            item = idx.get(t)
+            if item:
+                context_items.append(item)
+            if len(context_items) >= (req.top_k or 5):
+                break
+
+    try:
+        answer = await llm_service.generate_answer(question, context_items)
+    except Exception:
+        answer = (f"{len(context_items)}件のカード情報を参照しました。質問: {question}" if context_items else
+                  "検索結果が得られませんでした。別の聞き方を試してください。")
+
     return {
-        "response": result.get("answer", "申し訳ありませんが、回答を生成できませんでした。"),
-        "context": result.get("context", []) if chat_data.get("with_context") else None
+        "answer": answer,
+        "context": context_items if req.with_context else None,
+        "retrieved_titles": titles
     }

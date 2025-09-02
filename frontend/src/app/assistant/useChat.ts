@@ -281,9 +281,9 @@ export const useChat = (): UseChatReturn => {
       return newMessages;
     });
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
-      : "/api/rag/query";
+  const base = process.env.NEXT_PUBLIC_API_URL || "";
+  const mvpMode = process.env.NEXT_PUBLIC_MVP_MODE === 'true';
+  const apiUrl = mvpMode ? `${base}/chat` : `${base}/api/rag/query`;
 
     try {
       let idToken = "";
@@ -335,7 +335,11 @@ export const useChat = (): UseChatReturn => {
           "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify(mvpMode ? {
+          message: userMessage.content,
+          top_k: 5,
+          with_context: true
+        } : {
           question: userMessage.content,
           top_k: 5,
           with_context: true,
@@ -358,8 +362,8 @@ export const useChat = (): UseChatReturn => {
       const assistantMessage: Message = { 
         id: `assistant_${Date.now()}`,
         role: "assistant", 
-        content: data.answer || "応答を受け取りました。",
-        cardContext: Array.isArray(data.context) && typeof data.context[0] === "object" ? data.context : undefined
+        content: (data as any).answer || data.answer || "応答を受け取りました。",
+        cardContext: Array.isArray((data as any).context) && typeof (data as any).context[0] === "object" ? (data as any).context : (Array.isArray(data.context) ? data.context : undefined)
       };
       
       console.log(`[useChat] API応答受信 - cardContext: ${assistantMessage.cardContext?.length || 0}件`);
