@@ -1,66 +1,39 @@
-# Multi-stage build for backend optimization
-FROM python:3.12-slim AS builder
+### Simplified single-stage Dockerfile for MVP backend
+# - Multi-stage, build tooling, gunicorn removed
+# - Runs uvicorn directly
+# - Minimal optional data copy guarded
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python dependencies
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Production stage
 FROM python:3.12-slim
 
-# Set working directory
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash app
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app
 
-# Copy installed packages from builder stage
-COPY --from=builder /root/.local /home/app/.local
+# Layer cache: install deps first
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install -r requirements.txt
 
-# Copy application code and configuration
-COPY backend/app/ ./app/
-COPY backend/gunicorn.conf.py ./
-COPY backend/requirements.txt .
+# App source
+COPY backend/app ./app
 
-# Create data directory for cache/temporary files
-RUN mkdir -p ./data /tmp/gamechat-data && \
-    chmod 755 /tmp/gamechat-data && \
-    chown app:app /tmp/gamechat-data
+# Optional data (ignore if absent)
+RUN mkdir -p data && \
+    if [ -f data/convert_data.json ]; then cp data/convert_data.json data/; fi || true && \
+    if [ -f data/data.json ]; then cp data/data.json data/; fi || true
 
-# Create minimal placeholder data files for CI/CD environments
-# These will be replaced by GCS data in production
-RUN echo '[{"id":"placeholder","title":"Placeholder","content":"This is a placeholder data file for CI/CD builds","category":"system","created_at":"2025-06-20T00:00:00Z"}]' > ./data/data.json && \
-    echo '[{"id":"placeholder","title":"Placeholder","content":"This is a placeholder data file for CI/CD builds","category":"system","created_at":"2025-06-20T00:00:00Z"}]' > ./data/convert_data.json && \
-    echo '[]' > ./data/embedding_list.jsonl && \
-    echo '[]' > ./data/query_data.json
+# Temp directory used by StorageService
+RUN mkdir -p /tmp/gamechat-data && chown -R app:app /app /tmp/gamechat-data
 
-# Change ownership of app directory to ensure proper permissions
-RUN chown -R app:app /app
-
-# Switch to non-root user
 USER app
 
-# Set PATH to include user's local bin
-ENV PATH=/home/app/.local/bin:$PATH
-
-# Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Lightweight healthcheck using python stdlib
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import urllib.request,sys;\ntry:\n r=urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2); sys.exit(0 if r.status==200 else 1)\nexcept Exception: sys.exit(1)"
 
-# Start command
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
