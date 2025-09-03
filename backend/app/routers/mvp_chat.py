@@ -14,6 +14,4 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
 # Deprecated duplicate MVP chat (now in rag.py). Stub only.
-router = APIRouter()
