@@ -12,14 +12,7 @@ export default function GlobalError({
   reset,
 }: ErrorBoundaryProps) {
   useEffect(() => {
-    // Sentryにエラーを報告
-    if (typeof window !== 'undefined') {
-      import('@sentry/nextjs').then((Sentry) => {
-        Sentry.captureException(error);
-      }).catch((err) => {
-        console.error('Failed to import Sentry:', err);
-      });
-    }
+    // Monitoring removed (MVP) - no external error reporting
   }, [error]);
 
   return (

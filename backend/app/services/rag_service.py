@@ -140,13 +140,7 @@ class RagService:
                     "top5_scores": top_scores,
                     "zero_hit": zero_hit,
                 }
-                # Zero-hit metrics (Prometheus stub)
-                if zero_hit:
-                    try:
-                        from ..core.metrics import inc_zero_hit
-                        inc_zero_hit()
-                    except Exception:
-                        pass
+                # Zero-hit メトリクス送信はMVPで監視機能除外のため削除
                 # JSON line として info レベルで出力（message固定でフィルタ可能）
                 GameChatLogger.log_info("search_structured", "SEARCH_EVENT", structured)
             except Exception:

@@ -104,9 +104,7 @@ class Settings:
         self.DB_USER: str = os.getenv("BACKEND_DB_USER", "postgres")
         self.DB_PASSWORD: str = os.getenv("BACKEND_DB_PASSWORD", "")
 
-        # Monitoring and Observability
-        self.SENTRY_DSN: Optional[str] = os.getenv("BACKEND_SENTRY_DSN")
-        self.MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
+    # Monitoring 機能 (Sentry/Prometheus) はMVPでは除外
 
         # データディレクトリ・ファイルパス
         self.DATA_DIR = _get_data_dir()

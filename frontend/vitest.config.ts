@@ -31,13 +31,10 @@ export default defineConfig({
         "src/app/layout.tsx",
         "src/app/global-error.tsx",
         "src/app/offline/page.tsx",
-        "src/app/sentry-example-page/page.tsx",
-        "src/app/sentry-test/page.tsx",
+  // Sentry関連ページ削除済み (MVP)
         "src/app/test/page.tsx",
         "src/components/structured-data.tsx",
-        "src/components/sentry-test.tsx",
-        "src/components/sentry-test-wrapper.tsx",
-        "src/components/sentry-provider.tsx",
+  // Sentry関連コンポーネント削除済み (MVP)
         "src/components/pwa-provider.tsx",
         "src/components/global-error-handler.tsx",
         "src/components/ui/breadcrumb.tsx",
