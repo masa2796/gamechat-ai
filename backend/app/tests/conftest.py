@@ -14,13 +14,8 @@ from unittest.mock import MagicMock, patch
 
 
 # アプリケーションモジュールのインポート
-from app.services.classification_service import ClassificationService
 from app.services.embedding_service import EmbeddingService
-from app.services.database_service import DatabaseService
-from app.services.hybrid_search_service import HybridSearchService
-from app.services.rag_service import RagService
 from app.services.llm_service import LLMService
-from app.models.classification_models import ClassificationResult, QueryType
 from app.tests.mocks.vector_service_mock import MockVectorService
 
 # ヘルパークラスのインポート
@@ -122,11 +117,7 @@ def test_assertions():
     return TestAssertions()
 
 
-# サービスインスタンス系フィクスチャ
-@pytest.fixture
-def classification_service():
-    """分類サービスのインスタンス"""
-    return ClassificationService()
+# サービスインスタンス系フィクスチャ（分類/ハイブリッド/RAGはMVPから除外）
 
 
 @pytest.fixture
@@ -156,26 +147,7 @@ def vector_service():
     return MockVectorService()
 
 
-@pytest.fixture
-def database_service():
-    """データベースサービスのインスタンス"""
-    return DatabaseService()
-
-
-@pytest.fixture
-def hybrid_search_service(vector_service):
-    """ハイブリッド検索サービスのインスタンス（テスト用モック使用）"""
-    service = HybridSearchService()
-    service.vector_service = vector_service  # モックVectorServiceを注入
-    return service
-
-
-@pytest.fixture
-def rag_service(hybrid_search_service):
-    """RAGサービスのインスタンス（テスト用モック使用）"""
-    service = RagService()
-    service.hybrid_search_service = hybrid_search_service  # モック使用のHybridSearchServiceを注入
-    return service
+## database_service / hybrid_search_service / rag_service は削除
 
 
 @pytest.fixture
@@ -221,62 +193,7 @@ def vector_search_results(test_data_factory):
     return test_data_factory.create_vector_search_results()
 
 
-# ClassificationResult系フィクスチャ
-@pytest.fixture
-def semantic_classification(test_data_factory):
-    """セマンティック分類結果"""
-    return test_data_factory.create_semantic_classification()
-
-
-@pytest.fixture
-def greeting_classification():
-    """挨拶分類結果のフィクスチャ"""
-    return ClassificationResult(
-        query_type=QueryType.GREETING,
-        summary="挨拶",
-        confidence=0.9,
-        search_keywords=[],
-        filter_keywords=[],
-        reasoning="挨拶として分類"
-    )
-
-
-@pytest.fixture
-def specific_classification():
-    """特定検索分類結果のフィクスチャ"""
-    return ClassificationResult(
-        query_type=QueryType.FILTERABLE,
-        summary="特定のカードに関する検索",
-        confidence=0.95,
-        search_keywords=["ピカチュウ", "でんき"],
-        filter_keywords=["ピカチュウ"],
-        reasoning="特定のカードに関する検索"
-    )
-
-
-@pytest.fixture  
-def filterable_classification():
-    """フィルター可能分類結果のフィクスチャ"""
-    return ClassificationResult(
-        query_type=QueryType.FILTERABLE,
-        summary="フィルター検索",
-        confidence=0.8,
-        search_keywords=["ピカチュウ"],
-        filter_keywords=["ピカチュウ"],
-        reasoning="フィルター可能として分類"
-    )
-
-
-@pytest.fixture
-def hybrid_classification(test_data_factory):
-    """ハイブリッド分類結果"""
-    return test_data_factory.create_hybrid_classification()
-
-
-@pytest.fixture
-def low_confidence_classification(test_data_factory):
-    """低信頼度分類結果"""
-    return test_data_factory.create_low_confidence_classification()
+## 分類系フィクスチャは全削除（MVP）
 
 
 # モック系フィクスチャ
@@ -383,25 +300,7 @@ def mock_openai_client():
         yield mock_client
 
 
-@pytest.fixture
-def mock_classification_service(mock_openai_client):
-    """モック化されたClassificationServiceのフィクスチャ"""
-    
-    with patch('app.services.classification_service.ClassificationService') as mock_cls:
-        # モックインスタンスを作成
-        mock_instance = MagicMock()
-        mock_cls.return_value = mock_instance
-        
-        # classify_query メソッドのモック設定
-        async def mock_classify_query(request):
-            return MockClassificationResult.create_semantic(
-                confidence=0.8,
-                summary="モック分類結果"
-            )
-        
-        mock_instance.classify_query = mock_classify_query
-        
-        yield mock_instance
+## mock_classification_service 不要
 
 
 @pytest.fixture
@@ -438,42 +337,10 @@ def mock_llm_service(mock_openai_client):
         yield mock_instance
 
 
-@pytest.fixture
-def mock_all_services(mock_classification_service, mock_embedding_service, mock_llm_service):
-    """すべてのサービスをモック化するフィクスチャ"""
-    return {
-        'classification': mock_classification_service,
-        'embedding': mock_embedding_service,
-        'llm': mock_llm_service
-    }
+## mock_all_services 不要
 
 
-@pytest.fixture
-def mock_rag_service(mock_all_services):
-    """モック化されたRagServiceのフィクスチャ"""
-    
-    with patch('app.services.rag_service.RagService') as mock_cls:
-        mock_instance = MagicMock()
-        mock_cls.return_value = mock_instance
-        
-        # process_query メソッドのモック設定
-        async def mock_process_query(query, top_k=10):
-            return {
-                "response": "これはモックからのRAG応答です。",
-                "context_items": [
-                    {
-                        "title": "テストカード1",
-                        "text": "テスト用のカード情報",
-                        "score": 0.9
-                    }
-                ],
-                "query_type": "semantic",
-                "confidence": 0.8
-            }
-        
-        mock_instance.process_query = mock_process_query
-        
-        yield mock_instance
+## mock_rag_service 不要
 
 
 @pytest.fixture

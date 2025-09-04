@@ -79,3 +79,52 @@
 1. MVPをユーザーに触ってもらう
 2. フィードバック収集
 3. 優先度が高い機能から追加していく
+
+---
+
+## 🗑️ MVP向け削除実施リスト（2025-09-05）
+
+MVPで不要と判断した機能/ファイルをこのブランチ（`release-mvp-120`）では削除。将来拡張時は Git 履歴から復元。
+
+### 削除理由カテゴリ
+- Hybrid検索 / 複合戦略: MVPはベクトル単独
+- クエリ分類 / 挨拶検出: `/chat` は一律ベクトル検索
+- 高度RAG統合 / 詳細取得: シンプル回答生成のみ
+- モニタリング / パフォーマンス最適化: 初期リリースでは後回し
+- 大量テスト: Smokeレベルへ縮小
+
+### 削除(物理削除)ファイル初回バッチ
+1. ルーター重複: `backend/app/routers/mvp_chat.py`
+2. 検索高度化:
+  - `backend/app/services/hybrid_search_service.py`
+  - `backend/app/services/classification_service.py`
+  - `backend/app/services/rag_service.py`
+  - `backend/app/models/classification_models.py`
+3. テスト: ハイブリッド / 分類 / RAG 関連
+  - `backend/app/tests/services/test_hybrid_search_consolidated.py`
+  - `backend/app/tests/services/test_classification_consolidated.py`
+  - `backend/app/tests/services/test_classification_aggregation.py`
+  - これらに依存する性能/統合系テスト（後続で段階的に削除予定）
+4. スクリプト: 挨拶検出など
+  - `scripts/testing/test_greeting_detection.py`
+5. モニタリング/監視
+  - `monitoring/` ディレクトリ一式
+  - `docker-compose.monitoring.yml`
+6. ドキュメント（後続コミットで整理）
+  - `docs/guides/search-hybrid-guide.md`
+  - `docs/guides/search_result_detail_refactor.md` (ハイブリッド節削除 or 丸ごと)
+  - `docs/guides/search-vector-optimization.md` 中の hybrid 設定
+  - `docs/sphinx_docs/services/hybrid_search_service.rst`
+  - `docs/sphinx_docs/services/classification_service.rst`
+  - `README.md` / `docs/README.md` 内 HYBRID/分類セクション圧縮
+
+### 残すもの
+- `/chat` のみ提供する最小 FastAPI (`backend/app/routers/rag.py`)
+- `EmbeddingService`, `VectorService`, `LLMService`, `StorageService`
+- ベクトル検索の最小検証テスト（未整備なら後で追加）
+
+### 今後の追加メモ
+- 追加で失敗する import（`conftest.py` など）から分類/ハイブリッド参照を除去予定
+- README 短縮版作成 & 旧高度設計は `docs/archive/` へ移設検討
+
+---
