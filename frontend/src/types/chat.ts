@@ -32,12 +32,10 @@ export interface UseChatReturn {
   recaptchaReady: boolean;
   setRecaptchaReady: (ready: boolean) => void;
   clearHistory: () => void;
-  // チャット履歴管理機能
-  activeSessionId: string | null;
-  activeSession: ChatSession | null;
-  // セッション操作機能
-  createNewChatAndSwitch: () => string;
-  switchToChatAndClear: (sessionId: string) => void;
+  activeSessionId: string | null; // 常に null (MVP)
+  activeSession: ChatSession | null; // 常に null (MVP)
+  createNewChatAndSwitch: () => string; // ダミー
+  switchToChatAndClear: (sessionId: string) => void; // ダミー
 }
 
 // チャット履歴管理のための新しい型定義
@@ -46,83 +44,22 @@ export interface UseChatReturn {
  * チャットセッション
  * 個別のチャット会話を管理するための型
  */
-export interface ChatSession {
-  /** セッションの一意識別子（UUID v4） */
-  id: string;
-  /** チャットタイトル（自動生成または手動設定） */
-  title: string;
-  /** メッセージ履歴 */
-  messages: Message[];
-  /** 作成日時 */
-  createdAt: Date;
-  /** 最終更新日時 */
-  updatedAt: Date;
-  /** 現在アクティブかどうか */
-  isActive: boolean;
-}
+// MVPでは複数セッションを扱わないため簡略化（将来拡張用に型は最小限保持）
+export interface ChatSession { id: string; title: string; messages: Message[]; }
 
 /**
  * チャット履歴の全体状態
  * 複数のチャットセッションを管理するための型
  */
-export interface ChatHistoryState {
-  /** 全チャットセッション */
-  sessions: ChatSession[];
-  /** 現在アクティブなセッションID */
-  activeSessionId: string | null;
-  /** 最大保存セッション数（デフォルト: 50） */
-  maxSessions: number;
-}
+export interface ChatHistoryState { sessions: ChatSession[]; activeSessionId: string | null; maxSessions: number; }
 
 /**
  * LocalStorageキー定数
  * チャット履歴の保存に使用するキーの定義
  */
-export const STORAGE_KEYS = {
-  /** 旧版からのマイグレーション用 */
-  CHAT_HISTORY: "chat-history-v2",
-  /** 新しいセッション管理 */
-  CHAT_SESSIONS: "chat-sessions",
-  /** アクティブセッションID */
-  ACTIVE_SESSION: "active-session-id",
-  /** ユーザー設定 */
-  USER_PREFERENCES: "chat-preferences"
-} as const;
+export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const; // 簡略化
 
 /**
  * チャット履歴管理フックの返り値型
  */
-export interface UseChatHistoryReturn {
-  /** 全セッション（更新日時降順） */
-  sessions: ChatSession[];
-  /** アクティブセッションID */
-  activeSessionId: string | null;
-  /** アクティブセッション */
-  activeSession: ChatSession | null;
-  /** ローディング状態 */
-  isLoading: boolean;
-  /** エラーメッセージ */
-  error: string | null;
-  /** ストレージ使用状況 */
-  storageUsage: {
-    totalSize: number;
-    sessionCount: number;
-    averageSessionSize: number;
-    isNearLimit: boolean;
-    isOverWarningThreshold: boolean;
-  };
-  /** 新規チャット作成 */
-  createNewChat: (initialMessage?: string) => string;
-  /** チャット切り替え */
-  switchToChat: (sessionId: string) => void;
-  /** チャット削除 */
-  deleteChat: (sessionId: string) => void;
-  /** チャットタイトル更新 */
-  updateChatTitle: (sessionId: string, title: string) => void;
-  /** セッションのメッセージ更新 */
-  updateSessionMessages: (sessionId: string, messages: Message[]) => void;
-  /** エラークリア */
-  clearError: () => void;
-  /** 全履歴削除 */
-  clearAllHistory: () => void;
-}
+export interface UseChatHistoryReturn { sessions: ChatSession[]; }
