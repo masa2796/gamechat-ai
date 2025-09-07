@@ -1,18 +1,7 @@
 import { FullConfig } from '@playwright/test';
-import { config } from 'dotenv';
-import path from 'path';
 
 async function globalSetup(_config: FullConfig) {
-  // Load test environment variables from .env.test
-  const envPath = path.resolve(__dirname, '../../.env.test');
-  console.log('Loading test environment from:', envPath);
-  
-  const result = config({ path: envPath });
-  if (result.error) {
-    console.warn('Failed to load .env.test:', result.error);
-  } else {
-    console.log('Test environment loaded successfully');
-  }
+  // .env.test はMVP方針で廃止。ここでは必要な値のみを直接設定する。
 
   // テスト用の環境変数を設定/上書き
   process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA = 'true';
