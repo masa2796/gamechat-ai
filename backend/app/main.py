@@ -9,9 +9,9 @@ from .core.config import settings
 app_start_time = time.time()
 
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    logging.info("🚀 MVP backend starting")
+    logging.info("MVP backend starting")
     yield
-    logging.info("� MVP backend stopped")
+    logging.info("MVP backend stopped")
 
 app = FastAPI(title="GameChat AI API (MVP)", version="0.1.0", lifespan=lifespan)
 

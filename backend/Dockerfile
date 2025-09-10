@@ -21,13 +21,11 @@ RUN pip install -r requirements.txt
 # App source
 COPY backend/app ./app
 
-# Optional data (ignore if absent)
-RUN mkdir -p data && \
-    if [ -f data/convert_data.json ]; then cp data/convert_data.json data/; fi || true && \
-    if [ -f data/data.json ]; then cp data/data.json data/; fi || true
+# Copy minimal data for MVP (used by StorageService at /data)
+COPY data /data
 
-# Temp directory used by StorageService
-RUN mkdir -p /tmp/gamechat-data && chown -R app:app /app /tmp/gamechat-data
+# Temp directory used by StorageService and permissions
+RUN mkdir -p /tmp/gamechat-data && chown -R app:app /app /data /tmp/gamechat-data
 
 USER app
 
