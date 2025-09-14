@@ -73,20 +73,22 @@ async def chat(req: MVPChatRequest = Body(...)) -> Dict[str, Any]:
     vector_service = VectorService()
     llm_service = LLMService()
 
-    # Embedding
+    # Embedding 取得（サービス内でモック/フォールバック可能）
     try:
         embedding = await embedding_service.get_embedding(question)
         if not embedding:
             raise ValueError("empty embedding")
-    except Exception:
+    except Exception as e:
+        logger.warning("/chat: Embedding 取得失敗 -> sha256 擬似ベクトル", exc_info=e)
         import hashlib
         h = hashlib.sha256(question.encode()).digest()
-        embedding = [(b - 128)/128 for b in h][:32]
+        embedding = [(b - 128) / 128 for b in h][:128]
 
     # Vector search
     try:
         titles: List[str] = await vector_service.search(embedding, top_k=req.top_k or 5)
-    except Exception:
+    except Exception as e:
+        logger.warning("/chat: Vector 検索失敗 -> 空リスト", exc_info=e)
         titles = []
 
     context_items: List[Dict[str, Any]] = []

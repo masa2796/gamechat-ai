@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { useChat } from "./useChat";
@@ -54,22 +54,38 @@ const AssistantPage: React.FC = () => {
     // }
   }, [activeSessionId, chat.createNewChatAndSwitch]); // 依存関係を元に戻す
 
+  // メッセージコンテナ参照（iOS でのスクロール挙動安定化）
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // 新しいメッセージ到着時に最下部へスムーススクロール
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    // ネイティブ挙動を優先し、強制ジャンプし過ぎないよう requestAnimationFrame
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    });
+  }, [messages, loading]);
+
   return (
-    <div className="min-h-screen w-screen flex flex-col items-center bg-gray-50 p-4">
-      <div className="w-full max-w-[780px] flex flex-col flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-100">
-          <h2 className="font-semibold text-gray-800">チャット</h2>
+    <div className="min-h-dvh w-full flex flex-col items-center bg-gray-50 px-2 sm:px-4 py-2">
+      <div className="w-full max-w-[780px] flex flex-col flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-3rem)]">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-100/70 backdrop-blur supports-[backdrop-filter]:bg-gray-100/60">
+          <h1 className="font-semibold text-gray-800 text-base sm:text-lg">チャット</h1>
           {messages.length > 0 && (
             <button
               onClick={clearHistory}
-              className="text-xs px-2 py-1 rounded border text-gray-600 hover:text-red-600 hover:border-red-400"
+              className="text-[11px] sm:text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 transition-colors"
+              aria-label="履歴をクリア"
             >クリア</button>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain px-2 sm:px-4 py-3 scroll-smooth">
           <ChatMessages messages={messages} loading={loading} />
+          {/* スクロール下部スペース（iOSの下部ジェスチャー領域確保） */}
+          <div className="h-4" />
         </div>
-        <div className="border-t">
+        <div className="border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
           <ChatInput
             input={input}
             onInputChange={setInput}
@@ -80,7 +96,7 @@ const AssistantPage: React.FC = () => {
           />
         </div>
       </div>
-      <p className="mt-4 text-xs text-gray-400">MVP Build</p>
+      <p className="mt-2 text-[10px] sm:text-xs text-gray-400 select-none">MVP Build</p>
     </div>
   );
 };

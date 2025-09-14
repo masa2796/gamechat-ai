@@ -1,7 +1,10 @@
 # Minimal VectorService for MVP
 from __future__ import annotations
 from typing import List
-import os, hashlib
+import os
+import hashlib
+import logging
+logger = logging.getLogger(__name__)
 try:
     from upstash_vector import Index  # type: ignore
 except Exception:
@@ -15,9 +18,11 @@ class VectorService:
         if self.enabled:
             try:
                 self.index = Index(url=self.url, token=self.token)  # type: ignore
-            except Exception:
+                logger.info("VectorService: Upstash 接続成功")
+            except Exception as e:
                 self.enabled = False
                 self.index = None
+                logger.warning("VectorService: Upstash 初期化失敗 -> フォールバックのみ", exc_info=e)
         else:
             self.index = None
 
@@ -31,14 +36,16 @@ class VectorService:
                 titles = []
                 for m in matches:
                     meta = getattr(m, 'metadata', None)
-                    title = meta.get('title') if meta and hasattr(meta,'get') else None
+                    title = meta.get('title') if meta and hasattr(meta, 'get') else None
                     if title and title not in titles:
                         titles.append(title)
                     if len(titles) >= top_k:
                         break
+                if not titles:
+                    logger.warning("VectorService: Upstash 検索結果 0 件 -> ダミータイトルへ")
                 return titles
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("VectorService: Upstash 検索失敗 -> ダミータイトルフォールバック", exc_info=e)
         # フォールバック: embedding からダミータイトル生成
         h = hashlib.sha1("|".join(str(round(v,4)) for v in embedding[:16]).encode()).hexdigest()
         base = [f"カード{int(h[i:i+3],16)%900+100}" for i in range(0, min(len(h), top_k*3), 3)]
@@ -46,7 +53,9 @@ class VectorService:
         seen, out = set(), []
         for t in base:
             if t not in seen:
-                seen.add(t); out.append(t)
+                seen.add(t)
+                out.append(t)
             if len(out) >= top_k:
                 break
+        logger.info("VectorService: フォールバック生成タイトル", {"count": len(out)})
         return out
