@@ -1,6 +1,6 @@
 # 📦 Release MVP 開発タスク整理
 
-最終更新: 2025-09-07（branch: `release-mvp-120`）
+最終更新: 2025-09-15（branch: `release-mvp-120`）
 
 ## 🎯 目的（Why）
 
@@ -30,19 +30,38 @@
 
 ---
 
+## ⏭️ 次にやること（Next）
+
+1) フロントの公開準備
+  - Firebase Hosting 設定の追加（`firebase.json` の hosting 設定を確認/追記）
+  - `NEXT_PUBLIC_MVP_MODE=true` でビルドし、Firebase Hosting へデプロイ
+2) バックエンドの公開準備
+  - Cloud Run へデプロイ（`backend/Dockerfile` 利用、必要な環境変数を `.env.prod` に整理）
+3) データ投入
+  - Upstash Vector へのカードデータ投入スクリプト作成（`scripts/data-processing/` 配置）と実行
+4) ドキュメント最小整備
+  - README 冒頭に利用方法（/chat エンドポイント、起動、環境変数）を追記
+  - Deployment ガイドに Cloud Run + Firebase の最小手順を追記
+  - 環境変数一覧を `docs/project/env_mvp.md` に切り出して参照リンク化
+5) 軽微な運用準備
+  - 非MVP機能に ARCHIVE_CANDIDATE 注記 or `docs/archive/` へ移動計画
+  - `NEXT_PUBLIC_API_URL` 未設定時の相対パス挙動の簡易検証（README に追記）
+
+---
+
 ## ✅ タスク一覧（How）
 
 ### フロントエンド
 
 * [x] 入力欄＋送信ボタン＋チャット形式で応答を表示するコンポーネントを作成 (既存 `assistant` ページ流用)
-* [ ] 最低限のデザイン適用（モバイルで読めるレベル）
+* [x] 最低限のデザイン適用（モバイルで読めるレベル）
 * [x] MVP用API切替ロジック（`NEXT_PUBLIC_MVP_MODE=true` で `/api/rag/query` → `/chat` に切替）
 * [ ] Firebase Hosting 用の設定追加 & デプロイ
 
 ### バックエンド
 
 * [x] `/chat` API を既存 `rag.py` 内にシンプル実装（専用MVPファイルを撤廃）
-* [△] OpenAI Embedding を利用（未設定時は擬似ベクトルにフォールバック）/ 回答はスタブLLM
+* [x] OpenAI Embedding を利用（未設定時は擬似ベクトルにフォールバック）/ 回答はスタブLLM（フォールバック時は WARN ログ／通常は INFO）
 * [x] Upstash Vector への問い合わせ実装（`VectorService`。未設定時はダミータイトル生成でフォールバック）
 * [x] 検索結果（カード簡易情報）をプロンプトに組み込み回答生成
 * [ ] Cloud Run へデプロイ（DockerfileはMVP簡素化済み。実デプロイは未実施）
@@ -60,11 +79,12 @@
 * 既存 `rag.py` の `/chat` をシンプル実装へ置換（認証 / reCAPTCHA / ハイブリッド検索除外）
 * フロントは `NEXT_PUBLIC_MVP_MODE=true` で `/api/rag/query` → `/chat` に切替（`frontend/src/app/assistant/useChat.ts`）
 * 失敗時も UX を保つフォールバック（擬似埋め込み / ダミータイトル / 汎用回答）
-* 今後: Cloud Run デプロイ手順 / Firebase Hosting 設定追記 / モバイル向けスタイル微調整
+* 実施済み: モバイル向け最小スタイル微調整（100dvh対応・自動スクロール・余白/フォーカス等）
+* 今後: Cloud Run デプロイ手順 / Firebase Hosting 設定追記
 
 ---
 
-## � API契約（MVP /chat）
+## 📄 API契約（MVP /chat）
 
 - エンドポイント: POST `/chat`
 - リクエスト: `{ "message": string, "top_k"?: number=5, "with_context"?: boolean=true }`
@@ -78,7 +98,7 @@
 
 ---
 
-## �🚫 除外範囲（Will Not Do）
+## 🚫 除外範囲（Will Not Do）
 
 * 挨拶検出・早期応答システム
 * ハイブリッド検索（BM25 + ベクトル検索）
@@ -150,7 +170,9 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
 
 ## 🧪 テスト状況（MVP）
 
-- ユニット/機能テスト（バックエンド）: `backend/app/tests/test_mvp_chat_basic.py`
+- バックエンドの最小テストを整備：
+  - Smoke: `/chat` が 200 を返し最小レスポンス構造を満たす
+  - フォールバック: OpenAIキー未設定時／Upstash未設定時／`with_context=false` の挙動
 - 現在の結果: PASS（`pytest backend/app/tests/ -q`）
 
 ---
