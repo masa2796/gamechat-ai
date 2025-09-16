@@ -184,18 +184,13 @@ async def start_background_cleanup() -> None:
 # 高負荷処理用のラッパー関数
 async def process_heavy_rag_query(question: str, top_k: int = 50) -> Dict[str, Any]:
     """
-    重いRAGクエリをバックグラウンドで処理
+    (MVP簡略化) 旧RAGサービス削除に伴い何も実行しないスタブ。
+    将来RAGの重処理を再導入する際はここで実装を行う。
     """
-    from ..services.rag_service import RagService
-    from ..models.rag_models import RagRequest
-    
-    rag_service = RagService()
-    rag_request = RagRequest(question=question, top_k=top_k, with_context=True)
-    
-    logger.info(f"🔄 Processing heavy RAG query in background: {question[:50]}...")
-    result = await rag_service.process_query(rag_request)
-    
-    return result
+    logger.info(
+        "process_heavy_rag_query called (stub). RAG heavy processing is disabled in MVP."
+    )
+    return {"disabled": True, "question": question, "top_k": top_k}
 
 async def precompute_popular_queries() -> None:
     """
