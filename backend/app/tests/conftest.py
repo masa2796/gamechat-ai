@@ -42,6 +42,17 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skipped)
 
 
+def pytest_ignore_collect(path, config):
+    """RUN_FULL_TESTS でない場合、許可リスト以外のテストモジュールは収集自体を無視する。"""
+    if RUN_ALL_TESTS:
+        return False
+    try:
+        basename = os.path.basename(str(path))
+    except Exception:
+        return False
+    return basename.endswith(".py") and basename not in MVP_ALLOWED_FILES
+
+
 @pytest.fixture(autouse=True)
 def _sanitize_openai_env(monkeypatch):
     """外部APIキーが参照されないように無効化"""
