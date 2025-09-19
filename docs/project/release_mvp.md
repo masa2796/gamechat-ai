@@ -1,6 +1,6 @@
 # 📦 Release MVP 開発タスク整理
 
-最終更新: 2025-09-15（branch: `release-mvp-120`）
+最終更新: 2025-09-19（branch: `release-mvp-120`）
 
 ## 🎯 目的（Why）
 
@@ -49,6 +49,15 @@
 
 ---
 
+## 🧭 クリティカルパス（実行順）
+
+1) バックエンドを Cloud Run にデプロイし、`/chat` を公開（フォールバック込みで安定稼働）
+2) Upstash Vector にカードデータを投入（検索が結果に反映される状態）
+3) フロントエンドを Firebase Hosting へデプロイ（`NEXT_PUBLIC_MVP_MODE=true` で `/chat` を利用）
+4) README と最小デプロイガイドを整備（環境変数・起動・エンドポイント）
+
+---
+
 ## ✅ タスク一覧（How）
 
 ### フロントエンド
@@ -57,6 +66,8 @@
 * [x] 最低限のデザイン適用（モバイルで読めるレベル）
 * [x] MVP用API切替ロジック（`NEXT_PUBLIC_MVP_MODE=true` で `/api/rag/query` → `/chat` に切替）
 * [ ] Firebase Hosting 用の設定追加 & デプロイ
+  - 詳細: `firebase.json` に hosting 設定を追加（public/rewrites など最小）、`NEXT_PUBLIC_MVP_MODE=true` でビルドしデプロイ
+  - DoD: 公開URLでトップが表示でき、チャットが `/chat` 経由で応答を返す（モバイルで視認性OK）
 
 ### バックエンド
 
@@ -65,10 +76,15 @@
 * [x] Upstash Vector への問い合わせ実装（`VectorService`。未設定時はダミータイトル生成でフォールバック）
 * [x] 検索結果（カード簡易情報）をプロンプトに組み込み回答生成
 * [ ] Cloud Run へデプロイ（DockerfileはMVP簡素化済み。実デプロイは未実施）
+  - 詳細: `backend/Dockerfile` を利用してビルド→Cloud Run へデプロイ。必要な環境変数を設定
+    - 必須/推奨: `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`、（任意）`BACKEND_OPENAI_API_KEY`
+  - DoD: 公開URLで `POST /chat` が 200 を返し、`with_context=true/false` の両方が期待通り動作
 
 ### データ
 
 * [ ] ベクトル化済みカードデータをUpstashに格納（現状: タイトルで検索しローカル/Cloudの JSON から最小抽出）
+  - 詳細: `scripts/data-processing/` に投入スクリプトを作成し、`data/convert_data.json` または `data/data.json` を入力としてアップサート
+  - DoD: Upstash 側のインデックス件数が期待値以上、かつ `/chat` の検索結果に反映
 * [x] 必要最低限の情報のみ残す（`mvp_chat` は title / effect_1 / 基本ステータスのみ返却）
 * [x] ローカル/Cloud JSON（`convert_data.json` / `data.json`）からの最小インデックス読み込み
 
@@ -174,6 +190,33 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
   - Smoke: `/chat` が 200 を返し最小レスポンス構造を満たす
   - フォールバック: OpenAIキー未設定時／Upstash未設定時／`with_context=false` の挙動
 - 現在の結果: PASS（`pytest backend/app/tests/ -q`）
+
+実行コマンド（ローカル）:
+
+```bash
+pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
+```
+
+受け入れ条件（DoD: テスト）:
+- Smoke が PASS（`answer`, `retrieved_titles`, `context?` を満たす）
+- フォールバック各条件で 200 と妥当な応答が返る（擬似Embedding/ダミータイトル/`with_context=false`）
+
+---
+
+## 🔗 依存関係・優先度
+
+- P0: Cloud Run デプロイ（/chat 稼働）、Upstash へのデータ投入、Firebase Hosting デプロイ、README/デプロイガイド整備
+- P1: `NEXT_PUBLIC_API_URL` 未設定時の相対パス挙動メモの追記、非MVP機能の ARCHIVE 注記
+- P2: 任意の改善（UI微調整など）
+
+---
+
+## ✅ Definition of Done（MVP全体）
+
+- 公開URLでチャットが一通り機能（モバイルで視認性OK）
+- Cloud Run 上の `/chat` が安定稼働し、Upstash あり/なし双方でフォールバック含めて応答可能
+- README と最小デプロイ手順が整備済み（エンドポイント・環境変数・起動）
+- Smoke テストが PASS（主要ケース）
 
 ---
 
