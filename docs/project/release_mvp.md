@@ -127,7 +127,50 @@
 
 ---
 
-## 🚀 リリース後の流れ
+## � 除外タスクの状況・運用（明確化）
+
+以下の項目はMVPでは実装対象外です。関連コードや資料は「アーカイブ移行候補」として残置し、MVPの稼働には影響しません。
+
+- 挨拶検出・早期応答システム
+  - 状況: 除外（未使用）
+  - 関連: `scripts/testing/test_greeting_detection.py`（ARCHIVE_CANDIDATE）
+  - 影響: なし（`/chat` は一律ベクトル検索）
+
+- ハイブリッド検索（BM25 + ベクトル検索）
+  - 状況: 除外（未使用）
+  - 関連: `backend/app/services/hybrid_search_service.py`、`backend/app/tests/services/test_hybrid_search_consolidated.py` ほか（ARCHIVE_CANDIDATE）
+  - 影響: なし（MVPはベクトル単独）
+
+- 複合条件検索 / 戦略的推薦機能
+  - 状況: 除外（未対応・未使用）
+  - 関連:（該当実装なし/将来設計）
+  - 影響: なし
+
+- 検索モード自動選択（FILTERABLE / SEMANTIC / HYBRID）
+  - 状況: 除外（未使用）
+  - 関連: `backend/app/services/classification_service.py`、`backend/app/models/classification_models.py`（ARCHIVE_CANDIDATE）
+  - 影響: なし（MVPは固定でベクトル検索）
+
+- カード詳細ページ (`/cards/{card_id}/details`)
+  - 状況: 除外（未対応）
+  - 影響: なし（チャットUIのみ）
+
+- 高度なエラーハンドリング・動的閾値調整
+  - 状況: 除外（未対応）
+  - 影響: なし（最小のエラーハンドリング）
+
+- 包括的テスト（Smoke Test のみ残す）
+  - 状況: 除外（網羅テストは実施せず）
+  - 代替: Smoke/フォールバック系のみ実行（現状 PASS）
+
+- モニタリング機能（Sentry, Prometheusなど）
+  - 状況: 除外（未使用）
+  - 関連: `monitoring/` ディレクトリ、`docker-compose.monitoring.yml`（ARCHIVE_CANDIDATE）
+  - 影響: なし
+
+---
+
+## �🚀 リリース後の流れ
 
 1. MVPをユーザーに触ってもらう
 2. フィードバック収集
@@ -162,6 +205,11 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
   - `docker-compose.monitoring.yml`
 6. ドキュメントの整理対象
   - `docs/guides/search-hybrid-guide.md` ほか関連セクション
+
+補足: アーカイブ運用ルール
+- 対象ファイル/ディレクトリには `ARCHIVE_CANDIDATE` の注記コメントまたはドキュメント注釈を付与
+- 実移動する場合は `docs/archive/` 配下に置き、参照元からリンク
+- 将来的に復活させる際は、本セクションとGit履歴を起点に要件再定義
 
 ### 残すもの（MVP稼働に必要）
 - `/chat` を提供する最小 FastAPI ルーター（`backend/app/routers/rag.py`）
