@@ -13,7 +13,6 @@ FILES=(
   backend/app/tests/services/test_rag_service_basic.py
   backend/app/tests/services/test_rag_service_additional.py
   backend/app/tests/services/test_embedding_consolidated.py
-  scripts/testing/test_greeting_detection.py
   docker-compose.monitoring.yml
   docs/guides/search-hybrid-guide.md
   docs/guides/search_result_detail_refactor.md

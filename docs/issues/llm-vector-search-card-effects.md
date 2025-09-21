@@ -729,7 +729,7 @@ P3
 | rating | SMALLINT | -1 / 0 / 1 |
 | query_text | TEXT | 入力クエリ原文 |
 | answer_text | TEXT | 表示したAI最終回答（要約含む） |
-| query_type | TEXT | semantic / hybrid / filterable / greeting |
+| query_type | TEXT | semantic / hybrid / filterable |
 | classification_summary | TEXT NULL | LLM分類サマリー |
 | vector_top_titles | JSONB | 上位タイトルリストとスコア [{t,s}] |
 | namespaces | JSONB | 使用 namespace 配列 |

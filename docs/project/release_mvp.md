@@ -116,7 +116,7 @@
 
 ## 🚫 除外範囲（Will Not Do）
 
-* 挨拶検出・早期応答システム
+* 挨拶検出・早期応答システム（削除済み）
 * ハイブリッド検索（BM25 + ベクトル検索）
 * 複合条件検索 / 戦略的推薦機能
 * 検索モード自動選択（FILTERABLE / SEMANTIC / HYBRID）
@@ -132,8 +132,8 @@
 以下の項目はMVPでは実装対象外です。関連コードや資料は「アーカイブ移行候補」として残置し、MVPの稼働には影響しません。
 
 - 挨拶検出・早期応答システム
-  - 状況: 除外（未使用）
-  - 関連: `scripts/testing/test_greeting_detection.py`（ARCHIVE_CANDIDATE）
+  - 状況: 削除済み（MVPからの恒久除外）
+  - 関連: なし（関連スクリプト/ドキュメントを削除）
   - 影響: なし（`/chat` は一律ベクトル検索）
 
 - ハイブリッド検索（BM25 + ベクトル検索）
@@ -198,8 +198,7 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
   - `backend/app/models/classification_models.py`
 3. テスト: ハイブリッド / 分類 / RAG 関連
   - `backend/app/tests/services/test_hybrid_search_consolidated.py` ほか
-4. スクリプト: 挨拶検出など
-  - `scripts/testing/test_greeting_detection.py`
+4. スクリプト: （該当なし）
 5. モニタリング/監視
   - `monitoring/` ディレクトリ一式
   - `docker-compose.monitoring.yml`
@@ -239,7 +238,7 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
   - フォールバック: OpenAIキー未設定時／Upstash未設定時／`with_context=false` の挙動
 - 現在の結果: PASS（`pytest backend/app/tests/ -q`）
 
-実行コマンド（ローカル）:
+実行コマンド（ローカル）：
 
 ```bash
 pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
