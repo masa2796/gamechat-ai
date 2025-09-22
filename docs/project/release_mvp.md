@@ -138,7 +138,7 @@
 
 - ハイブリッド検索（BM25 + ベクトル検索）
   - 状況: 除外（未使用）
-  - 関連: `backend/app/services/hybrid_search_service.py`、`backend/app/tests/services/test_hybrid_search_consolidated.py` ほか（ARCHIVE_CANDIDATE）
+  - 関連: 該当実装/テストは削除済み（2025-09-22）。ドキュメント参照はアーカイブ候補（ARCHIVE_CANDIDATE）
   - 影響: なし（MVPはベクトル単独）
 
 - 複合条件検索 / 戦略的推薦機能
