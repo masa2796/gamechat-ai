@@ -143,7 +143,7 @@
 
 - 複合条件検索 / 戦略的推薦機能
   - 状況: 除外（未対応・未使用）
-  - 関連:（該当実装なし/将来設計）
+  - 関連: 該当実装なし（将来設計）。関連ユーティリティ `scripts/utilities/cleanup_compound_features.sh` は無効化（no-op）
   - 影響: なし
 
 - 検索モード自動選択（FILTERABLE / SEMANTIC / HYBRID）
