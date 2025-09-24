@@ -147,8 +147,8 @@
   - 影響: なし
 
 - 検索モード自動選択（FILTERABLE / SEMANTIC / HYBRID）
-  - 状況: 除外（未使用）
-  - 関連: `backend/app/services/classification_service.py`、`backend/app/models/classification_models.py`（ARCHIVE_CANDIDATE）
+  - 状況: 削除済み（MVPからの恒久除外）
+  - 関連: なし（該当実装ファイルは削除済み）
   - 影響: なし（MVPは固定でベクトル検索）
 
 - カード詳細ページ (`/cards/{card_id}/details`)
@@ -193,9 +193,8 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
 1. ルーター重複: `backend/app/routers/mvp_chat.py`（現状はスタブ化済み）
 2. 検索高度化:
   - `backend/app/services/hybrid_search_service.py`
-  - `backend/app/services/classification_service.py`
   - `backend/app/services/rag_service.py`
-  - `backend/app/models/classification_models.py`
+  - （分類関連は削除済み）`backend/app/services/classification_service.py`, `backend/app/models/classification_models.py`
 3. テスト: ハイブリッド / 分類 / RAG 関連
   - `backend/app/tests/services/test_hybrid_search_consolidated.py` ほか
 4. スクリプト: （該当なし）
