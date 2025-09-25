@@ -1,0 +1,46 @@
+"""Error code constants for structured API error responses.
+
+MVPでは高度な分類を行わないが、将来拡張時にレスポンス形式や
+ログ検索を安定化させるため先行で集中定義しておく。
+
+命名規則:
+  <SUBSYSTEM>_<KIND>
+  - SUBSYSTEM: VECTOR / EMBEDDING / LLM / STORAGE / SYSTEM / THRESHOLD
+  - KIND: ERROR / TIMEOUT / UNAVAILABLE / INVALID ...
+
+外部公開ポリシー:
+  - ユーザー向けには message を簡潔に / code で機械判別
+  - details は内部利用（PII/秘密情報を含めない）
+"""
+from __future__ import annotations
+
+# 基本系
+INTERNAL_ERROR = "INTERNAL_ERROR"
+VALIDATION_ERROR = "VALIDATION_ERROR"
+
+# Vector / Embedding / LLM
+VECTOR_SEARCH_ERROR = "VECTOR_SEARCH_ERROR"
+VECTOR_THRESHOLD_ADJUSTMENT_ERROR = "VECTOR_THRESHOLD_ADJUSTMENT_ERROR"
+EMBEDDING_ERROR = "EMBEDDING_ERROR"
+LLM_ERROR = "LLM_ERROR"
+STORAGE_ERROR = "STORAGE_ERROR"
+
+# Dynamic threshold related
+THRESHOLD_STATE_ERROR = "THRESHOLD_STATE_ERROR"
+THRESHOLD_ADJUSTMENT_SKIPPED = "THRESHOLD_ADJUSTMENT_SKIPPED"
+
+PUBLIC_ERROR_CODES = {
+    INTERNAL_ERROR,
+    VALIDATION_ERROR,
+    VECTOR_SEARCH_ERROR,
+    VECTOR_THRESHOLD_ADJUSTMENT_ERROR,
+    EMBEDDING_ERROR,
+    LLM_ERROR,
+    STORAGE_ERROR,
+    THRESHOLD_STATE_ERROR,
+    THRESHOLD_ADJUSTMENT_SKIPPED,
+}
+
+def normalize_public_code(code: str) -> str:
+    """未知コードを INTERNAL_ERROR にフォールバックする安全な正規化。"""
+    return code if code in PUBLIC_ERROR_CODES else INTERNAL_ERROR

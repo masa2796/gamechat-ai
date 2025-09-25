@@ -158,6 +158,13 @@
 - 高度なエラーハンドリング・動的閾値調整
   - 状況: 除外（未対応）
   - 影響: なし（最小のエラーハンドリング）
+  - 補足（将来実装トリガー案）:
+    - エラーハンドリング強化条件: 24h の 5xx 比率 > 2% または 同型 GameChatException > 50 件/日
+    - 閾値調整開始条件: zero_hit_rate > 15% (直近100リクエスト移動平均) かつ total_requests >= 200
+    - Precision 保持の上昇条件: plateau_events / total_requests < 8% かつ zero_hit_rate < 5%
+    - 調整レンジ: 0.35 <= min_score <= 0.65 （ヒステリシス: 再調整間隔 >= 30 リクエスト）
+    - 安全装備: ENV `VECTOR_DYNAMIC_THRESHOLD_ENABLED=true` でのみ有効化 / デフォルト無効
+    - スタブ: `backend/app/services/dynamic_threshold_manager.py` は ARCHIVE_CANDIDATE として統計収集のみ
 
 - 包括的テスト（Smoke Test のみ残す）
   - 状況: 除外（網羅テストは実施せず）
