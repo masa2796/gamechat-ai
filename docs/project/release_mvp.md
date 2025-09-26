@@ -170,10 +170,7 @@
   - 状況: 除外（網羅テストは実施せず）
   - 代替: Smoke/フォールバック系のみ実行（現状 PASS）
 
-- モニタリング機能（Sentry, Prometheusなど）
-  - 状況: 除外（未使用）
-  - 関連: `monitoring/` ディレクトリ、`docker-compose.monitoring.yml`（ARCHIVE_CANDIDATE）
-  - 影響: なし
+ 
 
 ---
 
