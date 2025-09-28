@@ -66,7 +66,8 @@
 * [x] 最低限のデザイン適用（モバイルで読めるレベル）
 * [x] MVP用API切替ロジック（`NEXT_PUBLIC_MVP_MODE=true` で `/api/rag/query` → `/chat` に切替）
 * [ ] Firebase Hosting 用の設定追加 & デプロイ
-  - 詳細: `firebase.json` に hosting 設定を追加（public/rewrites など最小）、`NEXT_PUBLIC_MVP_MODE=true` でビルドしデプロイ
+  - 詳細: `firebase.json` に hosting 設定を追加（public/rewrites など最小）、`NEXT_PUBLIC_MVP_MODE=true` でビルドしデプロイ（`mvp:build` スクリプト追加済）
+  - 進捗: rewrites (`/chat` 含む) 追加済 / ビルドスクリプト追加済 / デプロイ未実施
   - DoD: 公開URLでトップが表示でき、チャットが `/chat` 経由で応答を返す（モバイルで視認性OK）
 
 ### バックエンド
@@ -76,8 +77,9 @@
 * [x] Upstash Vector への問い合わせ実装（`VectorService`。未設定時はダミータイトル生成でフォールバック）
 * [x] 検索結果（カード簡易情報）をプロンプトに組み込み回答生成
 * [ ] Cloud Run へデプロイ（DockerfileはMVP簡素化済み。実デプロイは未実施）
-  - 詳細: `backend/Dockerfile` を利用してビルド→Cloud Run へデプロイ。必要な環境変数を設定
+  - 詳細: `backend/Dockerfile` を利用してビルド→Cloud Run へデプロイ。必要な環境変数を設定（`.env.prod.example` 追加済）
     - 必須/推奨: `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`、（任意）`BACKEND_OPENAI_API_KEY`
+  - 進捗: デプロイスクリプト `scripts/deployment/deploy_cloud_run_mvp.sh` 追加済 / 実デプロイ未実施
   - DoD: 公開URLで `POST /chat` が 200 を返し、`with_context=true/false` の両方が期待通り動作
 
 ### データ
@@ -222,15 +224,11 @@ MVPで不要と判断した高度機能は「即時削除」ではなく「ア�
 
 ## 🔧 環境変数（MVP）
 
-フロントエンド:
-- `NEXT_PUBLIC_API_URL`（例: バックエンドの公開URL）
-- `NEXT_PUBLIC_MVP_MODE=true`（`/chat` を使う）
-- `NEXT_PUBLIC_API_KEY`（必要ならヘッダーに付与。MVPでは必須でない想定）
+（最新版の一覧は `docs/project/env_mvp.md` を参照）
 
-バックエンド:
-- `BACKEND_OPENAI_API_KEY`（未設定時は擬似Embeddingへフォールバック）
-- `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`（未設定時はダミータイトル生成）
-- `BACKEND_TESTING`, `BACKEND_MOCK_EXTERNAL_SERVICES`（テスト/モック切替）
+フロントエンド (抜粋): `NEXT_PUBLIC_MVP_MODE`, `NEXT_PUBLIC_API_URL`
+
+バックエンド (抜粋): `BACKEND_OPENAI_API_KEY`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
 
 ---
 
@@ -272,8 +270,9 @@ pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
 
 ## 🚢 デプロイ概要（MVP）
 
-- バックエンド: `backend/Dockerfile` は単段構成に簡素化（`uvicorn` 直接起動）。Cloud Run へのデプロイ準備済み
-- フロントエンド: Firebase Hosting を想定（設定・実デプロイは未着手）
+- バックエンド: `backend/Dockerfile` は単段構成に簡素化（`uvicorn` 直接起動）。Cloud Run 用スクリプト追加済み
+- フロントエンド: Firebase Hosting 想定（`/chat` rewrite 追加 / ビルドスクリプト追加済）
+- 詳細手順: `docs/deployment/cloud_run_firebase_mvp.md`
 
 ヒント（例）:
 1) Cloud Run（例）

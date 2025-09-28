@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mvp:build": "NEXT_PUBLIC_MVP_MODE=true next build && NEXT_PUBLIC_MVP_MODE=true next export"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
