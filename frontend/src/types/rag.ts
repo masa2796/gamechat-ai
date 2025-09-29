@@ -1,43 +1,24 @@
-// RAG API レスポンス型定義
-
+// MVP用 RAG レスポンス型最小定義（重複削除後）
 export interface RagContextItem {
-  id?: string;
-  url?: string;
-  name?: string;
-  image_before?: string;
-  image_after?: string;
-  type?: string;
-  rarity?: string;
-  class?: string;
-  cv?: string;
-  illustrator?: string;
-  crest?: string;
-  qa?: Array<{ question: string; answer: string }>;
-  cost?: number;
-  attack?: number;
-  hp?: number;
+  title?: string; // MVPで利用する主キー
   effect_1?: string;
-  keywords?: string[];
-  // サジェスト用
+  attack?: number;
+  defense?: number;
+  level?: number;
+  // 将来拡張フィールド（既存データ互換用）
+  id?: string;
+  name?: string;
   content?: string;
-  is_suggestion?: boolean;
+  [key: string]: unknown;
 }
+
+export interface RagResponseError { message: string; code?: string | number; }
 
 export interface RagResponse {
-  answer?: string; // 非推奨: 互換性維持のため残すが利用しない
-  context?: RagContextItem[];
-  classification?: any; // 必要に応じて型定義を追加
-  search_info?: {
-    query_type?: string;
-    confidence?: number;
-    db_results_count?: number;
-    vector_results_count?: number;
-  };
-  performance?: {
-    total_duration?: number;
-    search_duration?: number;
-    llm_duration?: number;
-    cache_hit?: boolean;
-  };
-  error?: { message: string };
+  answer: string; // MVP `/chat` 契約: 常に存在
+  context?: RagContextItem[] | null; // with_context=false の場合は undefined もしくは null
+  retrieved_titles: string[]; // タイトル列
+  error?: RagResponseError; // フォールバック/エラー時
 }
+
+export type { RagContextItem as ContextItem };
