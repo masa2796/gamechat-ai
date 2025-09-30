@@ -51,15 +51,17 @@ export interface ChatSession { id: string; title: string; messages: Message[]; }
  * チャット履歴の全体状態
  * 複数のチャットセッションを管理するための型
  */
-export interface ChatHistoryState { sessions: ChatSession[]; activeSessionId: string | null; maxSessions: number; }
+// 履歴管理はMVPで未使用のため簡略化
+export interface ChatHistoryState { sessions: ChatSession[]; activeSessionId: string | null; }
 
 /**
  * LocalStorageキー定数
  * チャット履歴の保存に使用するキーの定義
  */
-export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const; // 簡略化
+export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const; // 将来復活時用プレースホルダ
 
 /**
  * チャット履歴管理フックの返り値型
  */
+// 履歴フックは削除済み
 export interface UseChatHistoryReturn { sessions: ChatSession[]; }
