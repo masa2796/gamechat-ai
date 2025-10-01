@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body
 from typing import Dict, Any, List
 from pydantic import BaseModel
-import os
 import json
 import threading
 import logging
@@ -9,7 +8,6 @@ from ..services.embedding_service import EmbeddingService
 from ..services.vector_service import VectorService
 from ..services.llm_service import LLMService
 from ..services.storage_service import StorageService
-from ..services.dynamic_threshold_manager import threshold_manager
 import os
 
 logger = logging.getLogger(__name__)
@@ -119,9 +117,4 @@ async def chat(req: MVPChatRequest = Body(...)) -> Dict[str, Any]:
 ############################
 # 管理/診断用（MVPデフォルト無効）
 ############################
-@router.get("/admin/search/thresholds")
-async def get_threshold_state() -> Dict[str, Any]:
-    if os.getenv("VECTOR_THRESHOLD_ADMIN_ENABLED", "false").lower() != "true":
-        raise HTTPException(status_code=404, detail="Not Found")
-    state = threshold_manager.get_state()
-    return {"threshold_state": state}
+# 閾値管理エンドポイントはMVP除外（dynamic_threshold_manager削除）
