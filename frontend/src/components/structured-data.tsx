@@ -1,14 +1,2 @@
-interface StructuredDataProps {
-  data: Record<string, unknown>
-}
-
-export function StructuredData({ data }: StructuredDataProps) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(data)
-      }}
-    />
-  )
-}
+// ARCHIVE_CANDIDATE: 構造化データ挿入 (MVP除外 / stub)
+export {};
