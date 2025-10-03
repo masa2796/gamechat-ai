@@ -117,4 +117,4 @@ async def chat(req: MVPChatRequest = Body(...)) -> Dict[str, Any]:
 ############################
 # 管理/診断用（MVPデフォルト無効）
 ############################
-# 閾値管理エンドポイントはMVP除外（dynamic_threshold_manager削除）
+# 将来の管理/診断系エンドポイント (動的閾値/高度監視等) は MVP では非搭載

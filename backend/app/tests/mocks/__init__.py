@@ -1,29 +1,10 @@
 """
 テスト用モックオブジェクト
 """
-from .service_mocks import (
-    MockMatch,
-    MockUpstashResult,
-    MockClassificationResult,
-    MockOpenAIResponse,
-    MockDatabaseConnection
-)
-from .factories import (
-    ContextItemFactory,
-    ClassificationResultFactory,
-    TestScenarioFactory
-)
+"""MVP最小モックパッケージ
 
-__all__ = [
-    # Service Mocks
-    "MockMatch",
-    "MockUpstashResult", 
-    "MockClassificationResult",
-    "MockOpenAIResponse",
-    "MockDatabaseConnection",
-    
-    # Factories
-    "ContextItemFactory",
-    "ClassificationResultFactory", 
-    "TestScenarioFactory"
-]
+classification / hybrid / OpenAIリッチレスポンス関連のモックはMVP外機能として削除。
+残存モックが必要になった場合は過去のGit履歴から復元してください。
+"""
+
+__all__: list[str] = []
