@@ -33,9 +33,9 @@ export default defineConfig({
         "src/app/offline/page.tsx",
   // Sentry関連ページ削除済み (MVP)
         "src/app/test/page.tsx",
-        "src/components/structured-data.tsx",
+  // structured-data.tsx は削除済み
   // Sentry関連コンポーネント削除済み (MVP)
-        "src/components/pwa-provider.tsx",
+  // pwa-provider.tsx は削除済み
         "src/components/global-error-handler.tsx",
         "src/components/ui/breadcrumb.tsx",
         "src/components/ui/separator.tsx",

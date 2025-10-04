@@ -64,4 +64,5 @@ export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const; // 将
  * チャット履歴管理フックの返り値型
  */
 // 履歴フックは削除済み
-export interface UseChatHistoryReturn { sessions: ChatSession[]; }
+// 履歴機能はMVPで未使用のためエクスポートを停止（復活時に再導入）
+// export interface UseChatHistoryReturn { sessions: ChatSession[]; }
