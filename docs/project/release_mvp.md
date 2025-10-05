@@ -283,3 +283,107 @@ pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
 詳細手順は `docs/deployment/deployment-guide.md` を参照し、MVP前提の最小構成で実施してください。
 
 ---
+
+## 📁 ディレクトリ別タスク（MVP最小構成）
+
+以下は「最小限の構成」で公開するために、各ディレクトリ単位で実施すべきタスクを整理したものです。区分の意味は次の通り:
+- Keep: そのまま維持（必須）
+- Adjust: 最小化や設定見直し（MVP向けの軽量化）
+- Archive: 非MVP。`ARCHIVE_CANDIDATE` 注記 or `docs/archive/` へ移動候補
+- No-op: 今回は操作不要（デプロイ対象外など）
+
+### /（リポジトリ直下）
+- Keep
+  - `README.md`（MVPの使い方を冒頭に追記）
+  - `firebase.json`（Hosting: rewrites に `/chat` を含む。現状追記済みを確認）
+- Adjust
+  - `cloudbuild.yaml`（Cloud Run に直接デプロイする場合は最小ジョブのみ残す or ドキュメント参照に留める）
+  - `docker-compose.yml`（ローカル開発の最小構成: backend のみ or 必要最小限。監視系や非MVPサービスは無効化）
+  - `docker-compose.prod.yml`（MVP運用では使用しない前提なら注記を追加）
+  - `package.json`（ルートにある場合はドキュメント用スクリプトのみ残す。ビルドは各パッケージ側を主とする）
+- Archive
+  - 監視/高度運用向けの記述があれば注記（本番安定後に再検討）
+- DoD
+  - ルートREADMEに MVP 手順（/chat, 環境変数, 起動/デプロイ）を記述
+  - デプロイに不要な compose/services は無効化方針が明記されている
+
+### backend/
+- Keep
+  - `backend/Dockerfile`（単段構成、`uvicorn` 直接起動）
+  - `backend/app/main.py`, `backend/app/routers/rag.py`（MVPの `/chat` を提供）
+  - `backend/app/services/`（`EmbeddingService`, `VectorService`, `LLMService`, `StorageService`）
+  - `backend/app/tests/test_mvp_chat_basic.py`（最小スモーク/フォールバック）
+- Adjust
+  - `backend/app/routers/mvp_chat.py` が残っていれば ARCHIVE 注記（重複ルーターは未使用）
+  - `requirements.txt` は最小依存の確認（未使用パッケージの削減は任意）
+  - Cloud Run 向け `.env.prod.example` を最新化（必須ENVの記載整備）
+- Archive
+  - 高度RAG/ハイブリッド関連: `services/hybrid_search_service.py`, `services/rag_service.py`（ドキュメント上は対象外）
+  - 分類関連テスト/実装（既に削除済みまたは候補）
+- DoD
+  - Cloud Run 上で `POST /chat` が 200 を返す（`with_context` true/false 両対応）
+  - Upstash未設定でもフォールバック応答可能（WARN/INFO ログ方針）
+  - `pytest backend/app/tests/ -q` が PASS（Smoke）
+
+### frontend/
+- Keep
+  - MVP用チャットUI（`assistant` ページ + `useChat.ts`）
+  - `package.json` の `mvp:build` スクリプト
+- Adjust
+  - `NEXT_PUBLIC_MVP_MODE=true` で `/api/rag/query` → `/chat` に切替する挙動を最終確認
+  - Firebase Hosting へデプロイ（`firebase.json` rewrites 確認済みのまま実施）
+  - `NEXT_PUBLIC_API_URL` 未設定時の相対パス挙動を README に明記
+- Archive
+  - 非MVPページ/重い依存があれば一旦リンク外し or 注記
+- DoD
+  - 公開URLでトップが表示でき、`/chat` 経由で応答が得られる（モバイル読了性OK）
+
+### scripts/
+- Keep
+  - `scripts/deployment/deploy_cloud_run_mvp.sh`（Cloud Run 最小デプロイ）
+- Adjust
+  - `scripts/data-processing/` に Upstash へのアップサートスクリプトを実装（`data/convert_data.json|data.json` から最小項目）
+  - スクリプトに実行権限（macOS: `chmod +x`）
+- Archive
+  - 高度処理ユーティリティ（複合戦略/監視専用など）は注記のみに留める
+- DoD
+  - 1コマンドで Cloud Run デプロイが完了し、必要ENVが渡る
+  - Upstash へのデータ投入が完了（件数が期待値以上）
+
+### data/
+- Keep
+  - `data/convert_data.json`, `data/data.json`, `data/vector_index_effects.jsonl`（必要に応じて）
+- Adjust
+  - Upstash インデックスに必要な最小フィールドのみ投入（title / effect_1 / 基本ステータス）
+  - データ量は初期検証に十分な最小セット
+- DoD
+  - `/chat` 検索結果に投入データが反映（retrieved_titles が期待通り）
+
+### docs/
+- Keep
+  - 本ファイル（`docs/project/release_mvp.md`）
+  - `docs/deployment/cloud_run_firebase_mvp.md` / `docs/deployment/deployment-guide.md`
+  - `docs/project/env_mvp.md`（環境変数の一覧）
+- Adjust
+  - 非MVPドキュメントには `ARCHIVE_CANDIDATE` を注記し、リンクは残す
+- Archive
+  - ハイブリッド検索などの詳細ガイドは `docs/archive/` へ移動候補
+- DoD
+  - MVP手順がここだけ見れば通せる最小構成で揃っている
+
+### nginx/
+- No-op
+  - MVPは Cloud Run + Firebase Hosting を前提とし Nginx は使用しない
+- Adjust
+  - リバースプロキシ構成の雛形として残す場合は README に「MVPでは未使用」と注記
+
+### htmlcov/ ・ logs/
+- No-op
+  - デプロイ対象外。CI/CDやHostingから除外（必要なら .firebaseignore / Cloud Build ignore を調整）
+
+### 受け入れ条件（ディレクトリ別タスク）
+- ルート/バックエンド/フロント/スクリプト/データ/ドキュメントの各DoDを満たし、外形的に以下が成立
+  - Cloud Run の `/chat` が 200 を返す（with/without context）
+  - Firebase Hosting 公開URLでチャットが利用可能
+  - Upstash の投入が検索結果に反映
+  - 非MVP要素は `ARCHIVE_CANDIDATE` の注記または参照のみ
