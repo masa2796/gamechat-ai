@@ -1,3 +1,9 @@
+##############################################
+# 注意: 本ファイルはプロダクション向け参考構成です（MVPでは未使用）
+# - MVP運用では Cloud Run（backend）+ Firebase Hosting（frontend）を前提とします
+# - Redis や Nginx を含む本構成は将来の高度運用時に再検討します（ARCHIVE_CANDIDATE）
+##############################################
+
 services:
   # Redis service for rate limiting and caching
   redis:
@@ -28,7 +34,7 @@ services:
         max-size: "5m"
         max-file: "3"
 
-  # Backend service (Production)
+  # Backend service (Production) - reference only for non-MVP setups
   backend:
     build:
       context: .
@@ -72,10 +78,10 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Frontend is now deployed on Firebase Hosting (static site)
-  # No longer using Docker container for frontend production
+  # Frontend is deployed on Firebase Hosting in MVP
+  # Container-based frontend for production is not used in MVP
 
-  # Nginx reverse proxy (Production)
+  # Nginx reverse proxy (Production) - reference only for non-MVP setups
   nginx:
     image: nginx:alpine
     container_name: gamechat-ai-nginx-prod

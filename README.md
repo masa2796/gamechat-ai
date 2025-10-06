@@ -1,5 +1,28 @@
 # gamechat-ai - AIチャット型ゲーム攻略アシスタント (MVPモード)
 
+> MVPクイックスタート（最小手順）
+
+このリポジトリは現在、最小価値検証（MVP）構成です。まずは動くことを最優先に、以下の手順で「/chat」が使える状態を作ります。
+
+1) 必須環境変数（バックエンド）
+  - UPSTASH_VECTOR_REST_URL（必須）
+  - UPSTASH_VECTOR_REST_TOKEN（必須）
+  - BACKEND_OPENAI_API_KEY（任意。未設定時はフォールバックで動作）
+
+2) ローカル起動（最小）
+  - Docker Compose は backend のみ起動します（フロントは Firebase Hosting を想定）。
+  - 起動後、POST /chat に対して { "message": "◯◯を教えて" } を送ると応答が返ります。
+
+3) デプロイ（最小）
+  - バックエンド: Cloud Run へデプロイ（`backend/Dockerfile`）。推奨: `scripts/deployment/deploy_cloud_run_mvp.sh`
+  - フロントエンド: Firebase Hosting に `NEXT_PUBLIC_MVP_MODE=true` でビルド&デプロイ（`frontend` パッケージ側のスクリプトを使用）
+
+4) compose/services 無効化方針（MVP）
+  - ローカルの docker-compose は backend のみを対象とし、監視/Redis/Nginx 等の非MVPリソースは使用しません。
+  - 本番系 compose（`docker-compose.prod.yml`）は MVP では未使用です（参照用に残置）。
+
+詳細は `docs/project/release_mvp.md` および `docs/deployment/cloud_run_firebase_mvp.md` を参照してください。
+
 **最新更新 (MVPリダクション反映)**: 2025年10月  
 
 現在は初期ユーザーフィードバック最適化のため「最小価値検証(MVP)構成」です。高度な分類 / ハイブリッド検索 / 動的閾値 / reCAPTCHA 認証 / 大量モック&統合テストは削除または履歴保管のみとし、/chat の単一体験に集中しています。
