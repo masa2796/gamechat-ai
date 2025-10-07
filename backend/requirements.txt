@@ -1,7 +1,15 @@
+# Backend MVP minimal dependencies
+# NOTE: keep this list lean; add new packages only if /chat ルートの稼働に必須
 fastapi
 uvicorn
+
+# Optional (フォールバックあり) だが、実運用ではOpenAIを利用する想定
 openai
+
+# Vector search + settings utilities
 upstash-vector
 pydantic
 python-dotenv
+
+# Smoke tests
 pytest

@@ -1,5 +1,5 @@
 """
-Removed in MVP
+ARCHIVE_CANDIDATE: Removed in MVP
 
 This module is kept as a no-op placeholder to avoid import errors from
 legacy scripts/tests. Use the /chat endpoint implemented in
