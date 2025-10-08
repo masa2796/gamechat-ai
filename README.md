@@ -8,6 +8,7 @@
   - UPSTASH_VECTOR_REST_URL（必須）
   - UPSTASH_VECTOR_REST_TOKEN（必須）
   - BACKEND_OPENAI_API_KEY（任意。未設定時はフォールバックで動作）
+    - NEXT_PUBLIC_API_URL は未設定（空文字）のままでOK。その場合はフロントから `/chat` への**相対パス**で呼び出します。
 
 2) ローカル起動（最小）
   - Docker Compose は backend のみ起動します（フロントは Firebase Hosting を想定）。

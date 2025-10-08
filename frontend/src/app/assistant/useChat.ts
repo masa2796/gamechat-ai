@@ -20,9 +20,24 @@ export const useChat = (): UseChatReturn => {
     setLoading(true);
     updateInput("");
     setMessages(prev => [...prev, userMessage]);
-    const base = process.env.NEXT_PUBLIC_API_URL || "";
-    const mvpMode = process.env.NEXT_PUBLIC_MVP_MODE === 'true';
-    const apiUrl = mvpMode ? `${base}/chat` : `${base}/api/rag/query`;
+    const rawBase = (process.env.NEXT_PUBLIC_API_URL ?? "").trim();
+    const trimmedBase = rawBase.replace(/\/+$/, "");
+    const base = trimmedBase.length > 0 ? trimmedBase : ""; // 未設定時は相対パス
+    const mvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
+    const endpoint = mvpMode ? "/chat" : "/api/rag/query";
+    const apiUrl = `${base}${endpoint}`;
+
+    const payload = mvpMode
+      ? {
+          message: userMessage.content,
+          top_k: 5,
+          with_context: true,
+        }
+      : {
+          question: userMessage.content,
+          top_k: 5,
+          with_context: true,
+        };
 
     try {
       const res = await fetch(apiUrl, {
@@ -31,11 +46,7 @@ export const useChat = (): UseChatReturn => {
           "Content-Type": "application/json",
           "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
         },
-        body: JSON.stringify(mvpMode ? {
-          message: userMessage.content,
-          top_k: 5,
-          with_context: true
-        } : { question: userMessage.content, top_k: 5, with_context: true }),
+        body: JSON.stringify(payload),
         credentials: "include"
       });
       
@@ -57,7 +68,7 @@ export const useChat = (): UseChatReturn => {
         cardContext: Array.isArray((data as any).context) && typeof (data as any).context[0] === "object" ? (data as any).context : (Array.isArray(data.context) ? data.context : undefined)
       };
       
-      console.log(`[useChat] API応答受信 - cardContext: ${assistantMessage.cardContext?.length || 0}件`);
+  console.log(`[%cuseChat%c] API応答 @${apiUrl} (context: ${assistantMessage.cardContext?.length || 0})`, "color:#2563eb;font-weight:bold", "color:inherit");
       
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
