@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Analyze namespace distribution from vector_index_effects.jsonl (and convert_data.json fallback).
+"""ARCHIVE_CANDIDATE: 監査用の解析スクリプト（MVPでは未使用）。
+
+Analyze namespace distribution from vector_index_effects.jsonl (and convert_data.json fallback).
 Print counts per namespace and list namespaces missing vs expected pattern effect_1..effect_9, qa_question, qa_answer, flavorText, effect_combined.
 """
 from __future__ import annotations

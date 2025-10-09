@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Feedback 簡易集計スクリプト
+"""ARCHIVE_CANDIDATE: 運用向けメトリクス集計でMVPでは未使用。
+
+Feedback 簡易集計スクリプト
 
 In-memory 保存 (MVP) を前提に FastAPI の /api/feedback/recent を叩いて
 negative_rate / zero_hit_rate を CSV 1行で出力。
