@@ -366,10 +366,13 @@ pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
   - `docs/project/env_mvp.md`（環境変数の一覧）
 - Adjust
   - 非MVPドキュメントには `ARCHIVE_CANDIDATE` を注記し、リンクは残す
+  - `docs/README.md` を MVP インデックスとして再構成（必読ドキュメントとアーカイブ候補を明示）
+  - `docs/api/api-specification.md` を `/chat` + `/health` のみの仕様に刷新
+  - `docs/deployment/deployment-guide.md` / `cloud_run_firebase_mvp.md` / `project/env_mvp.md` を最小手順に更新
 - Archive
   - ハイブリッド検索などの詳細ガイドは `docs/archive/` へ移動候補
 - DoD
-  - MVP手順がここだけ見れば通せる最小構成で揃っている
+  - MVP手順がここだけ見れば通せる最小構成で揃っている（`docs/README.md` から該当ドキュメントへ到達可能）
 
 ### nginx/
 - No-op

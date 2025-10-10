@@ -48,3 +48,8 @@ NEXT_PUBLIC_MVP_MODE=true
 - Cloud Run: `gcloud run deploy` 時に `--set-env-vars` で渡す
 - Firebase Hosting: ビルド時に `NEXT_PUBLIC_*` が評価されるため `scripts/deployment/deploy_firebase_hosting_mvp.sh` で `NEXT_PUBLIC_MVP_MODE=true` を export 済み
 - 追加が必要になった場合は本ファイルを更新し `release_mvp.md` から参照リンクを貼る予定
+
+### 関連スクリプト
+- `scripts/deployment/deploy_cloud_run_mvp.sh` : Cloud Run デプロイ時に `.env.prod` を読み込んで `--set-env-vars` を自動整形
+- `scripts/data-processing/upstash_upsert_mvp.py` : Upstash の URL / TOKEN を環境変数から読み込みカードデータを投入
+- `scripts/deployment/deploy_firebase_hosting_mvp.sh` : `NEXT_PUBLIC_MVP_MODE=true` を設定した状態でビルド・デプロイ

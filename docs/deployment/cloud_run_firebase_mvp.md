@@ -26,11 +26,11 @@ cp backend/.env.prod.example backend/.env.prod
 ```
 2. デプロイ
 ```
-bash scripts/deployment/deploy_cloud_run_mvp.sh \
-  PROJECT_ID=<gcp-project> \
-  SERVICE=gamechat-ai-backend \
-  REGION=asia-northeast1 \
-  ENV_FILE=backend/.env.prod
+PROJECT_ID=<gcp-project> \
+SERVICE=gamechat-ai-backend \
+REGION=asia-northeast1 \
+ENV_FILE=backend/.env.prod \
+  bash scripts/deployment/deploy_cloud_run_mvp.sh
 ```
 3. 動作確認
 ```
@@ -42,14 +42,25 @@ SERVICE_URL=$(gcloud run services describe gamechat-ai-backend --region asia-nor
 curl -s -X POST "$SERVICE_URL/chat" -H 'Content-Type: application/json' -d '{"message":"テスト","with_context":true}' | jq
 ```
 
-## 2. ベクトルデータ投入 (必要時)
-`UPSTASH_VECTOR_*` が設定されている前提で、将来 `scripts/data-processing/` に追加される投入スクリプトを実行。未投入でもダミータイトルでフォールバック動作可。
+## 2. ベクトルデータ投入 (推奨)
+
+Upstash の認証情報 (`UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`) を `.env.prod` などに設定したあと、MVP用の投入スクリプトを実行します。OpenAIキーがない場合でも deterministic embedding で動作します。
+
+```
+pip install -r backend/requirements.txt
+python scripts/data-processing/upstash_upsert_mvp.py \
+  --source data/convert_data.json \
+  --namespace mvp_cards
+```
+
+結果は標準出力で件数が増えていく形で確認できます。投入しない場合は `/chat` がダミータイトルでフォールバックし、最低限の回答を返します。
 
 ## 3. フロントエンド: Firebase Hosting デプロイ
 
 1. ビルド & エクスポート
 ```
-bash scripts/deployment/deploy_firebase_hosting_mvp.sh PROJECT_ID=<firebase-project>
+PROJECT_ID=<firebase-project> \
+  bash scripts/deployment/deploy_firebase_hosting_mvp.sh
 ```
 2. 公開 URL 確認
 ```

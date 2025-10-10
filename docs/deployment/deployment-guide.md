@@ -1,152 +1,114 @@
-# GameChat AI - デプロイメント統合ガイド
+# GameChat AI - デプロイメントガイド (MVP)
 
-**最終更新**: 2025年6月17日
+**最終更新**: 2025年10月10日
 
-## 📋 概要
-
-GameChat AIプロジェクトのデプロイメントガイドです。開発環境でのローカル実行手順を示します。
-
-## 🎯 クイックスタート
-
-### 前提条件
-- Python 3.8以上
-- Node.js 14以上
-- 必要なAPIキー取得済み（OpenAI、Upstash Vector、reCAPTCHA）
-
-### 1分でデプロイ
-```bash
-# 1. プロジェクトルートに移動
-cd /Users/masaki/Documents/gamechat-ai
-
-# 2. 開発サーバー起動
-uvicorn app.main:app --reload --port 8000
-```
-
-## 🔧 開発環境
-
-### ローカル開発環境
-```bash
-# 1. 依存関係インストール
-pip install -r requirements.txt
-npm install
-
-# 2. 環境変数設定
-cp .env.example .env
-# .envファイルを編集してAPIキーを設定
-
-# 3. 開発サーバー起動
-# バックエンド
-cd backend && uvicorn app.main:app --reload --port 8000
-
-# フロントエンド  
-cd frontend && npm run dev
-```
-
-### Docker開発環境
-```bash
-# 開発環境起動
-docker-compose up -d
-
-# ログ確認
-docker-compose logs -f
-```
-
-## 🛠️ デプロイ後の確認
-
-### ヘルスチェック
-```bash
-# サービス状態確認
-curl https://gamechat-ai-backend-905497046775.asia-northeast1.run.app/health
-
-# API動作確認
-curl -X POST https://gamechat-ai-backend-905497046775.asia-northeast1.run.app/api/rag/query \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -d '{"question": "ポケモンについて教えて", "recaptchaToken": "test"}'
-```
-
-### ログ確認
-```bash
-# Cloud Runサービスログ
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=gamechat-ai-backend" --limit=50
-
-# エラーログのみ
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=gamechat-ai-backend AND severity>=ERROR" --limit=20
-```
-
-## 🔍 トラブルシューティング
-
-### よくある問題
-
-#### 1. APIキー認証エラー
-```bash
-# Secret Manager確認
-gcloud secrets versions access latest --secret="API_KEY_DEVELOPMENT"
-
-# Cloud Runサービス設定確認  
-gcloud run services describe gamechat-ai-backend --region=asia-northeast1
-```
-
-#### 2. OpenAI API接続エラー
-```bash
-# APIキーの改行チェック・修正
-gcloud secrets versions access latest --secret="OPENAI_API_KEY" | wc -c
-gcloud secrets versions access latest --secret="OPENAI_API_KEY" | tr -d '\n' | gcloud secrets versions add OPENAI_API_KEY --data-file=-
-```
-
-#### 3. reCAPTCHA認証エラー
-- 開発環境: `ENVIRONMENT=development`でテストバイパス利用
-- 本番環境: 実際のreCAPTCHAトークンが必要
-
-### ログ分析
-```bash
-# 認証関連ログ
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=gamechat-ai-backend AND textPayload:authentication" --limit=10
-
-# パフォーマンス関連ログ  
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=gamechat-ai-backend AND textPayload:timeout" --limit=10
-```
-
-## 📊 監視・メトリクス
-
-### パフォーマンス指標
-- **応答時間**: 目標 < 10秒 (現在: 調整中)
-- **可用性**: > 99.9%
-- **エラー率**: < 1%
-
-### アラート設定
-```bash
-# Cloud Monitoringでアラート設定
-# - 応答時間 > 30秒
-# - エラー率 > 5%
-# - メモリ使用率 > 80%
-```
-
-## 🔄 CI/CD パイプライン
-
-### GitHub Actions設定例
-```yaml
-name: Deploy to Cloud Run
-on:
-  push:
-    branches: [main]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: google-github-actions/setup-gcloud@v0
-      - run: ./scripts/cloud-run-deploy.sh
-```
-
-## 📚 関連ドキュメント
-
-- [現在の問題点サマリー](../current-issues-summary.md)
-- [API仕様書](../api/rag_api_spec.md)
-- [開発ロードマップ](../development-roadmap.md)
-- [パフォーマンス最適化](../performance/README.md)
+MVPリリースに必要な最小限のセットアップとデプロイ手順をまとめています。詳細な背景は `docs/project/release_mvp.md` を参照してください。
 
 ---
 
-**担当者**: 開発チーム  
-**次回更新予定**: 2025年6月18日
+## 🔁 全体フロー
+
+1. バックエンドを Cloud Run にデプロイ
+2. （任意）カードデータを Upstash Vector に投入
+3. フロントエンドを Firebase Hosting に公開
+4. `/chat` を叩いて動作確認
+
+---
+
+## ✅ 前提条件
+
+- Google Cloud / Firebase プロジェクトが作成済み
+- `gcloud`, `firebase-tools`, `docker`, `python3`, `node` が利用可能
+- プロジェクトルートで以下が準備済み
+  - `backend/.env.prod` (必要な環境変数を記入)
+  - `frontend` の依存関係 (`npm install`) が導入済み
+
+参考: 環境変数は `docs/project/env_mvp.md` を参照。
+
+---
+
+## 1. Cloud Run へデプロイ
+
+1. 環境変数ファイルを整備
+   ```bash
+   cp backend/.env.prod.example backend/.env.prod
+   # 必要な値を編集
+   ```
+2. デプロイスクリプトを実行
+   ```bash
+   PROJECT_ID=<gcp-project> \
+   SERVICE=gamechat-ai-backend \
+   REGION=asia-northeast1 \
+   ENV_FILE=backend/.env.prod \
+     bash scripts/deployment/deploy_cloud_run_mvp.sh
+   ```
+3. ヘルスチェック
+   ```bash
+   SERVICE_URL=$(gcloud run services describe gamechat-ai-backend --region asia-northeast1 --format 'value(status.url)')
+   curl -s "$SERVICE_URL/health"
+   ```
+
+---
+
+## 2. Upstash Vector にデータ投入（推奨）
+
+上記 `.env.prod` で Upstash の URL/TOKEN を設定後に実行します。OpenAI キーがない場合でも擬似ベクトルで投入されます。
+
+```bash
+pip install -r backend/requirements.txt
+python scripts/data-processing/upstash_upsert_mvp.py \
+  --source data/convert_data.json \
+  --namespace mvp_cards
+```
+
+コンソールに投入件数が表示されます。投入しない場合でも `/chat` はダミータイトルでフォールバックします。
+
+---
+
+## 3. Firebase Hosting へデプロイ
+
+1. Firebase CLI にログインして対象プロジェクトを選択
+   ```bash
+   firebase login
+   firebase use <firebase-project>
+   ```
+2. スクリプトでビルド & デプロイ
+   ```bash
+   PROJECT_ID=<firebase-project> \
+     bash scripts/deployment/deploy_firebase_hosting_mvp.sh
+   ```
+
+スクリプト内で `NEXT_PUBLIC_MVP_MODE=true` が自動設定され、`frontend/out` の静的出力が Hosting にアップロードされます。
+
+---
+
+## 4. 動作確認
+
+```bash
+SERVICE_URL=$(gcloud run services describe gamechat-ai-backend --region asia-northeast1 --format 'value(status.url)')
+curl -s -X POST "$SERVICE_URL/chat" \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"MVP動作確認です","with_context":true}' | jq
+```
+
+Firebase 側では公開URLをブラウザで開き、メッセージ送信→応答が返ることを確認します。
+
+---
+
+## 🧰 トラブルシュート
+
+| 症状 | チェック | 対処 |
+|------|----------|------|
+| `/chat` が 500 を返す | Cloud Run ログ | Upstash/ OpenAI 未設定時はフォールバックするため、ログの WARN を確認 |
+| `upstash_upsert_mvp.py` が失敗 | `.env.prod` の Upstash 設定 | URL/TOKEN が正しいか、`pip install upstash-vector` 済みか確認 |
+| Firebase デプロイで `out` が無い | `frontend` ビルド結果 | `npm run mvp:build` が成功しているか、`NEXT_PUBLIC_MVP_MODE` が true か確認 |
+
+---
+
+## � 参考ドキュメント
+
+- `docs/project/release_mvp.md` : 全体タスクとDoD
+- `docs/project/env_mvp.md` : 環境変数一覧
+- `docs/deployment/cloud_run_firebase_mvp.md` : 本ガイドの詳細版
+
+MVPではシンプルな運用を重視し、追加機能は後続フェーズで段階的に導入します。

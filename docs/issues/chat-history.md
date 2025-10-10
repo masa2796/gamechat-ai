@@ -1,5 +1,7 @@
 # 不具合調査レポート: chat-history 機能が正常に動かない件（2025-08-15）
 
+> **ARCHIVE_CANDIDATE**: チャット履歴機能はMVPで未提供のため、本レポートは参考資料として保管しています。
+
 本セクションは feature/chat-history-management-113 ブランチの現状コードを確認し、chat-history が動作しない原因を整理したものです。
 
 ## 現象

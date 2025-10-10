@@ -1,5 +1,7 @@
 # 環境設定統合ガイド
 
+> **ARCHIVE_CANDIDATE**: この統合ガイドはMVPで使用しない拡張設定を扱います。MVP環境では `docs/project/env_mvp.md` の一覧と `.env.prod.example` を参照してください。
+
 このファイルは、GameChat AIプロジェクトの環境変数・設定・API設定を統合したガイドです。
 
 ## 📋 概要

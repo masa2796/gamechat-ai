@@ -1,5 +1,7 @@
 # Docker Compose 使い分けガイド
 
+> **ARCHIVE_CANDIDATE**: 本ガイドはMVPで利用しないDocker構成の参考資料です。MVPでは`docker-compose.yml`のバックエンド単体起動のみを想定しています。
+
 GameChat AIでは目的別に複数のDocker Composeファイルを使い分けています。
 
 ## 📁 ファイル構成

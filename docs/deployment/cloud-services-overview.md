@@ -1,3 +1,5 @@
+> **ARCHIVE_CANDIDATE**: 本ドキュメントはMVP範囲外のクラウド構成メモです。MVPデプロイでは参考情報として扱い、最新手順は `docs/deployment/cloud_run_firebase_mvp.md` を参照してください。
+
 MVP: cloud services overview removed.
 - **役割**: バックエンドAPIのホスティング
 - **プロジェクト**: `gamechat-ai`

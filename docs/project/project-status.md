@@ -1,5 +1,7 @@
 # GameChat AI - プロジェクト状況・計画
 
+> **ARCHIVE_CANDIDATE**: 本状況レポートはフル機能体制を前提としています。MVPの進行状況は `docs/project/release_mvp.md` を参照してください。
+
 **最終更新**: 2025年6月17日  
 **ステータス**: 運用中（一部課題あり）
 
