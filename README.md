@@ -20,6 +20,7 @@
 
 4) compose/services 無効化方針（MVP）
   - ローカルの docker-compose は backend のみを対象とし、監視/Redis/Nginx 等の非MVPリソースは使用しません。
+  - `nginx/` ディレクトリはリバースプロキシ構成の雛形として残置していますが、MVPでは Cloud Run + Firebase Hosting 運用のため未使用です。
   - 本番系 compose（`docker-compose.prod.yml`）は MVP では未使用です（参照用に残置）。
 
 詳細は `docs/project/release_mvp.md` および `docs/deployment/cloud_run_firebase_mvp.md` を参照してください。
