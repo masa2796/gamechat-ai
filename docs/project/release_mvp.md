@@ -1,6 +1,6 @@
 # 📦 Release MVP 開発タスク整理
 
-最終更新: 2025-09-19（branch: `release-mvp-120`）
+最終更新: 2025-10-12（branch: `release-mvp-120`）
 
 ## 🎯 目的（Why）
 
@@ -49,6 +49,16 @@
 
 ---
 
+## ✅ MVPタスク概要（最新整理）
+
+- **バックエンド**: `backend/Dockerfile` を Cloud Run にデプロイし、`/chat` が `with_context` true/false の双方で 200 を返すことを確認。`UPSTASH_VECTOR_*` と任意の `BACKEND_OPENAI_API_KEY` を設定し、`pytest backend/app/tests/ -q` が引き続き PASS となるよう維持。
+- **データ**: `scripts/data-processing/` に Upstash への投入スクリプトを整備し、`data/convert_data.json` などから最小項目をアップサート。投入後に `/chat` の `retrieved_titles` へ反映されることを検証。
+- **フロントエンド**: `NEXT_PUBLIC_MVP_MODE=true` で `/chat` を利用する挙動を最終確認し、`firebase.json` の rewrites を活用して Firebase Hosting へデプロイ。`NEXT_PUBLIC_API_URL` 未設定時の挙動を README に明記。
+- **ドキュメント**: `README.md`、`docs/deployment/cloud_run_firebase_mvp.md`、`docs/project/env_mvp.md` を MVP 前提で更新し、非MVP関連ガイドへ `ARCHIVE_CANDIDATE` 注記を追加。`docs/README.md` から必要資料へ辿れる導線を整備。
+- **スクリプト・運用**: `scripts/deployment/deploy_cloud_run_mvp.sh` の実行権限を確認し、Firebase/Cloud Run 手順を掲載。`htmlcov/` や `logs/` は CI/CD から除外できるよう `.firebaseignore` や Cloud Build ignore を検討。
+
+---
+
 ## 🧭 クリティカルパス（実行順）
 
 1) バックエンドを Cloud Run にデプロイし、`/chat` を公開（フォールバック込みで安定稼働）
@@ -57,6 +67,32 @@
 4) README と最小デプロイガイドを整備（環境変数・起動・エンドポイント）
 
 ---
+
+## 本日の横断確認による追加タスク/注意（P0/P1）
+
+P0（最優先・ブロッカー防止）
+
+- backend/.env.prod.example の追加/整備
+  - 含める推奨キー: `BACKEND_ENVIRONMENT=production`, `BACKEND_LOG_LEVEL=INFO`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`, （任意）`BACKEND_OPENAI_API_KEY`
+  - 備考: デプロイスクリプト側の表記 `LOG_LEVEL` と混在しないよう、バックエンドは `BACKEND_LOG_LEVEL` へ統一
+- Upstash namespace 整合の明確化
+  - 既存検索は「デフォルトnamespace」を参照（`VectorService` で namespace 未指定）
+  - 迅速対応（MVP）: 投入時に `--namespace` を付けず「デフォルトnamespace」に投入する
+  - 恒久対応（後追い）: 環境変数 `UPSTASH_VECTOR_NAMESPACE` を導入し、`Index.query(..., namespace=...)` を利用
+- `.firebaseignore` の追加
+  - 例: `htmlcov/`, `logs/`（必要に応じて `backend/`, `scripts/` など）を除外し、Hosting へ不要ファイルが載らないようにする
+- CORS と環境判定の最終確認
+  - 本番は FastAPI 側の `settings.CORS_ORIGINS`（Firebaseドメイン + localhost）。必要に応じて拡張
+  - Cloud Run 本番では `BACKEND_ENVIRONMENT=production` を必ず設定
+- デプロイスクリプトの実行権限
+  - `scripts/deployment/deploy_cloud_run_mvp.sh`, `scripts/deployment/deploy_firebase_hosting_mvp.sh` に実行権限（macOS: `chmod +x`）
+
+P1（できるだけ早めに）
+
+- Cloud Build 運用整理（任意）
+  - 手動スクリプト運用か Cloud Build かを一本化し、レジストリ/timeout設定の重複や差異を解消
+- ドキュメント追記
+  - 環境変数の命名差分（`BACKEND_LOG_LEVEL` と `LOG_LEVEL`）の扱いと、Upstash namespace 注意を `deployment-guide.md` / `cloud_run_firebase_mvp.md` / `env_mvp.md` に明記
 
 ## ✅ タスク一覧（How）
 
@@ -382,7 +418,9 @@ pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
 
 ### htmlcov/ ・ logs/
 - No-op
-  - デプロイ対象外。CI/CDやHostingから除外（必要なら .firebaseignore / Cloud Build ignore を調整）
+  - デプロイ対象外。CI/CDやHostingから除外
+  - 具体対応: ルートに `.firebaseignore` を追加し、`htmlcov/`, `logs/`（任意で `backend/`, `scripts/` など）を除外対象に設定
+  - （任意）Cloud Build を使う場合はビルドコンテキストの除外方針も整理
 
 ### 受け入れ条件（ディレクトリ別タスク）
 - ルート/バックエンド/フロント/スクリプト/データ/ドキュメントの各DoDを満たし、外形的に以下が成立
