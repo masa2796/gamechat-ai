@@ -181,10 +181,15 @@ def upsert_records(records: Iterable[Dict[str, Any]], namespace_override: str | 
                     metadata=row.get("metadata", {}),
                 )
             )
-        batch_namespace = namespace_override or (namespaces[0] if namespaces else "default")
-        index.upsert(vectors=vectors, namespace=batch_namespace)
+        # 迅速対応（MVP）: --namespace 未指定時は Upstash のデフォルトnamespaceへ投入（namespace引数を渡さない）
+        batch_namespace = namespace_override or (namespaces[0] if namespaces else None)
+        if batch_namespace:
+            index.upsert(vectors=vectors, namespace=batch_namespace)
+        else:
+            index.upsert(vectors=vectors)
         count += len(batch)
-        print(f"Upserted {count} records so far (namespace={batch_namespace})")
+        ns_label = batch_namespace or "<default>"
+        print(f"Upserted {count} records so far (namespace={ns_label})")
     print(f"完了: 合計 {count} 件をアップサートしました")
 
 

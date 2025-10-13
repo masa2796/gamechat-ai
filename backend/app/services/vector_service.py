@@ -14,6 +14,8 @@ class VectorService:
     def __init__(self) -> None:
         self.url = os.getenv("UPSTASH_VECTOR_REST_URL")
         self.token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
+        # 後追い恒久対応: 名前空間を環境変数で指定可能（未設定ならデフォルトnamespaceを使用）
+        self.namespace = os.getenv("UPSTASH_VECTOR_NAMESPACE") or None
         self.enabled = bool(self.url and self.token and Index)
         if self.enabled:
             try:
@@ -31,7 +33,20 @@ class VectorService:
             return []
         if self.enabled and self.index:
             try:
-                res = self.index.query(vector=embedding, top_k=top_k, include_metadata=True)  # type: ignore
+                # namespace が指定されている場合のみ引数に渡す（未指定=デフォルトnamespace）
+                if self.namespace:
+                    res = self.index.query(  # type: ignore
+                        vector=embedding,
+                        top_k=top_k,
+                        include_metadata=True,
+                        namespace=self.namespace,
+                    )
+                else:
+                    res = self.index.query(  # type: ignore
+                        vector=embedding,
+                        top_k=top_k,
+                        include_metadata=True,
+                    )
                 matches = getattr(res, 'matches', res) or []
                 titles = []
                 top_scores = []

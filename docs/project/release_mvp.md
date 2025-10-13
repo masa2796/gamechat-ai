@@ -77,8 +77,8 @@ P0（最優先・ブロッカー防止）
   - 備考: デプロイスクリプト側の表記 `LOG_LEVEL` と混在しないよう、バックエンドは `BACKEND_LOG_LEVEL` へ統一
 - Upstash namespace 整合の明確化
   - 既存検索は「デフォルトnamespace」を参照（`VectorService` で namespace 未指定）
-  - 迅速対応（MVP）: 投入時に `--namespace` を付けず「デフォルトnamespace」に投入する
-  - 恒久対応（後追い）: 環境変数 `UPSTASH_VECTOR_NAMESPACE` を導入し、`Index.query(..., namespace=...)` を利用
+  - 迅速対応（MVP）: 投入時に `--namespace` を付けず「デフォルトnamespace」に投入する（スクリプト更新済）
+  - 恒久対応（後追い）: 環境変数 `UPSTASH_VECTOR_NAMESPACE` を導入し、`Index.query(..., namespace=...)` を利用（`VectorService` 実装済）
 - `.firebaseignore` の追加
   - 例: `htmlcov/`, `logs/`（必要に応じて `backend/`, `scripts/` など）を除外し、Hosting へ不要ファイルが載らないようにする
 - CORS と環境判定の最終確認
