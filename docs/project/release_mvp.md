@@ -428,3 +428,64 @@ pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
   - Firebase Hosting 公開URLでチャットが利用可能
   - Upstash の投入が検索結果に反映
   - 非MVP要素は `ARCHIVE_CANDIDATE` の注記または参照のみ
+
+---
+
+## ✅ 実施内容と次アクション（2025-10-17）
+
+本日の作業で、MVPバックエンドの4要件「/chat API・OpenAI応答・Upstash Vector検索・Cloud Runデプロイ準備」を実装・確認し、テストまで完了しました。要点は以下です。
+
+### 実施内容（Done）
+
+- /chat API 実装確認
+  - `backend/app/routers/rag.py` にて、リクエスト `{ message, top_k?, with_context? }` を受け取り、Embedding → Vector検索 → LLM応答の最小実装を確認。
+  - `with_context=false` 時は `context` を省略。Embedding/Upstash未設定時はフォールバックで継続。
+
+- OpenAIでの応答生成を追加
+  - 変更ファイル: `backend/app/services/llm_service.py`
+  - `BACKEND_OPENAI_API_KEY` がある場合は OpenAI Chat Completions（既定: `gpt-4o-mini`）を使用。未設定/テスト時は従来のスタブ回答へフォールバック。
+  - 調整用ENV: `BACKEND_OPENAI_MODEL`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`
+
+- Upstash Vector検索の最小実装確認
+  - `backend/app/services/vector_service.py`：`UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN` で `Index.query` を実行。
+  - 未設定や失敗時はダミータイトルでフォールバック。`UPSTASH_VECTOR_NAMESPACE` があれば namespace クエリ。
+
+- デプロイ資材整備
+  - Dockerfile 確認: `backend/Dockerfile` は単段で `uvicorn` 実行、`/data` 同梱のMVP構成。
+  - Cloud Run デプロイスクリプト: `scripts/deployment/deploy_cloud_run_mvp.sh`（実行権限付与済み）。
+  - 環境変数雛形: `backend/.env.prod.example`（必須/推奨キー一式を含む）。
+  - Firebase Hosting除外: `.firebaseignore` に `htmlcov/`, `logs/`, `backend/`, `scripts/` を追加済み。
+
+- テスト実行
+  - VS Code タスク「pytest backend」を実行し PASS（Smoke/フォールバック）を確認。
+
+### 次アクション（Next）
+
+1) Cloud Run 本番デプロイ
+   - `backend/.env.prod.example` をコピーして `backend/.env.prod` を作成し値を設定。
+     - 必須/推奨: `BACKEND_ENVIRONMENT=production`, `BACKEND_LOG_LEVEL=INFO`, `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
+     - 任意: `BACKEND_OPENAI_API_KEY`（未設定でもスタブ動作）
+   - `scripts/deployment/deploy_cloud_run_mvp.sh` を用いてビルド/プッシュ/デプロイ（`PROJECT_ID`, `REGION`, `SERVICE`, `ENV_FILE` を指定）。
+   - デプロイ後、`/health` と `/chat`（`with_context` true/false）を確認。
+
+2) Upstash へのデータ投入
+   - `scripts/data-processing/` の投入スクリプトを使い、namespace なしでインデックスに投入（MVP方針）。
+   - `/chat` の `retrieved_titles` に反映されることを確認。
+
+3) ドキュメント最小整備
+   - `README.md`、`docs/deployment/cloud_run_firebase_mvp.md`、`docs/project/env_mvp.md` に、今回のENV・手順を反映。
+
+4) Firebase Hosting（フロント）
+   - `NEXT_PUBLIC_MVP_MODE=true` でビルド/デプロイし、公開URLでチャットが `/chat` を叩いて応答することを確認。
+
+### 動作確認の要点
+
+- Health: GET `/health` が 200
+- Chat: POST `/chat` に `{ "message": "おすすめの低コストカードは？" }` を送って 200 と最小レスポンス
+- `with_context=false` でも 200 で `context` 非表示
+
+### 品質ゲート結果（本日時点）
+
+- Build: N/A（Docker本番ビルドはデプロイ時に実行）
+- Lint/Typecheck: PASS（変更ファイルに静的エラーなし）
+- Tests: PASS（VS Codeタスク「pytest backend」成功）
