@@ -489,3 +489,67 @@ pytest backend/app/tests/ --maxfail=3 --disable-warnings -q
 - Build: N/A（Docker本番ビルドはデプロイ時に実行）
 - Lint/Typecheck: PASS（変更ファイルに静的エラーなし）
 - Tests: PASS（VS Codeタスク「pytest backend」成功）
+
+---
+
+## ▶️ 直近の実行タスク（2025-10-18）
+
+MVP 公開に向けて、今日これから着手すべき具体タスクです。上から順に実行すると早く価値が出ます（Cloud Run 公開 → データ投入 → Hosting 公開 → 動作確認）。
+
+1) 本番用環境ファイルを用意（必須）
+  - 目的: Cloud Run で必要な環境変数を一括管理
+  - 手順:
+    - `backend/.env.prod` を作成（存在しない場合は新規に作成）
+    - 設定例:
+     - `BACKEND_ENVIRONMENT=production`
+     - `BACKEND_LOG_LEVEL=INFO`
+     - `UPSTASH_VECTOR_REST_URL=...`
+     - `UPSTASH_VECTOR_REST_TOKEN=...`
+     - （任意）`BACKEND_OPENAI_API_KEY=sk-...`
+     - （必要なら）`UPSTASH_VECTOR_NAMESPACE=mvp_cards`
+  - 判定: 机上レビューでキー漏れがないこと
+
+2) Cloud Run へバックエンドをデプロイ（必須）
+  - 目的: `/chat` を公開環境で動かす
+  - コマンド（例）:
+    - `PROJECT_ID=<gcp-project>` `REGION=asia-northeast1` `SERVICE=gamechat-ai-backend` `ENV_FILE=backend/.env.prod` を設定し、`scripts/deployment/deploy_cloud_run_mvp.sh` を実行
+  - 判定: `gcloud run services describe ...` で URL が取得でき、`GET /health` が 200
+
+3) Upstash へカードデータ投入（推奨）
+  - 目的: ベクトル検索で実データを返せるようにする
+  - コマンド（例）:
+    - `python scripts/data-processing/upstash_upsert_mvp.py --source data/convert_data.json`
+    - namespace を使う場合は `UPSTASH_VECTOR_NAMESPACE=mvp_cards` を Cloud Run 環境変数に設定
+  - 判定: インデックス件数が増加し、後述の `/chat` で `retrieved_titles` が期待通り返る
+
+4) Firebase Hosting へフロントを公開（推奨）
+  - 目的: 公開URLからチャットを操作可能にする
+  - コマンド（例）:
+    - `PROJECT_ID=<firebase-project>` を指定して `scripts/deployment/deploy_firebase_hosting_mvp.sh` を実行
+  - 判定: 公開URLでトップが表示でき、チャットが `/chat` を叩いて応答する
+
+5) 公開後のスモークテスト（必須）
+  - 目的: 本番ルートでの最小確認
+  - 観点:
+    - Cloud Run: `GET /health` が 200
+    - Cloud Run: `POST /chat` に `{ "message": "テスト", "with_context": true }` で 200 と最小レスポンス（`answer`, `retrieved_titles`, `context`）
+    - `with_context=false` でも 200 で `context` が省略される
+
+6) 環境変数命名の整合を修正（小タスク）
+  - 目的: ドキュメントと実装の表記揺れを排除
+  - 施策: `docs/project/env_mvp.md` を `BACKEND_ENVIRONMENT`/`BACKEND_LOG_LEVEL` 基準に統一し、`BACKEND_ENV`/`LOG_LEVEL` は互換注記を残す
+
+7) CORS/Rewrite の最終確認（小タスク）
+  - 目的: ブラウザからのアクセスでブロックされないようにする
+  - 観点:
+    - Firebase `firebase.json` の rewrites は `/chat` `/api/**` が Cloud Run 指定済み（現状OK）
+    - FastAPI 側 `CORS_ORIGINS` が本番ドメインに合っているか（運用開始時は `[*]` でも可、後日絞り込み）
+
+8) （任意）CI/CD の準備
+  - 目的: 手動手順の省力化
+  - 概要: GitHub Actions で Cloud Run / Firebase Hosting を自動デプロイ
+  - 秘密情報: `GCP_SA_KEY`, `FIREBASE_TOKEN` など
+
+補足:
+- 進行順は 1→2→3→4→5 を推奨（先に Cloud Run を公開し、検索品質は投入進捗に応じて改善）
+- それぞれの詳細手順は本ファイルおよび `docs/deployment/cloud_run_firebase_mvp.md` を参照
