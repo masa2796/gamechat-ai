@@ -36,16 +36,16 @@
 **期限**: 即座  
 **担当**: Backend
 
-- [ ] **`.env.prod.example`の追加**
+- [x] **`.env.prod.example`の追加**
   - 推奨キー: `BACKEND_ENVIRONMENT=production`, `BACKEND_LOG_LEVEL=INFO`
   - Upstash設定: `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`
   - 任意: `BACKEND_OPENAI_API_KEY`
 
-- [ ] **`.firebaseignore`の追加**
+- [x] **`.firebaseignore`の追加**
   - 除外対象: `htmlcov/`, `logs/`, `backend/`, `scripts/`
   - 不要ファイルのHosting除外
 
-- [ ] **CORS設定の最終確認**
+- [x] **CORS設定の最終確認**
   - `settings.CORS_ORIGINS`の設定（Firebaseドメイン + localhost）
   - 本番環境での`BACKEND_ENVIRONMENT=production`設定
 
