@@ -1,29 +1,135 @@
 # gamechat-ai - AIチャット型ゲーム攻略アシスタント (MVPモード)
 
-> MVPクイックスタート（最小手順）
+## 🚀 MVPクイックスタート
 
-このリポジトリは現在、最小価値検証（MVP）構成です。まずは動くことを最優先に、以下の手順で「/chat」が使える状態を作ります。
+このリポジトリは現在、**最小価値検証（MVP）構成**で運用中です。まずは動くことを最優先に、最小手順で「**`/chat` エンドポイント**」が使える状態を作ります。
 
-1) 必須環境変数（バックエンド）
-  - UPSTASH_VECTOR_REST_URL（必須）
-  - UPSTASH_VECTOR_REST_TOKEN（必須）
-  - BACKEND_OPENAI_API_KEY（任意。未設定時はフォールバックで動作）
-    - NEXT_PUBLIC_API_URL は未設定（空文字）のままでOK。その場合はフロントから `/chat` への**相対パス**で呼び出します。
+### 📋 必須環境変数の設定
 
-2) ローカル起動（最小）
-  - Docker Compose は backend のみ起動します（フロントは Firebase Hosting を想定）。
-  - 起動後、POST /chat に対して { "message": "◯◯を教えて" } を送ると応答が返ります。
+#### バックエンド（必須）
+```bash
+# Upstash Vector（必須）
+UPSTASH_VECTOR_REST_URL=https://your-vector.upstash.io
+UPSTASH_VECTOR_REST_TOKEN=your-token
 
-3) デプロイ（最小）
-  - バックエンド: Cloud Run へデプロイ（`backend/Dockerfile`）。推奨: `scripts/deployment/deploy_cloud_run_mvp.sh`
-  - フロントエンド: Firebase Hosting に `NEXT_PUBLIC_MVP_MODE=true` でビルド&デプロイ（`frontend` パッケージ側のスクリプトを使用）
+# OpenAI API（任意 - 未設定時はフォールバックで動作）
+BACKEND_OPENAI_API_KEY=sk-your-openai-key
+```
 
-4) compose/services 無効化方針（MVP）
-  - ローカルの docker-compose は backend のみを対象とし、監視/Redis/Nginx 等の非MVPリソースは使用しません。
-  - `nginx/` ディレクトリはリバースプロキシ構成の雛形として残置していますが、MVPでは Cloud Run + Firebase Hosting 運用のため未使用です。
-  - 本番系 compose（`docker-compose.prod.yml`）は MVP では未使用です（参照用に残置）。
+#### フロントエンド（任意）
+```bash
+# MVPモード有効化
+NEXT_PUBLIC_MVP_MODE=true
 
-詳細は `docs/project/release_mvp.md` および `docs/deployment/cloud_run_firebase_mvp.md` を参照してください。
+# バックエンドURL（未設定時は相対パスで/chatを呼び出し）
+NEXT_PUBLIC_API_URL=https://your-backend.run.app
+```
+
+### 🛠️ ローカル起動（最小手順）
+
+1. **環境変数ファイル作成**
+```bash
+cp backend/.env.example backend/.env.local
+# 上記の必須環境変数を設定
+```
+
+2. **バックエンドのみ起動**
+```bash
+cd backend
+docker-compose up -d
+```
+
+3. **動作確認**
+```bash
+# ヘルスチェック
+curl http://localhost:8000/health
+
+# /chatエンドポイントのテスト
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "強いカードを教えて", "with_context": true}'
+```
+
+### ☁️ デプロイ（最小手順）
+
+#### バックエンド: Cloud Run
+```bash
+# 環境変数設定
+cp backend/.env.prod.example backend/.env.prod
+# 必要値を編集
+
+# デプロイ実行
+PROJECT_ID=your-gcp-project \
+SERVICE=gamechat-ai-backend \
+REGION=asia-northeast1 \
+ENV_FILE=backend/.env.prod \
+  bash scripts/deployment/deploy_cloud_run_mvp.sh
+```
+
+#### フロントエンド: Firebase Hosting
+```bash
+cd frontend
+NEXT_PUBLIC_MVP_MODE=true npm run build
+firebase deploy --only hosting
+```
+
+### 🔗 `/chat` エンドポイントの使用方法
+
+#### リクエスト形式
+```bash
+POST /chat
+Content-Type: application/json
+
+{
+  "message": "質問文",
+  "with_context": true  // コンテキスト情報を含むかどうか（任意、デフォルト: true）
+}
+```
+
+#### レスポンス例
+```json
+{
+  "message": "ユーザーの質問文",
+  "response": "AIの回答",
+  "retrieved_titles": ["カード1", "カード2", "カード3"],
+  "context": [
+    {
+      "title": "カード名",
+      "rarity": "R",
+      "effect_1": "効果説明"
+    }
+  ],
+  "metadata": {
+    "vector_search_count": 5,
+    "llm_fallback": false
+  }
+}
+```
+
+#### 使用例
+```bash
+# 基本的な質問
+curl -X POST https://your-backend.run.app/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "HP100以上のカードを教えて"}'
+
+# コンテキスト無しで質問
+curl -X POST https://your-backend.run.app/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "強いカードは？", "with_context": false}'
+```
+
+### 📝 MVP構成の制約事項
+
+- **ローカル**: docker-compose は backend のみ（監視/Redis/Nginx等は無効化）
+- **本番**: Cloud Run + Firebase Hosting運用（docker-compose.prod.ymlは未使用）
+- **機能**: 高度な分類/ハイブリッド検索/認証機能は削除済み（要復元時は過去commit参照）
+
+### 📖 詳細ドキュメント
+
+- 環境変数詳細: [`docs/project/env_mvp.md`](docs/project/env_mvp.md)
+- デプロイ手順: [`docs/deployment/cloud_run_firebase_mvp.md`](docs/deployment/cloud_run_firebase_mvp.md)
+- プロジェクト状況: [`docs/project/release_mvp.md`](docs/project/release_mvp.md)
 
 **最新更新 (MVPリダクション反映)**: 2025年10月  
 
