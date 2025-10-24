@@ -44,25 +44,67 @@ export interface UseChatReturn {
  * チャットセッション
  * 個別のチャット会話を管理するための型
  */
-// MVPでは複数セッションを扱わないため簡略化（将来拡張用に型は最小限保持）
-export interface ChatSession { id: string; title: string; messages: Message[]; }
+export interface ChatSession { 
+  id: string; 
+  title: string; 
+  messages: Message[]; 
+  createdAt: Date;
+  updatedAt: Date;
+  isActive?: boolean;
+}
 
 /**
  * チャット履歴の全体状態
  * 複数のチャットセッションを管理するための型
  */
-// 履歴管理はMVPで未使用のため簡略化
-export interface ChatHistoryState { sessions: ChatSession[]; activeSessionId: string | null; }
+export interface ChatHistoryState { 
+  sessions: ChatSession[]; 
+  activeSessionId: string | null;
+  maxSessions?: number;
+}
 
 /**
  * LocalStorageキー定数
  * チャット履歴の保存に使用するキーの定義
  */
-export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const; // 将来復活時用プレースホルダ
+export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const;
 
 /**
  * チャット履歴管理フックの返り値型
  */
-// 履歴フックは削除済み
-// 履歴機能はMVPで未使用のためエクスポートを停止（復活時に再導入）
-// export interface UseChatHistoryReturn { sessions: ChatSession[]; }
+export interface UseChatHistoryReturn {
+  /** 全セッション（更新日時降順） */
+  sessions: ChatSession[];
+  /** アクティブセッションID */
+  activeSessionId: string | null;
+  /** アクティブセッション */
+  activeSession: ChatSession | null;
+  /** ローディング状態 */
+  isLoading: boolean;
+  /** エラーメッセージ */
+  error: string | null;
+  /** ストレージ使用状況 */
+  storageUsage: {
+    totalSize: number;
+    sessionCount: number;
+    averageSessionSize: number;
+    isNearLimit: boolean;
+    isOverWarningThreshold: boolean;
+  };
+  /** 新規チャット作成 */
+  createNewChat: (initialMessage?: string) => string;
+  /** チャット切り替え */
+  switchToChat: (sessionId: string) => void;
+  /** チャット削除 */
+  deleteChat: (sessionId: string) => void;
+  /** チャットタイトル更新 */
+  updateChatTitle: (sessionId: string, title: string) => void;
+  /** セッションにメッセージ追加 */
+  addMessageToChat: (sessionId: string, message: { role: 'user' | 'assistant', content: string }) => void;
+  /** セッションのメッセージ更新 */
+  updateSessionMessages: (sessionId: string, messages: { role: 'user' | 'assistant', content: string }[]) => void;
+  /** エラークリア */
+  clearError: () => void;
+  /** 全履歴削除 */
+  clearAllHistory: () => void;
+}
