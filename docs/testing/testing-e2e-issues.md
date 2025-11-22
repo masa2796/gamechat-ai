@@ -1,5 +1,7 @@
 # E2Eテスト（Playwright）の現状と問題点
 
+> **ARCHIVE_CANDIDATE**: E2Eテスト強化はMVP範囲外です。MVPではスモークテストのみ実施します。
+
 ## 概要
 GameChat AIプロジェクトのE2Eテスト（`chat-functionality.spec.ts`）において、サイドバーのクリック操作で失敗が発生している問題について調査と修正を実施中。
 

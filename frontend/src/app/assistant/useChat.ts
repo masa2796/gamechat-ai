@@ -1,39 +1,22 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import type { Message } from "../../types/chat";
-import type { UseChatReturn } from "../../types/chat";
+
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { Message, UseChatReturn } from "../../types/chat";
 import type { RagResponse } from "../../types/rag";
-import { useChatHistory } from "../../hooks/useChatHistory";
-
-// reCAPTCHAが無効かどうかを判定するヘルパー関数
-const isRecaptchaDisabled = () => {
-  return (
-    process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA === "true" ||
-    process.env.NEXT_PUBLIC_ENVIRONMENT === "test" ||
-    !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-  );
-};
-
-// window.grecaptcha型定義を追加
-interface WindowWithRecaptcha extends Window {
-  grecaptcha?: {
-    execute(siteKey: string, options: { action: string }): Promise<string>;
-  };
-  firebaseAuth?: {
-    currentUser?: {
-      getIdToken(): Promise<string>;
-    };
-  };
-}
-
-declare const window: WindowWithRecaptcha;
+import { useChatHistory } from "@/hooks/useChatHistory";
 
 export const useChat = (): UseChatReturn => {
-  console.log('[useChat] フック初期化開始');
-  
+  // ローカル状態（表示用・リアルタイム更新）
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
+  const [recaptchaReady, setRecaptchaReady] = useState(true); // MVP では常に true
+
   // チャット履歴の有効/無効（テスト環境では無効化して副作用を避ける）
   const isTestEnv = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test' || process.env.NODE_ENV === 'test';
   const historyEnabled = !isTestEnv;
+  
   // チャット履歴管理フック
   const chatHistoryHook = useChatHistory();
   
@@ -54,190 +37,74 @@ export const useChat = (): UseChatReturn => {
   } = chatHistoryHook;
 
   console.log('[useChat] チャット履歴フック状態:', {
-    activeSessionId,
-    hasActiveSession: !!activeSession,
     sessionsCount: sessions.length,
-    updateChatTitleType: typeof updateChatTitle
+    activeSessionId,
+    historyEnabled,
+    isTestEnv
   });
 
-  // 現在のセッションのメッセージを取得（ローカル状態で管理しつつ履歴と双方向同期）
-  const [localMessages, setLocalMessages] = useState<Message[]>([]);
-  // 直近の更新元: 'local' | 'session' | null
-  const lastUpdateSource = useRef<"local" | "session" | null>(null);
+  // 最後の更新ソースを追跡（無限ループ防止）
+  const lastUpdateSource = useRef<'user' | 'session' | null>(null);
 
-  const areMessagesEqual = useCallback((a: Message[], b: Message[]) => {
-    if (a === b) return true;
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      const am = a[i];
-      const bm = b[i];
-      if (am.id !== bm.id || am.role !== bm.role || am.content !== bm.content) {
-        return false;
-      }
+  // 統一的なsetMessages関数（履歴を更新し、ローカル状態も同期）
+  const setMessages = useCallback((messages: Message[] | ((prev: Message[]) => Message[])) => {
+    console.log('[useChat] setMessages called with:', typeof messages === 'function' ? 'function' : messages);
+    
+    const newMessages = typeof messages === 'function' ? messages(localMessages) : messages;
+    console.log('[useChat] Computed new messages:', newMessages.length);
+    
+    // ローカル状態を更新
+    lastUpdateSource.current = 'user';
+    setLocalMessages(newMessages);
+    
+    // アクティブセッションがあれば履歴も更新
+    if (historyEnabled && activeSessionId && updateSessionMessages) {
+      console.log('[useChat] Updating session messages for:', activeSessionId);
+      updateSessionMessages(activeSessionId, newMessages);
     }
-    return true;
-  }, []);
-  
-  const messages = useMemo(() => {
-    console.log('[useChat] Messages computed:', {
-      activeSessionId,
-      localMessagesCount: localMessages.length,
-      activeSession: !!activeSession
-    });
-    return localMessages;
-  }, [localMessages, activeSession, activeSessionId]);
-  
-  const [input, setInputState] = useState("");
-  // 最新の入力値を保持（sendMessageが古いクロージャを参照しないように）
-  const inputRef = useRef("");
-  useEffect(() => {
-    inputRef.current = input;
-  }, [input]);
-  const [loading, setLoading] = useState(false);
-  const [recaptchaReady, setRecaptchaReady] = useState(false);
-  const [sendMode, setSendMode] = useState<"enter" | "mod+enter">("enter");
+  }, [localMessages, historyEnabled, activeSessionId, updateSessionMessages]);
 
-  // 外部公開用：refとstateを同時に更新するラッパー
-  const setInput = useCallback((value: string) => {
-    inputRef.current = value;
-    setInputState(value);
+  // input setter wrapper（副作用の統一化）
+  const setInputWrapper = useCallback((value: string) => {
+    setInput(value);
   }, []);
 
-  // セッション変更時の入力フィールドクリア
+  // アクティブセッションが変更されたときのメッセージ同期
   useEffect(() => {
-    setInput("");
-  }, [activeSessionId, setInput]);
-
-  // メッセージ更新時にローカル状態を更新
-  const setMessages = useCallback((updater: Message[] | ((prev: Message[]) => Message[])) => {
-    setLocalMessages((prev) => {
-  const next = typeof updater === 'function' ? (updater as (p: Message[]) => Message[])(prev) : updater;
-  // ローカル起点の更新であることを記録
-  lastUpdateSource.current = 'local';
-      return next;
-    });
-  }, []);
-
-  // セッション切替や初期化時に、アクティブセッションのメッセージをローカルへ反映
-  useEffect(() => {
-    if (!historyEnabled) return; // テスト時は履歴からの上書きを無効化
-    if (activeSession) {
-      const next = activeSession.messages ?? [];
-      console.log('[useChat] アクティブセッションのメッセージをロード:', {
-        sessionId: activeSession.id,
-        count: next.length
-      });
-      setLocalMessages((prev) => {
-        // 直前がローカル更新の場合は上書きしない（送信直後の競合を回避）
-        if (lastUpdateSource.current === 'local') return prev;
-        if (areMessagesEqual(prev, next)) return prev;
-        // セッション起点のコピーであることを記録
-        lastUpdateSource.current = 'session';
-        return next;
-      });
-    }
-  }, [activeSession, areMessagesEqual, historyEnabled]);
-
-  // ローカルメッセージが変わったら履歴へ同期（アクティブセッションがある場合）
-  useEffect(() => {
-    if (!historyEnabled) return; // テスト時は履歴への同期を無効化
-    if (!activeSessionId) return;
-    // セッションからコピーしてきた更新の場合は同期しない（ループ防止）
-    if (lastUpdateSource.current !== 'local') return;
-    // セッション側と差分がない場合は同期しない
-    const sessionMessages = activeSession?.messages ?? [];
-    if (areMessagesEqual(localMessages, sessionMessages)) return;
-    try {
-      updateSessionMessages(activeSessionId, localMessages);
-      console.log('[useChat] 履歴へメッセージ同期完了:', {
-        sessionId: activeSessionId,
-        count: localMessages.length
-      });
-    } catch (e) {
-      console.warn('[useChat] 履歴同期に失敗:', e);
-    } finally {
-      // 同期後はフラグをリセット
-      lastUpdateSource.current = null;
-    }
-  }, [localMessages, activeSessionId, updateSessionMessages, activeSession, areMessagesEqual, historyEnabled]);
-
-  // LocalStorage: 初期読み込み（後方互換: 旧キー 'chat-history' を読み取る）
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      // 既にセッションがあり、そのメッセージがロードされる場合は旧キーからの上書きを避ける
-      if (activeSession) {
-        console.log('[useChat] 旧キー読み込みをスキップ（アクティブセッションあり）');
-        return;
-      }
-      const raw = localStorage.getItem('chat-history');
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        setLocalMessages(parsed);
-      }
-    } catch (err) {
-      console.warn('Failed to parse chat history:', err);
-    }
-  }, [activeSession]);
-
-  // LocalStorage: 変更保存（後方互換のため旧キーにも保存）
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem('chat-history', JSON.stringify(localMessages));
-    } catch {
-      // 保存失敗時は黙ってスキップ
-    }
-  }, [localMessages]);
-
-  // 送信モードの初期化
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("chat-send-mode");
-      if (saved === "enter" || saved === "mod+enter") {
-        setSendMode(saved);
-      }
-    }
-  }, []);
-
-  // 送信モードの保存
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("chat-send-mode", sendMode);
-    }
-  }, [sendMode]);
-
-  // reCAPTCHAスクリプトの動的ロード
-  useEffect(() => {
-    if (isRecaptchaDisabled()) {
-      setRecaptchaReady(true);
+    // 履歴無効時は何もしない
+    if (!historyEnabled) {
+      console.log('[useChat] History disabled, skipping session sync');
       return;
     }
-    if (typeof window !== "undefined" && !window.grecaptcha) {
-      const script = document.createElement("script");
-      script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
-      script.async = true;
-      script.onload = () => setRecaptchaReady(true);
-      document.body.appendChild(script);
-    } else {
-      setRecaptchaReady(true);
-    }
-  }, []);
 
-  // メッセージ送信ロジック
+    // セッション起点の更新（ユーザー起点の更新と区別）
+    if (lastUpdateSource.current === 'session') {
+      console.log('[useChat] Skipping session sync - update source is session');
+      return;
+    }
+
+    const target = activeSession;
+    console.log('[useChat] Active session changed:', {
+      activeSessionId,
+      targetSessionExists: !!target,
+      targetMessageCount: target?.messages.length || 0,
+      currentLocalMessageCount: localMessages.length
+    });
+
+    // セッション起点の反映であることを明確化
+    lastUpdateSource.current = 'session';
+    setLocalMessages(target?.messages ?? []);
+    
+    console.log('[useChat] Messages synced from session');
+  }, [activeSession, activeSessionId, historyEnabled, localMessages.length]);
+
+  // メッセージ送信処理
   const sendMessage = useCallback(async () => {
-    // ref優先で取得し、未反映の場合はstateをフォールバック
-    const rawInput = (inputRef.current !== undefined ? inputRef.current : input) ?? "";
-    const currentInput = typeof rawInput === 'string' ? rawInput.trim() : "";
-    if (!currentInput || loading) return;
-    const userMessage: Message = { 
-      id: `user_${Date.now()}`,
-      role: "user", 
-      content: currentInput 
-    };
-    setLoading(true);
-    setInput("");
+    const currentInput = input.trim();
+    if (!currentInput || loading) {
+      console.log('[useChat] Send aborted:', { currentInput, loading });
+      return;
+    }
 
     console.log(`[useChat] ユーザーメッセージ送信前のメッセージ数: ${localMessages.length}`);
 
@@ -251,96 +118,74 @@ export const useChat = (): UseChatReturn => {
     }
     
     // 「サンプル出力」ならCardListを表示する特殊メッセージを追加
-  if (currentInput === "サンプル出力") {
+    if (currentInput === "サンプル出力") {
       console.log(`[useChat] サンプル出力モード`);
       setMessages(prev => {
         const sampleMessage: Message = { 
           id: `assistant_sample_${Date.now()}`,
           role: "assistant", 
-          content: "__show_sample_cards__" 
+          content: "[カードリスト表示]",
+          cardContext: [
+            { 
+              id: "sample1", 
+              title: "サンプルカード1", 
+              summary: "これはサンプルです", 
+              score: 0.9,
+              type: "card"
+            },
+            { 
+              id: "sample2", 
+              title: "サンプルカード2", 
+              summary: "これもサンプルです", 
+              score: 0.8,
+              type: "card"
+            }
+          ]
         };
-        const newMessages = [...prev, userMessage, sampleMessage];
-        console.log(`[useChat] サンプル出力後のメッセージ数: ${newMessages.length}`);
-        return newMessages;
+        return [...prev, sampleMessage];
       });
-      setLoading(false);
+      setInput("");
       return;
     }
 
-    console.log(`[useChat] 通常メッセージ送信`);
-    setMessages(prev => {
-      const newMessages = [...prev, userMessage];
-      console.log(`[useChat] ユーザーメッセージ追加後: ${newMessages.length}件`);
-      // セッションタイトルの自動設定（履歴が有効な場合のみ）
-      try {
-        if (historyEnabled && sessionId && prev.length === 0) {
-          const title = userMessage.content.slice(0, 30);
-          updateChatTitle(sessionId, title);
-        }
-      } catch {}
-      return newMessages;
-    });
+    const userMessage: Message = { 
+      id: `user_${Date.now()}`, 
+      role: "user", 
+      content: currentInput 
+    };
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/query`
-      : "/api/rag/query";
+    setLoading(true);
+    setInput("");
+    setMessages(prev => [...prev, userMessage]);
 
     try {
-      let idToken = "";
-      if (typeof window !== "undefined" && window.firebaseAuth && window.firebaseAuth.currentUser) {
-        try {
-          idToken = await window.firebaseAuth.currentUser.getIdToken();
-        } catch (error) {
-          console.warn("Failed to get auth token:", error);
-        }
-      }
-      
-      let recaptchaToken = "";
-      if (isRecaptchaDisabled()) {
-        recaptchaToken = "test";
-      } else if (typeof window !== "undefined" && window.grecaptcha && recaptchaReady) {
-        try {
-          recaptchaToken = await window.grecaptcha.execute(
-            process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
-            { action: "submit" }
-          );
-        } catch (recaptchaError) {
-          // reCAPTCHAエラー時の処理
-          const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : "reCAPTCHAの処理中にエラーが発生しました";
-          const assistantMessage: Message = { 
-            id: `assistant_recaptcha_error_${Date.now()}`,
-            role: "assistant", 
-            content: errorMessage 
+      // API エンドポイントの設定
+      const rawBase = (process.env.NEXT_PUBLIC_API_URL ?? "").trim();
+      const trimmedBase = rawBase.replace(/\/+$/, "");
+      const base = trimmedBase.length > 0 ? trimmedBase : ""; // 未設定時は相対パス
+      const mvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
+      const endpoint = mvpMode ? "/chat" : "/api/rag/query";
+      const apiUrl = `${base}${endpoint}`;
+
+      const payload = mvpMode
+        ? {
+            message: userMessage.content,
+            top_k: 5,
+            with_context: true,
+          }
+        : {
+            question: userMessage.content,
+            top_k: 5,
+            with_context: true,
           };
-          setMessages(prev => [...prev, assistantMessage]);
-          setLoading(false);
-          return;
-        }
-      } else if (!isRecaptchaDisabled()) {
-        // reCAPTCHAが有効なのに準備ができていない場合
-        const assistantMessage: Message = { 
-          id: `assistant_recaptcha_notready_${Date.now()}`,
-          role: "assistant", 
-          content: "reCAPTCHA未準備" 
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setLoading(false);
-        return;
-      }
-      
+
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
-        body: JSON.stringify({ 
-          question: userMessage.content,
-          top_k: 5,
-          with_context: true,
-          recaptchaToken: recaptchaToken
-        }),
+        body: JSON.stringify(payload),
         credentials: "include"
       });
       
@@ -349,7 +194,7 @@ export const useChat = (): UseChatReturn => {
         throw new Error(errorData.error?.message || `APIエラーが発生しました (ステータス: ${res.status})`);
       }
       
-  const data: RagResponse = await res.json();
+      const data: RagResponse = await res.json();
       if (data.error) {
         throw new Error(data.error.message || "APIエラーが発生しました");
       }
@@ -359,46 +204,33 @@ export const useChat = (): UseChatReturn => {
         id: `assistant_${Date.now()}`,
         role: "assistant", 
         content: data.answer || "応答を受け取りました。",
-        cardContext: Array.isArray(data.context) && typeof data.context[0] === "object" ? data.context : undefined
+        cardContext: Array.isArray(data.context) && data.context.length > 0 && typeof data.context[0] === "object" 
+          ? data.context 
+          : undefined
       };
       
-      console.log(`[useChat] API応答受信 - cardContext: ${assistantMessage.cardContext?.length || 0}件`);
+      console.log(`[%cuseChat%c] API応答 @${apiUrl} (context: ${assistantMessage.cardContext?.length || 0})`, "color:#2563eb;font-weight:bold", "color:inherit");
       
-      setMessages(prev => {
-        const newMessages = [...prev, assistantMessage];
-        console.log(`[useChat] API応答後のメッセージ数: ${newMessages.length}`);
-        newMessages.forEach((msg, idx) => {
-          console.log(`[useChat] メッセージ${idx}: role=${msg.role}, cardContext=${msg.cardContext?.length || 0}件`);
-        });
-        return newMessages;
-      });
-    } catch (error) {
-      // APIエラー時の処理
-      console.error(error);
-      
-      let errorMessage = "申し訳ありませんが、エラーが発生しました。";
-      if (error instanceof Error) {
-        // 認証エラーの特別な処理
-        if (error.message.includes("Invalid authentication credentials") || 
-            error.message.includes("認証エラー") ||
-            error.message.includes("authentication") ||
-            error.message.includes("認証に失敗しました")) {
-          errorMessage = "認証に失敗しました。再度ログインしてお試しください。";
-        } else {
-          errorMessage = `申し訳ありませんが、エラーが発生しました: ${error.message}`;
-        }
-      }
-      
-      const assistantMessage: Message = { 
-        id: `assistant_error_${Date.now()}`,
-        role: "assistant", 
-        content: errorMessage 
-      };
       setMessages(prev => [...prev, assistantMessage]);
+
+      // タイトル更新（最初のメッセージの場合）
+      if (historyEnabled && sessionId && localMessages.length === 0 && updateChatTitle) {
+        const title = currentInput.length > 20 ? `${currentInput.slice(0, 20)}...` : currentInput;
+        updateChatTitle(sessionId, title);
+      }
+
+    } catch (error) {
+      console.error(error);
+      const msg = error instanceof Error ? error.message : "エラーが発生しました";
+      setMessages(prev => [...prev, { 
+        id: `err_${Date.now()}`, 
+        role: "assistant", 
+        content: `エラー: ${msg}` 
+      }]);
     } finally {
       setLoading(false);
     }
-  }, [loading, recaptchaReady, localMessages.length, setMessages, activeSessionId, createNewChat, updateChatTitle, setInput, historyEnabled, input]);
+  }, [loading, localMessages.length, setMessages, activeSessionId, createNewChat, updateChatTitle, setInput, historyEnabled, input]);
 
   // チャット履歴をクリアする関数（現在のセッションのメッセージをクリア）
   const clearHistory = useCallback(() => {
@@ -411,48 +243,59 @@ export const useChat = (): UseChatReturn => {
   // 新しいチャットを作成して自動的に切り替え
   const createNewChatAndSwitch = useCallback(() => {
     console.log('[useChat] Creating new chat and switching...');
-    console.log('[useChat] Current messages before creation:', messages.length);
+    console.log('[useChat] Current messages before creation:', localMessages.length);
     
-    const newSessionId = createNewChat();
-    console.log('[useChat] New session created with ID:', newSessionId);
-    
-    // メッセージをクリア
-    setMessages([]);
-    console.log('[useChat] Messages cleared for new chat');
-    
-    // 入力フィールドもクリア
-  setInput("");
-    console.log('[useChat] Input field cleared');
-    
-    console.log('[useChat] New chat creation and switch completed');
-    return newSessionId;
-  }, [createNewChat, messages.length, setMessages, setInput]);
+    try {
+      const newSessionId = createNewChat();
+      console.log('[useChat] New session created with ID:', newSessionId);
+      
+      // メッセージをクリア
+      setMessages([]);
+      
+      // 入力フィールドをクリア
+      setInput("");
+      
+      console.log('[useChat] New chat creation completed');
+      
+      return newSessionId;
+    } catch (error) {
+      console.error('[useChat] Error creating new chat:', error);
+      return "";
+    }
+  }, [createNewChat, setMessages, localMessages.length]);
 
-  // チャットセッションを切り替え
+  // 指定されたチャットに切り替えてメッセージをクリア
   const switchToChatAndClear = useCallback((sessionId: string) => {
-    console.log('[useChat] Switching to chat session:', sessionId);
-    console.log('[useChat] Current activeSessionId:', activeSessionId);
-    console.log('[useChat] Target sessionId:', sessionId);
+    console.log('[useChat] Switching to chat and clearing:', sessionId);
+    console.log('[useChat] Available sessions:', sessions.map(s => ({ id: s.id, title: s.title })));
     
-    // セッションを切り替え
-    switchToChat(sessionId);
-    
-    // 切り替え先のセッションを検索してローカルメッセージを反映
-    const target = sessions.find(s => s.id === sessionId);
-  // セッション起点の反映であることを明確化
-  lastUpdateSource.current = 'session';
-  setLocalMessages(target?.messages ?? []);
-    
-    // 入力フィールドをクリア
-    setInput("");
-    
-    console.log('[useChat] Chat session switch completed');
-  }, [switchToChat, activeSessionId, sessions, setInput]);
+    try {
+      const target = sessions.find(s => s.id === sessionId);
+      if (!target) {
+        console.warn('[useChat] Target session not found:', sessionId);
+        return;
+      }
+      
+      // チャットを切り替え
+      switchToChat(sessionId);
+      
+      // セッション起点の反映であることを明確化
+      lastUpdateSource.current = 'session';
+      setLocalMessages(target?.messages ?? []);
+      
+      // 入力フィールドをクリア
+      setInput("");
+      
+      console.log('[useChat] Chat session switch completed');
+    } catch (error) {
+      console.error('[useChat] Error switching to chat:', error);
+    }
+  }, [switchToChat, sessions, setInput]);
 
   return {
     messages: localMessages,  // ローカル状態のメッセージを返す
     input,
-  setInput, // Updated to use the new setInput wrapper
+    setInput: setInputWrapper, // Updated to use the new setInput wrapper
     loading,
     sendMode,
     setSendMode,

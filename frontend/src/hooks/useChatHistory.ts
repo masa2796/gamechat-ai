@@ -8,22 +8,7 @@ import {
   saveChatHistoryState,
   loadChatHistoryState
 } from '@/utils/chat-storage'
-import { ChatSession } from '@/types/chat'
-
-// フック戻り値の型定義
-export interface UseChatHistoryReturn {
-  sessions: ChatSession[]
-  activeSessionId: string | null
-  activeSession: ChatSession | null
-  isLoading: boolean
-  error: string | null
-  createNewChat: () => string
-  switchToChat: (sessionId: string) => void
-  deleteChat: (sessionId: string) => Promise<void>
-  updateChatTitle: (sessionId: string, title: string) => void
-  addMessageToChat: (sessionId: string, message: { role: 'user' | 'assistant', content: string }) => void
-  updateSessionMessages: (sessionId: string, messages: { role: 'user' | 'assistant', content: string }[]) => void
-}
+import { ChatSession, UseChatHistoryReturn } from '@/types/chat'
 
 /**
  * チャット履歴管理のカスタムフック
@@ -309,18 +294,51 @@ export function useChatHistory(): UseChatHistoryReturn {
     );
   }, [safeRandomId]);
 
+  // エラーをクリア
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // 全履歴を削除
+  const clearAllHistory = useCallback(() => {
+    console.log('[useChatHistory] Clearing all history');
+    setSessions([]);
+    setActiveSessionId(null);
+    setError(null);
+  }, []);
+
+  // ストレージ使用状況を計算
+  const storageUsage = useMemo(() => {
+    const totalSize = JSON.stringify({ sessions, activeSessionId }).length;
+    const sessionCount = sessions.length;
+    const averageSessionSize = sessionCount > 0 ? totalSize / sessionCount : 0;
+    const isNearLimit = totalSize > 8 * 1024 * 1024; // 8MB
+    const isOverWarningThreshold = totalSize > 5 * 1024 * 1024; // 5MB
+    
+    return {
+      totalSize,
+      sessionCount,
+      averageSessionSize,
+      isNearLimit,
+      isOverWarningThreshold
+    };
+  }, [sessions, activeSessionId]);
+
   return {
     sessions,
     activeSessionId,
     activeSession,
     isLoading,
     error,
+    storageUsage,
     createNewChat,
     switchToChat,
     deleteChat,
     updateChatTitle,
     addMessageToChat,
-    updateSessionMessages
+    updateSessionMessages,
+    clearError,
+    clearAllHistory
   };
 }
 

@@ -1,5 +1,11 @@
+##############################################
+# MVP用 docker-compose（最小構成）
+# - backend のみを起動
+# - フロントは Firebase Hosting を前提とし、コンテナは使用しない
+# - 監視/DB/Redis/Nginx 等の非MVPサービスは含めない
+##############################################
+
 services:
-  # Backend service
   backend:
     build:
       context: .
@@ -11,10 +17,8 @@ services:
       - ENVIRONMENT=development
       - CORS_ORIGINS=http://localhost:3000
     volumes:
-      # Mount source code for hot reload in development
       - ./backend/app:/app/app:ro
       - ./backend/requirements.txt:/app/requirements.txt:ro
-      # .env.productionがなくても開発・CIでエラーにならないようにする
       - ./backend/.env.ci:/app/backend/.env.production:ro
       - ./data:/data:ro
     env_file:
@@ -34,21 +38,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Frontend is now deployed on Firebase Hosting (static)
-  # No longer using Docker container for frontend development
-
-  # Optional: Basic log viewer (uncomment if needed)
-  # Simple log viewer for development
-  # adminer:
-  #   image: dpage/pgadmin4:latest
-  #   container_name: gamechat-ai-logs-viewer
-  #   environment:
-  #     - PGADMIN_DEFAULT_EMAIL=admin@localhost
-  #     - PGADMIN_DEFAULT_PASSWORD=admin
-  #   ports:
-  #     - "8080:80"
-  #   networks:
-  #     - gamechat-network
+# Note:
+# - Frontend container is intentionally omitted in MVP. Use Firebase Hosting deploy instead.
+# - If you need logs/monitoring tools locally, add them temporarily in your local branch only.
 
 networks:
   gamechat-network:

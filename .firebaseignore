@@ -1,0 +1,30 @@
+# Firebase Hosting ignore file
+# Only files not listed here and not excluded by hosting.ignore will be uploaded.
+# Note: hosting.public is set to "frontend/out" in firebase.json. This file
+# is a safeguard to ensure repo-level artifacts are never uploaded.
+
+# Default (align with firebase.json hosting.ignore)
+firebase.json
+**/.*
+**/node_modules/**
+
+# Project artifacts not needed for Hosting
+htmlcov/
+logs/
+backend/
+scripts/
+
+# Common repo/workspace noise
+.git/
+.github/
+.vscode/
+.DS_Store
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Frontend build caches outside of hosting.public
+frontend/.next/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results.xml

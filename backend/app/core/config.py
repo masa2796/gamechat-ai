@@ -104,9 +104,7 @@ class Settings:
         self.DB_USER: str = os.getenv("BACKEND_DB_USER", "postgres")
         self.DB_PASSWORD: str = os.getenv("BACKEND_DB_PASSWORD", "")
 
-        # Monitoring and Observability
-        self.SENTRY_DSN: Optional[str] = os.getenv("BACKEND_SENTRY_DSN")
-        self.MONITORING_ENABLED: bool = os.getenv("MONITORING_ENABLED", "false").lower() == "true"
+    # Monitoring 機能 (Sentry/Prometheus) はMVPでは除外
 
         # データディレクトリ・ファイルパス
         self.DATA_DIR = _get_data_dir()
@@ -124,9 +122,11 @@ class Settings:
         self.VECTOR_SEARCH_CONFIG = {
             # 分類タイプ別の類似度閾値
             "similarity_thresholds": {
-                "semantic": 0.75,      # セマンティック検索は高い閾値
-                "hybrid": 0.70,        # ハイブリッドは中程度
-                "filterable": 0.65     # フィルタ可能は低めに設定
+                # 2025-08-27 tuning: 閾値が高すぎて全件0ヒットだったため全体を引き下げ
+                # semantic * high_conf (0.6 * 0.8) ≒ 0.48 まで実効 min_score を緩和
+                "semantic": 0.60,
+                "hybrid": 0.55,
+                "filterable": 0.50
             },
             # 分類タイプ別の検索件数
             "search_limits": {
@@ -136,9 +136,10 @@ class Settings:
             },
             # 信頼度による調整係数
             "confidence_adjustments": {
-                "high": 0.9,      # 0.8以上の信頼度
-                "medium": 0.8,    # 0.5-0.8の信頼度
-                "low": 0.7        # 0.5未満の信頼度
+                # 閾値緩和に合わせ調整（過剰な信頼度掛け合わせで再び高止まりしないよう抑制）
+                "high": 0.8,
+                "medium": 0.75,
+                "low": 0.7
             },
             # 重み付けマージの係数
             "merge_weights": {
@@ -146,10 +147,21 @@ class Settings:
                 "vector_weight": 0.6
             },
             # 最小スコア閾値（これ以下は除外）
-            "minimum_score": 0.5,
+            "minimum_score": 0.35,  # 2025-08-27: 全体調整に合わせ暫定的に下げる (再評価後に再調整予定)
             # フォールバック設定
             "fallback_enabled": True,
-            "fallback_limit": 3
+            "fallback_limit": 3,
+            # plateau 検知 & combined 条件付き注入設定
+            "plateau": {
+                "enable_combined": os.getenv("VECTOR_ENABLE_COMBINED_PLATEAU", "true").lower() == "true",
+                # top3 スコアの標準偏差がこの値未満 あるいは spread が下記閾値未満で plateau 扱い
+                "stddev": float(os.getenv("COMBINED_PLATEAU_STDDEV", "0.005")),
+                "score_spread": float(os.getenv("COMBINED_PLATEAU_SCORE_SPREAD", "0.01")),
+                # combined 注入時に適用する base_min_score への加算Δ（Precision 保持）
+                "combined_extra_min_score": float(os.getenv("COMBINED_EXTRA_MIN_SCORE", "0.02")),
+                # combined 再検索の top_k （過剰取得抑制）
+                "combined_top_k": int(os.getenv("COMBINED_PLATEAU_TOP_K", "12"))
+            }
         }
 
     @property

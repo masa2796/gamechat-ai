@@ -1,5 +1,7 @@
 # Docker Compose 使い分けガイド
 
+> **ARCHIVE_CANDIDATE**: 本ガイドはMVPで利用しないDocker構成の参考資料です。MVPでは`docker-compose.yml`のバックエンド単体起動のみを想定しています。
+
 GameChat AIでは目的別に複数のDocker Composeファイルを使い分けています。
 
 ## 📁 ファイル構成
@@ -133,4 +135,3 @@ BACKEND_PORT=8000 docker-compose up
 ---
 
 **最終更新**: 2025年6月24日  
-**関連ドキュメント**: [デプロイガイド](docs/deployment/deployment-guide.md)

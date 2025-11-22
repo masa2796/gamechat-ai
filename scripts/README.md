@@ -12,7 +12,6 @@ GameChat AIプロジェクトの開発・運用・デプロイに使用するス
 
 ### 🧪 [`testing/`](./testing/) - テスト・検証
 **システムの機能テスト・パフォーマンス測定・品質保証**
-- `test_greeting_detection.py` - 挨拶検出機能テスト
 - `test_performance.py` - API応答時間測定
 - `test-pipeline.sh` - CI/CDパイプラインテスト
 - `test-pipeline-local.sh` - ローカルテスト
@@ -67,8 +66,7 @@ python data-processing/upstash_connection.py
 # パフォーマンステスト
 python testing/test_performance.py
 
-# 機能テスト
-python testing/test_greeting_detection.py
+# 機能テスト（該当なし）
 ```
 
 ### デプロイメント

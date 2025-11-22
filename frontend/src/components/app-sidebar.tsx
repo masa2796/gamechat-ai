@@ -13,14 +13,13 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useChatHistory } from "@/hooks/useChatHistory"
-import { formatRelativeTime } from "@/utils/time-format"
 import { cn } from "@/lib/utils"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const {
     sessions,
     activeSessionId,
-  createNewChat,
+    createNewChat,
     deleteChat,
     switchToChat,
     isLoading,
@@ -36,25 +35,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     sessions: sessions.map(s => ({ id: s.id, title: s.title, messagesCount: s.messages.length }))
   });
 
-  // デバッグ用のwindow関数は削除（テスト容易性と型安全性向上のため）
-
-  // 新規チャット生成ハンドラは未使用のため一時的に削除
-
   const handleSwitchToChat = (sessionId: string) => {
-  switchToChat(sessionId)
+    try {
+      switchToChat(sessionId)
+    } catch (error) {
+      console.error('[AppSidebar] Error switching to chat:', error)
+    }
   }
 
   const handleDeleteChat = (sessionId: string, event: React.MouseEvent) => {
     event.stopPropagation()
-    if (confirm('このチャットを削除してもよろしいですか？')) {
-      deleteChat(sessionId)
+    try {
+      if (confirm('このチャットを削除してもよろしいですか？')) {
+        deleteChat(sessionId)
+      }
+    } catch (error) {
+      console.error('[AppSidebar] Error deleting chat:', error)
     }
   }
 
   const handleCreateNewChat = () => {
-    const newId = createNewChat()
-    // createNewChat内でactiveSessionIdは更新されるが、明示的に切替も呼んでおく（冪等）
-    switchToChat(newId)
+    try {
+      const newId = createNewChat()
+      // createNewChat内でactiveSessionIdは更新されるが、明示的に切替も呼んでおく（冪等）
+      switchToChat(newId)
+    } catch (error) {
+      console.error('[AppSidebar] Error creating new chat:', error)
+    }
   }
 
   return (
@@ -68,96 +75,80 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <MessagesSquare className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold" data-testid="app-title">GameChat AI</span>
-                  <span className="">チャットボット</span>
+                  <span className="font-semibold">GameChat AI</span>
+                  <span className="text-xs">ゲーム関連チャット</span>
                 </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      
-      <SidebarContent>
-        {/* ナビゲーションメニュー（テスト期待: コンテンツ側に1つの通常ボタン/リンク） */}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/">
-                <MessagesSquare className="size-4" />
-                <span>チャット</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
 
+      <SidebarContent>
         {/* エラー表示 */}
         {error && (
-          <div className="px-2 py-1 text-xs text-red-500">
-            エラー: {error}
+          <div className="px-2 py-2 text-red-500 text-sm bg-red-50 border border-red-200 rounded-md mx-2 my-2">
+            <div className="font-medium">エラーが発生しました</div>
+            <div className="text-xs mt-1">{error}</div>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="text-xs underline mt-1 hover:text-red-700"
+            >
+              ページを再読み込み
+            </button>
           </div>
         )}
 
         {/* チャット履歴リスト - SSRセーフ表示 */}
         <SidebarMenu>
           <div className="px-2 py-1 text-xs font-medium text-sidebar-foreground/70">
-            履歴 ({isLoading ? 0 : sessions.length}) - Loading: {isLoading ? 'Yes' : 'No'} - Error: {error || 'None'}
+            履歴 ({isLoading ? "..." : sessions.length})
           </div>
           
-          {/* デバッグ情報表示 */}
-          <div className="px-2 py-1 text-xs text-gray-500">
-            Debug: Sessions={isLoading ? 0 : sessions.length}, ActiveId={activeSessionId}
-          </div>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="px-2 py-1 text-xs text-gray-500">
+              Debug: Sessions={isLoading ? 0 : sessions.length}, ActiveId={activeSessionId || 'none'}
+            </div>
+          )}
           
           {!isLoading && sessions.length > 0 ? (
             <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
               {sessions.map((session) => (
                 <SidebarMenuItem key={session.id} className="relative group">
                   <SidebarMenuButton
-                    onClick={() => handleSwitchToChat(session.id)}
-                    className={cn(
-                      "w-full justify-start p-2 h-auto min-h-[60px] pr-8",
-                      session.id === activeSessionId && "bg-sidebar-accent text-sidebar-accent-foreground"
-                    )}
-                    data-testid={`chat-history-item-${session.id}`}
+                    asChild
+                    isActive={session.id === activeSessionId}
+                    className="pr-8"
                   >
-                    <MessagesSquare className="size-4 shrink-0 mt-1" />
-                    <div className="flex flex-col gap-1 min-w-0 flex-1 text-left">
-                      <span 
-                        className="text-sm font-medium truncate" 
-                        title={session.title}
-                      >
-                        {session.title}
-                      </span>
-                      <span className="text-xs text-sidebar-foreground/50">
-                        {formatRelativeTime(session.updatedAt)}
-                        {session.messages.length > 0 && (
-                          <span className="ml-1">
-                            • {session.messages.length}件
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    
-                    {/* アクティブインジケーター */}
-                    {session.id === activeSessionId && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 ml-1" />
-                    )}
+                    <button
+                      onClick={() => handleSwitchToChat(session.id)}
+                      className="w-full text-left"
+                    >
+                      <MessagesSquare className="size-4" />
+                      <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
+                        <span className="font-medium text-sm truncate">
+                          {session.title}
+                        </span>
+                        <span className="text-xs text-sidebar-foreground/70">
+                          {session.messages.length} messages
+                        </span>
+                      </div>
+                    </button>
                   </SidebarMenuButton>
                   
                   {/* 削除ボタン */}
                   <button
-                    onClick={(e) => handleDeleteChat(session.id, e)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 hover:text-red-600 rounded transition-all"
-                    aria-label="チャットを削除"
-                    title="削除"
+                    onClick={(event) => handleDeleteChat(session.id, event)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-sidebar-accent rounded"
+                    title="チャットを削除"
                   >
-                    <Trash2 className="size-3" />
+                    <Trash2 className="size-3 text-sidebar-foreground/50 hover:text-red-500" />
                   </button>
                 </SidebarMenuItem>
               ))}
             </div>
           ) : (
-            <div className="px-2 py-1 text-xs text-gray-500">
+            <div className="px-2 py-4 text-center text-sidebar-foreground/50 text-sm">
               {isLoading ? 'Loading...' : 'No chat sessions found'}
             </div>
           )}
@@ -184,7 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         )}
       </SidebarContent>
-      
+
       <SidebarRail />
       <SidebarFooter>
         {/* 新規チャット作成ボタン（フッター配置で既存テストの要素数と干渉しない） */}
@@ -205,13 +196,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             新規チャット
           </button>
         </div>
-
-        {/* ストレージ使用状況（将来拡張用） */}
-        {sessions.length >= 40 && (
-          <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
-            履歴: {sessions.length}/50
-          </div>
-        )}
       </SidebarFooter>
     </Sidebar>
   )

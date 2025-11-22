@@ -4,14 +4,7 @@
 
 ## 🧪 スクリプト一覧
 
-### [`test_greeting_detection.py`](./test_greeting_detection.py) - 挨拶検出テスト
-**用途**: 挨拶検出機能の精度テスト
-- 分類精度の検証
-- 早期応答システムのテスト
-
-```bash
-python test_greeting_detection.py
-```
+<!-- 挨拶検出テスト: 削除済み（MVPから恒久除外） -->
 
 ### [`test_performance.py`](./test_performance.py) - パフォーマンステスト
 **用途**: API応答時間の測定
@@ -52,7 +45,7 @@ python test_performance.py
 ## 🎯 テスト戦略
 
 ### 機能テスト
-1. **挨拶検出**: 分類精度90%以上を目標
+1. ~~挨拶検出: 分類精度90%以上を目標~~（削除済み）
 2. **API応答**: 平均応答時間5秒以内
 
 ### パフォーマンステスト

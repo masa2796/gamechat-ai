@@ -24,6 +24,14 @@
         }
       },
       {
+        "source": "/chat",
+        "run": {
+          "serviceId": "gamechat-ai-backend",
+          "region": "asia-northeast1",
+          "pinTag": false
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

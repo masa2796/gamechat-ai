@@ -1,15 +1,13 @@
 ## GameChat AI フロントエンド・リファクタリング進捗管理
 
 ### 概要
-- コードの可読性・保守性・拡張性向上を目的としたリファクタリング・テスト拡充プロジェクト
-- 主要UI（AssistantPage/ChatMessages/ChatInput）・ロジック（useChat等）の型安全化・責務分離・テスト網羅
 
----
 
-### 進捗まとめ（2025/07/08時点）
+# フロントエンドリファクタリング計画
+
+> **ARCHIVE_CANDIDATE**: このリファクタ計画はMVP後の改善項目です。MVPではシンプルなチャットUIのみを対象とします。
 
 - ✅ useChatカスタムフック実装・ロジック分離
-- ✅ assistant.tsxはuseChatフック利用の形にリファクタ済み
 - ✅ UI表示責務はChatMessages/ChatInput等に分割
 - ✅ 型定義・strict化・any排除
 - ✅ AssistantPage/ChatMessages/ChatInputのユニットテスト全観点網羅・通過
