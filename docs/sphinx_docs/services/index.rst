@@ -7,10 +7,7 @@ GameChat AIのサービス層は、システムの核となるビジネスロジ
 .. toctree::
    :maxdepth: 3
 
-   rag_service
-   hybrid_search_service
-   classification_service
-   database_service
+  vector_service
    vector_service
    auth_service
    llm_service
@@ -23,22 +20,19 @@ GameChat AIのサービス層は、システムの核となるビジネスロジ
 **制御層サービス**
   システム全体の制御と統合を担当
 
-  * **RagService**: RAGシステム全体の統合制御とオーケストレーション
-  * **HybridSearchService**: 複数検索手法の統合と最適化
+  * (MVPでは統合制御レイヤーを削除し `/chat` 直列処理のみ)
 
 **専門処理サービス**
   特定のドメイン知識を持つ専門サービス
 
-  * **ClassificationService**: LLMによる高度なクエリ分析と分類
-  * **DatabaseService**: 構造化データに対する高速フィルタ検索
-  * **VectorService**: Upstash Vectorを使用したセマンティック検索
-  * **EmbeddingService**: OpenAI APIによる意味ベクトル生成
+  * **VectorService**: Upstash Vectorによるセマンティック検索
+  * **EmbeddingService**: OpenAI Embedding生成
 
 **基盤サービス**
   共通機能とインフラ機能を提供
 
-  * **LLMService**: OpenAI GPTによる自然言語生成と理解
-  * **AuthService**: 認証とセキュリティ機能
+  * **LLMService**: スタブ/簡易応答生成 (MVP)
+  * **AuthService**: (MVP未使用)
 
 設計原則
 --------
@@ -60,16 +54,11 @@ GameChat AIのサービス層は、システムの核となるビジネスロジ
 
 サービス間の連携は以下のパターンで実現されています：
 
-1. **オーケストレーションパターン**: RagServiceが各サービスを調整
-2. **パイプラインパターン**: データが各サービスを順次通過
-3. **イベント駆動パターン**: 非同期でのサービス間通信
+MVPでは単一の `/chat` ハンドラ内で Embedding → Vector → LLM を逐次実行。
 
 パフォーマンス特性
 ------------------
 
 各サービスのパフォーマンス特性：
 
-* **平均応答時間**: 1.2秒
-* **最大同時処理数**: 100リクエスト/秒
-* **メモリ使用量**: サービスあたり平均50MB
-* **CPU使用率**: 通常時10%、ピーク時60%
+MVP段階での計測指標は未確定（正式リリース後に再測定）。

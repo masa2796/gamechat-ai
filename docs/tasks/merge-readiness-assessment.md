@@ -1,5 +1,7 @@
 # Merge Readiness Assessment - feature/search-card-details-fetch-109
 
+> **ARCHIVE_CANDIDATE**: 大規模機能ブランチの評価記録です。MVPリリースとは直接関係しないため、後続フェーズの参考として残します。
+
 **評価日**: 2025年8月4日  
 **対象ブランチ**: `feature/search-card-details-fetch-109`  
 **ターゲットブランチ**: `develop`  

@@ -1,3 +1,5 @@
+"""ARCHIVE_CANDIDATE: 高度なインデックス作成スクリプト（MVPでは未使用）。"""
+
 import os
 import re
 import json

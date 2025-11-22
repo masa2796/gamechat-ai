@@ -1,3 +1,7 @@
+/**
+ * ARCHIVE_CANDIDATE: MVPでは /chat を直接呼び出すため未使用。
+ * テストや将来のバックワード互換向けに残置しています。
+ */
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {

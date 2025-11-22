@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Quick debug script to probe raw vector scores with min_score=0.0.
+"""ARCHIVE_CANDIDATE: 高度な閾値デバッグ向けでMVPでは未使用。
+
+Quick debug script to probe raw vector scores with min_score=0.0.
 
 Usage:
   python scripts/data-processing/debug_vector_threshold.py --query "継続ダメージ" --top-k 10
@@ -21,9 +23,9 @@ BACKEND_DIR = os.path.join(ROOT, 'backend')
 if BACKEND_DIR not in sys.path:
     sys.path.append(BACKEND_DIR)
 
-from app.services.vector_service import VectorService  # type: ignore
-from app.services.embedding_service import EmbeddingService  # type: ignore
-from app.models.classification_models import ClassificationResult, QueryType  # type: ignore
+from app.services.vector_service import VectorService  # type: ignore  # noqa: E402
+from app.services.embedding_service import EmbeddingService  # type: ignore  # noqa: E402
+from app.models.classification_models import ClassificationResult, QueryType  # type: ignore  # noqa: E402
 
 async def main_async(args: argparse.Namespace):
     # Minimal mock classification

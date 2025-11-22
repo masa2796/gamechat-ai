@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { captureAPIError, captureUserAction, setSentryTag } from "@/lib/sentry";
+
+// Monitoring removed for MVP: local no-op helpers
+const captureAPIError = (_error: Error, _context?: Record<string, unknown>) => { /* no-op */ };
+const captureUserAction = (_action: string, _data?: Record<string, unknown>) => { /* no-op */ };
+const setSentryTag = (_key: string, _value: string) => { /* no-op */ };
 
 export interface Message {
   role: "user" | "assistant";

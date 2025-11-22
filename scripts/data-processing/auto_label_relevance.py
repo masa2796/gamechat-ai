@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""Heuristic helper to propose relevance labels for evaluation queries.
+"""ARCHIVE_CANDIDATE: 非MVP向けの関連度自動ラベリングスクリプト。
+
+Heuristic helper to propose relevance labels for evaluation queries.
 
 This script scans `data/data.json` card effects and tries to map predefined
 evaluation queries to card titles by simple keyword / pattern rules.

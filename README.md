@@ -1,13 +1,154 @@
-# gamechat-ai - AIチャット型ゲーム攻略アシスタント
+# gamechat-ai - AIチャット型ゲーム攻略アシスタント (MVPモード)
 
-**最新更新**: 2025年8月2日  
+## 🚀 MVPクイックスタート
 
-ゲーム攻略情報を活用し、チャット形式で質問に答えるAIアシスタントです。  
-RAG（検索拡張生成）技術を用いて、カードゲームの戦略情報や技術データを文脈に沿って提供します。
+このリポジトリは現在、**最小価値検証（MVP）構成**で運用中です。まずは動くことを最優先に、最小手順で「**`/chat` エンドポイント**」が使える状態を作ります。
+
+### 📋 必須環境変数の設定
+
+#### バックエンド（必須）
+```bash
+# Upstash Vector（必須）
+UPSTASH_VECTOR_REST_URL=https://your-vector.upstash.io
+UPSTASH_VECTOR_REST_TOKEN=your-token
+
+# OpenAI API（任意 - 未設定時はフォールバックで動作）
+BACKEND_OPENAI_API_KEY=sk-your-openai-key
+```
+
+#### フロントエンド（任意）
+```bash
+# MVPモード有効化
+NEXT_PUBLIC_MVP_MODE=true
+
+# バックエンドURL（未設定時は相対パスで/chatを呼び出し）
+NEXT_PUBLIC_API_URL=https://your-backend.run.app
+```
+
+### 🛠️ ローカル起動（最小手順）
+
+1. **環境変数ファイル作成**
+```bash
+cp backend/.env.example backend/.env.local
+# 上記の必須環境変数を設定
+```
+
+2. **バックエンドのみ起動**
+```bash
+cd backend
+docker-compose up -d
+```
+
+3. **動作確認**
+```bash
+# ヘルスチェック
+curl http://localhost:8000/health
+
+# /chatエンドポイントのテスト
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "強いカードを教えて", "with_context": true}'
+```
+
+### ☁️ デプロイ（最小手順）
+
+#### バックエンド: Cloud Run
+```bash
+# 環境変数設定
+cp backend/.env.prod.example backend/.env.prod
+# 必要値を編集
+
+# デプロイ実行
+PROJECT_ID=your-gcp-project \
+SERVICE=gamechat-ai-backend \
+REGION=asia-northeast1 \
+ENV_FILE=backend/.env.prod \
+  bash scripts/deployment/deploy_cloud_run_mvp.sh
+```
+
+#### フロントエンド: Firebase Hosting
+```bash
+cd frontend
+NEXT_PUBLIC_MVP_MODE=true npm run build
+firebase deploy --only hosting
+```
+
+### 🔗 `/chat` エンドポイントの使用方法
+
+#### リクエスト形式
+```bash
+POST /chat
+Content-Type: application/json
+
+{
+  "message": "質問文",
+  "with_context": true  // コンテキスト情報を含むかどうか（任意、デフォルト: true）
+}
+```
+
+#### レスポンス例
+```json
+{
+  "message": "ユーザーの質問文",
+  "response": "AIの回答",
+  "retrieved_titles": ["カード1", "カード2", "カード3"],
+  "context": [
+    {
+      "title": "カード名",
+      "rarity": "R",
+      "effect_1": "効果説明"
+    }
+  ],
+  "metadata": {
+    "vector_search_count": 5,
+    "llm_fallback": false
+  }
+}
+```
+
+#### 使用例
+```bash
+# 基本的な質問
+curl -X POST https://your-backend.run.app/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "HP100以上のカードを教えて"}'
+
+# コンテキスト無しで質問
+curl -X POST https://your-backend.run.app/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "強いカードは？", "with_context": false}'
+```
+
+### 📝 MVP構成の制約事項
+
+- **ローカル**: docker-compose は backend のみ（監視/Redis/Nginx等は無効化）
+- **本番**: Cloud Run + Firebase Hosting運用（docker-compose.prod.ymlは未使用）
+- **機能**: 高度な分類/ハイブリッド検索/認証機能は削除済み（要復元時は過去commit参照）
+
+### 📖 詳細ドキュメント
+
+- 環境変数詳細: [`docs/project/env_mvp.md`](docs/project/env_mvp.md)
+- デプロイ手順: [`docs/deployment/cloud_run_firebase_mvp.md`](docs/deployment/cloud_run_firebase_mvp.md)
+- プロジェクト状況: [`docs/project/release_mvp.md`](docs/project/release_mvp.md)
+
+**最新更新 (MVPリダクション反映)**: 2025年10月  
+
+現在は初期ユーザーフィードバック最適化のため「最小価値検証(MVP)構成」です。高度な分類 / ハイブリッド検索 / 動的閾値 / reCAPTCHA 認証 / 大量モック&統合テストは削除または履歴保管のみとし、/chat の単一体験に集中しています。
+
+提供中 (MVP):
+- `POST /chat` : 質問 → Embedding → ベクトル検索 → カード簡易コンテキスト抽出 → 簡易回答
+- OpenAI未設定でも擬似ベクトルフォールバックで動作継続
+
+除外 (将来復活候補):
+- LLMクエリ分類 / Hybrid マージ / Database 複合フィルタ
+- DynamicThresholdManager / AuthService(reCAPTCHA)
+- 大量の classification / hybrid / auth 系テストとモック
+
+復元手順ガイド: 過去 commit から該当 service / tests を checkout し requirements に httpx などを再追加してください。
 
 ---
 
-## 技術スタック
+## 技術スタック (MVP現行)
 
 ### フロントエンド
 - **Next.js 15.3.5** (React 19.1.0 + TypeScript)
@@ -17,42 +158,16 @@ RAG（検索拡張生成）技術を用いて、カードゲームの戦略情�
 - **Sentry** エラー監視・パフォーマンス追跡
 
 ### バックエンド  
-- **Python 3.11+** + **FastAPI**
-- **Pydantic 2.11.5** データバリデーション
-- **Uvicorn** + **Gunicorn** ASGI サーバー
-- **Google Cloud Storage** ファイル保存
-- **Redis** キャッシュ・レート制限
+- **Python 3.11+ / FastAPI** (単一 `/chat` ルータ中心)
+- **Pydantic** 最小利用
+- **Uvicorn** (Cloud Run + Gunicorn)
+- **(任意) Google Cloud Storage**: カードJSON読込
+- Redis / 動的閾値 / 複合戦略は未使用
 
-### AI・検索関連
-- **OpenAI API 1.82.1** (GPT-4o, Embedding)
-- **Upstash Vector 0.8.0**（ベクトル検索サービス／Dense Index対応）
-- **ハイブリッド検索システム（最適化対応）**
-  - **検索フロー**: 挨拶検出 → LLM分類・要約 → 検索戦略選択 → 結果統合 → 応答生成
-  - **LLM分類**: クエリタイプ判定（filterable/semantic/hybrid/greeting）
-  - **構造化検索**: データベース検索（HP条件、カードタイプフィルタリング）
-  - **セマンティック検索**: ベクトル検索による意味的類似度検索
-  - **統合戦略**: 3つのマージ戦略（フィルタブル優先、セマンティック優先、重み付きハイブリッド）
-  - **分類ベース検索最適化システム**
-    - 分類タイプ別の動的閾値・件数調整（semantic: 0.75, hybrid: 0.70, filterable: 0.65）
-    - 信頼度による段階的パラメータ調整（高/中/低信頼度別の最適化）
-    - ネームスペース優先順位最適化（分類タイプに応じた検索対象調整）
-    - 検索品質評価・適応的マージシステム
-    - 高度なエラーハンドリング・フォールバック戦略
-  - **挨拶検出・早期応答システム（パフォーマンス最適化）**
-    - 挨拶クエリの自動検出とベクトル検索スキップ
-    - **87%の応答時間短縮**（14.8秒→1.8秒）
-    - 100%の挨拶検出精度達成
-    - ゲームカード関連の自然な定型応答
-  - **LLM分類に基づく埋め込み最適化システム**
-    - 信頼度による段階的フォールバック戦略（高信頼度：要約使用、中信頼度：キーワード活用、低信頼度：元質問使用）
-    - 要約・キーワード情報を活用した埋め込み生成（検索精度向上）
-    - ゲームカード特化の品質評価システム（重要キーワード保持確認）
-- **LLM応答生成システム（品質最適化）**
-  - 検索結果と元質問の統合処理
-  - コンテキスト品質に基づく動的応答戦略
-  - 簡潔で実用的な回答生成（100-200文字最適化）
-  - 関連度スコアによる詳細度自動調整
-- Python（データ埋め込み・アップロードスクリプト）
+### AI・検索関連 (MVP)
+- **OpenAI Embeddings** (未設定時: sha256擬似ベクトル)
+- **Upstash Vector**: タイトルベース近似検索 (閾値固定)
+- **LLMスタブ**: context要素数とタイトルを簡易整形した応答
 
 ### インフラ・ホスティング
 - **Google Cloud Run**（バックエンドAPI）
@@ -77,52 +192,47 @@ RAG（検索拡張生成）技術を用いて、カードゲームの戦略情�
   - マルチステージビルドによる最適化
   - 開発用・本番用Dockerfile分離
 
-### 開発・品質管理ツール
-- **Testing**: pytest (Backend), Vitest (Frontend), Playwright (E2E)
-- **Linting**: Flake8, Black, isort (Python), ESLint (TypeScript)
-- **Type Checking**: mypy (Python), TypeScript
-- **Monitoring**: Sentry, Prometheus, Google Cloud Monitoring
-- **Documentation**: Sphinx, MyST Parser
+### 開発・品質管理ツール (MVP利用範囲)
+- Backend pytest: 最小 `test_mvp_chat_basic.py` のみデフォルト収集
+- 追加テスト/CI/分類系は削除
+- 型/静的解析は手動トリガベース
 
 ---
 
-## 📋 主要機能
+## 📋 主要機能 (MVP)
 
-### 🔍 高度なハイブリッド検索システム
-- **LLMクエリ分類**: GPT-4oによる自然言語理解と検索戦略の自動選択
-- **多段階検索戦略**: 
-  - 構造化検索（HP、タイプ、ダメージ等の数値・カテゴリ条件）
-  - セマンティック検索（ベクトル検索による意味的類似度）
-  - ハイブリッド検索（複合条件対応）
-- **挨拶検出・早期応答**: 87%の応答時間短縮（14.8秒→1.8秒）
-- **動的最適化**: 信頼度による段階的パラメータ調整
+### 🔍 シンプル検索フロー
+- 入力テキスト → 埋め込み生成 → ベクトル検索 (top_k=5) → タイトル一致カードの基本フィールド抽出 → 簡易回答生成
+- 失敗時フォールバック: 埋め込み/検索エラーは空contextで汎用文
 
-### 💬 チャット型インターフェース  
-- **リアルタイム対話**: ユーザーフレンドリーなチャット形式
-- **コンテキスト保持**: 会話履歴を考慮した応答生成
-- **レスポンシブUI**: モバイル・デスクトップ対応
+### 💬 チャット型インターフェース
+- 履歴/セッション保持は無効化 (ステートレス)
+- PWA / Sidebar / 履歴UI は削除
 
-### 🎮 カード特化機能
-- **詳細カード検索**: HP、タイプ、技ダメージ等による高精度検索
-- **戦略的推薦**: 戦況や相性を考慮したカード提案
-- **複合条件検索**: 「水タイプでダメージ40以上」等の複雑な条件に対応
-- **カード詳細表示**: 技、特性、イラスト等の詳細情報表示（開発中）
+### 🎮 カード特化機能 (簡易)
+- タイトルと主要ステータスのみ (effect_1, rarity 等) 抽出
+- 数値レンジ/複合条件は不対応
 
-### 🔒 セキュリティ・品質保証
-- **自動セキュリティスキャン**: 依存関係・コード脆弱性の継続的チェック
-- **包括的テスト**: 91個のテストケースによる品質保証  
-- **型安全性**: TypeScript + mypy による厳密な型チェック
-- **エラー監視**: Sentry による本番環境の監視・アラート
+### 🔒 セキュリティ・品質 (縮小)
+- reCAPTCHA / Bot判定は削除 (再導入時 AuthService を復元)
+- 環境変数未設定時は安全フォールバック (キー無しで重処理抑制)
 
 ---
 
-## ハイブリッド検索システム
-#### LLMによるクエリ分類・分類基準
+## 削除済み高度機能 (要約)
+以下は現行ブランチから除去済み。再導入時は過去履歴参照:
+  - Classification / Database / HybridSearch / DynamicThresholdManager / AuthService
+  - 大量モック/ファクトリ/統合テスト
+  - 複合条件スコアリング + 信頼度調整
 
-本システムでは、LLM（GPT-4o等）を用いてユーザーの自然言語クエリを以下の3タイプに分類し、最適な検索戦略を自動選択します。
+理由: レイテンシ削減 / コスト圧縮 / 初期UX検証の高速な反復。
 
-- **構造化（FILTERABLE）**: 明確な数値条件や属性指定（例: HP100以上、炎タイプ等）
-- **ベクトル（SEMANTIC）**: 曖昧・主観的・抽象的な問い（例: 強いカード、人気のカード等）
+復元例:
+```
+git checkout <rev> -- backend/app/services/classification_service.py
+git checkout <rev> -- backend/app/tests/services/test_auth_service_basic.py
+pip install httpx
+```
 - **ハイブリッド（HYBRID）**: 両方の要素を含む（例: HP100以上で強いカード）
 
 **分類基準例**:
@@ -159,9 +269,7 @@ RAG（検索拡張生成）技術を用いて、カードゲームの戦略情�
 
 ```mermaid
 graph TD
-    A[ユーザー入力] --> B[挨拶検出]
-    B -->|挨拶である| C[定型応答生成]
-    B -->|挨拶でない| D[LLM分類・要約]
+  A[ユーザー入力] --> D[LLM分類・要約]
     
     D --> E{分類結果}
     E -->|FILTERABLE| F[構造化DB検索]
@@ -175,7 +283,6 @@ graph TD
     I --> J[コンテキスト品質評価]
     J --> K[LLM応答生成]
     K --> L[最終回答]
-    C --> L
     
     style B fill:#e1f5fe
     style D fill:#f3e5f5
@@ -187,10 +294,7 @@ graph TD
 
 ### 検索フローの詳細説明
 
-#### 1. **挨拶検出フェーズ**
-- **目的**: 不要な検索処理を回避し、即座に自然な応答を提供
-- **処理**: 正規表現とキーワードマッチングによる高速判定
-- **効果**: 87%の応答時間短縮（14.8秒→1.8秒）
+<!-- 挨拶検出フェーズは削除済み -->
 
 #### 2. **LLM分類・要約フェーズ**
 - **目的**: クエリを4つのタイプに分類し、最適な検索戦略を決定
@@ -198,7 +302,7 @@ graph TD
   - `FILTERABLE`: 数値・カテゴリ条件（HP、タイプ、ダメージ等）
   - `SEMANTIC`: 意味的検索（戦略、相性、使用感等）
   - `HYBRID`: 複合条件（複数の検索手法が必要）
-  - `GREETING`: 挨拶・雑談（検索不要）
+  
 - **付加価値**: クエリ要約・キーワード抽出・信頼度算出
 
 #### 3. **検索実行フェーズ**
@@ -306,11 +410,11 @@ HYBRID     → 両検索の並列実行
   - `FILTERABLE`: HP値やタイプなど構造化データで検索可能（明確な数値条件・属性指定）
   - `SEMANTIC`: 意味的な検索が必要（曖昧・主観的・抽象的な問い）
   - `HYBRID`: 両方の手法を組み合わせる必要がある（例: HP100以上で強いカード）
-  - `GREETING`: 挨拶クエリ（検索スキップして定型応答）
+  
   - **分類基準・プロンプト例は本README上部参照**
 - **精度**: 90%以上の分類精度を達成
 - **複合条件対応**: 複数の条件（例：「水タイプ + ダメージ40以上」）を同時に認識・抽出
-- **挨拶検出機能**: 挨拶クエリを高精度で検出し、検索処理をスキップ
+ 
 
 #### 2. データベース検索サービス (`database_service.py`)
 - **機能**: 構造化データに対する高精度フィルタリング
@@ -545,7 +649,7 @@ curl -X GET "https://staging-gamechat-ai-backend.run.app/health"
 - **データ層**: 構造化データ・ベクトルデータの管理
 
 #### 2. **パフォーマンス最適化戦略**
-- **早期リターン**: 挨拶検出による不要処理のスキップ
+ 
 - **並列処理**: DB検索とベクトル検索の同時実行
 - **キャッシュ戦略**: 分類結果・検索結果の適切なキャッシュ
 - **動的調整**: 信頼度・品質に基づくパラメータ最適化
@@ -657,11 +761,7 @@ enhanced_prompt = f"""
 - **低関連度(0.4-0.6)**: 一般的な案内＋追加質問の促し
 - **極低関連度(0.4未満)**: 代替提案や検索改善案
 
-##### 3. 挨拶検出・早期応答
-- **検索スキップ**: 挨拶検出時はベクトル検索を完全にスキップ
-- **高速応答**: 平均応答時間を87%短縮（14.8秒→1.8秒）
-- **定型応答**: ゲームカード関連の自然な挨拶応答
-- **検出精度**: 100%の挨拶検出精度
+<!-- 挨拶検出・早期応答はMVPから削除済み -->
 
 ##### 4. パラメータ最適化
 - `max_tokens`: 500→300（簡潔性向上）
@@ -670,9 +770,7 @@ enhanced_prompt = f"""
 - `frequency_penalty`: 0.1（繰り返し削減）
 
 #### パフォーマンス実測結果
-- **挨拶応答時間**: 平均1.8秒（検索スキップ）
-- **通常応答時間**: 平均14.8秒（検索実行）
-- **検索スキップ精度**: 100%
+- <!-- 挨拶応答・検索スキップに関する指標は削除 -->
 - **応答文字数**: 100-200文字の最適化された回答
 - **応答品質**: 関連度に基づく適切な詳細度調整
 
@@ -905,7 +1003,7 @@ gamechat-ai/
 │   │   ├── migrate-to-firebase.sh # Firebase移行
 │   │   └── upload_data_to_gcs.py # GCSデータアップロード
 │   ├── testing/                  # テスト・検証
-│   │   ├── test_greeting_detection.py  # 挨拶検出テスト
+│   │   ├── 
 │   │   ├── test_performance.py   # パフォーマンステスト
 │   │   ├── simple_performance_test.py  # 簡易性能テスト
 │   │   ├── performance_optimization_test.py  # 最適化テスト
@@ -1466,7 +1564,7 @@ cp frontend/.env.firebase.example frontend/.env.firebase
 
 | 項目 | 値 | 備考 |
 |------|----|----- |
-| **API 応答時間** | 平均 1.8秒 | 挨拶検出最適化済み（87%短縮） |
+| **API 応答時間** | 平均 1.8秒 |  |
 | **Docker イメージサイズ** | Backend: 532MB, Frontend: 309MB | Alpine Linux 軽量化済み |
 | **ビルド時間** | Backend: ~1.5秒, Frontend: ~3.7秒 | キャッシュ最適化済み |
 | **メモリ使用量** | 本番: 1GB, 開発: 512MB | リソース効率化済み |

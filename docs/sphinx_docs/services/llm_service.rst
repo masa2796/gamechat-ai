@@ -133,7 +133,7 @@ LLMサービス
       
       **デフォルト分類カテゴリ:**
       
-      * **greeting**: 挨拶・雑談
+      
       * **card_info**: カード情報確認
       * **deck_building**: デッキ構築相談
       * **rule_question**: ルール質問

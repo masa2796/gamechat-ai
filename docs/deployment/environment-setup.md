@@ -1,5 +1,7 @@
 # 環境設定統合ガイド
 
+> **ARCHIVE_CANDIDATE**: この統合ガイドはMVPで使用しない拡張設定を扱います。MVP環境では `docs/project/env_mvp.md` の一覧と `.env.prod.example` を参照してください。
+
 このファイルは、GameChat AIプロジェクトの環境変数・設定・API設定を統合したガイドです。
 
 ## 📋 概要
@@ -296,3 +298,124 @@ CORS_ORIGINS=https://gamechat-ai.web.app,https://gamechat-ai.firebaseapp.com,htt
 - **テスト/CI用**: `_TEST`, `_CI` サフィックスで明示。
 - **Google/Firebase/Recaptcha**: 公式推奨名を優先。
 - **.envファイル例**: backend/.env.example, frontend/.env.example 参照。
+
+---
+
+# 環境セットアップ手順
+
+このセクションでは、GameChat AIプロジェクトの環境セットアップ手順を説明します。
+
+## MVP: 環境セットアップ
+
+1. 仮想環境の作成
+```bash
+python -m venv venv
+```
+
+2. 必要パッケージのインストール
+```bash
+pip install -r backend/requirements.txt
+```
+
+3. アプリケーションの起動
+```bash
+uvicorn app.main:app --reload
+```
+
+## 開発環境のセットアップ
+
+1. リポジトリのクローン
+```bash
+git clone https://github.com/your-repo/gamechat-ai.git
+cd gamechat-ai
+```
+
+2. 環境変数ファイルのコピー
+```bash
+cp .env.template .env.local
+```
+
+3. 環境変数の設定
+```bash
+# .env.local を編集して、必要な環境変数を設定
+nano .env.local
+```
+
+4. データベースのセットアップ
+```bash
+# PostgreSQLのインストール（macOSの場合）
+brew install postgresql
+
+# サービスの起動
+brew services start postgresql
+
+# データベースの作成
+createdb gamechat_ai
+```
+
+5. マイグレーションの実行
+```bash
+alembic upgrade head
+```
+
+6. 開発サーバーの起動
+```bash
+uvicorn backend.app.main:app --reload
+```
+
+## 本番環境のセットアップ
+
+1. サーバーの準備
+- OS: Ubuntu 20.04 LTS
+- Python 3.8+
+- PostgreSQL 13+
+- Redis
+- その他依存パッケージ
+
+2. 環境変数の設定
+```bash
+# .env.production を作成し、環境変数を設定
+cp .env.template .env.production
+nano .env.production
+```
+
+3. データベースのセットアップ
+```bash
+sudo -u postgres psql
+# PostgreSQLシェルに入ったら
+CREATE DATABASE gamechat_ai;
+\q
+```
+
+4. マイグレーションの実行
+```bash
+alembic upgrade head
+```
+
+5. サーバーの起動
+```bash
+uvicorn backend.app.main:app --host 0.0.0.0 --port 80
+```
+
+6. Cloud Run へのデプロイ
+```bash
+gcloud builds submit --config cloudbuild.yaml
+```
+
+## トラブルシューティング
+
+- **依存パッケージのインストールエラー**
+  - `pip` や `python` のパスを確認
+  - 仮想環境がアクティブか確認
+
+- **データベース接続エラー**
+  - データベースが起動しているか確認
+  - 環境変数 `DATABASE_URL` の設定を確認
+
+- **サーバー起動エラー**
+  - ポートが他のプロセスで使用されていないか確認
+  - 必要な権限があるか確認
+
+---
+
+このガイドは、GameChat AIプロジェクトの環境設定とセットアップを円滑に進めるためのものです。各ステップを慎重に実行し、問題が発生した場合はトラブルシューティングセクションを参照してください。

@@ -32,12 +32,10 @@ export interface UseChatReturn {
   recaptchaReady: boolean;
   setRecaptchaReady: (ready: boolean) => void;
   clearHistory: () => void;
-  // チャット履歴管理機能
-  activeSessionId: string | null;
-  activeSession: ChatSession | null;
-  // セッション操作機能
-  createNewChatAndSwitch: () => string;
-  switchToChatAndClear: (sessionId: string) => void;
+  activeSessionId: string | null; // 常に null (MVP)
+  activeSession: ChatSession | null; // 常に null (MVP)
+  createNewChatAndSwitch: () => string; // ダミー
+  switchToChatAndClear: (sessionId: string) => void; // ダミー
 }
 
 // チャット履歴管理のための新しい型定義
@@ -46,48 +44,30 @@ export interface UseChatReturn {
  * チャットセッション
  * 個別のチャット会話を管理するための型
  */
-export interface ChatSession {
-  /** セッションの一意識別子（UUID v4） */
-  id: string;
-  /** チャットタイトル（自動生成または手動設定） */
-  title: string;
-  /** メッセージ履歴 */
-  messages: Message[];
-  /** 作成日時 */
+export interface ChatSession { 
+  id: string; 
+  title: string; 
+  messages: Message[]; 
   createdAt: Date;
-  /** 最終更新日時 */
   updatedAt: Date;
-  /** 現在アクティブかどうか */
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 /**
  * チャット履歴の全体状態
  * 複数のチャットセッションを管理するための型
  */
-export interface ChatHistoryState {
-  /** 全チャットセッション */
-  sessions: ChatSession[];
-  /** 現在アクティブなセッションID */
+export interface ChatHistoryState { 
+  sessions: ChatSession[]; 
   activeSessionId: string | null;
-  /** 最大保存セッション数（デフォルト: 50） */
-  maxSessions: number;
+  maxSessions?: number;
 }
 
 /**
  * LocalStorageキー定数
  * チャット履歴の保存に使用するキーの定義
  */
-export const STORAGE_KEYS = {
-  /** 旧版からのマイグレーション用 */
-  CHAT_HISTORY: "chat-history-v2",
-  /** 新しいセッション管理 */
-  CHAT_SESSIONS: "chat-sessions",
-  /** アクティブセッションID */
-  ACTIVE_SESSION: "active-session-id",
-  /** ユーザー設定 */
-  USER_PREFERENCES: "chat-preferences"
-} as const;
+export const STORAGE_KEYS = { CHAT_HISTORY: "chat-history-v2" } as const;
 
 /**
  * チャット履歴管理フックの返り値型
@@ -119,8 +99,10 @@ export interface UseChatHistoryReturn {
   deleteChat: (sessionId: string) => void;
   /** チャットタイトル更新 */
   updateChatTitle: (sessionId: string, title: string) => void;
+  /** セッションにメッセージ追加 */
+  addMessageToChat: (sessionId: string, message: { role: 'user' | 'assistant', content: string }) => void;
   /** セッションのメッセージ更新 */
-  updateSessionMessages: (sessionId: string, messages: Message[]) => void;
+  updateSessionMessages: (sessionId: string, messages: { role: 'user' | 'assistant', content: string }[]) => void;
   /** エラークリア */
   clearError: () => void;
   /** 全履歴削除 */
